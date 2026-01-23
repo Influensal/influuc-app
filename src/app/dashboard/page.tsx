@@ -119,6 +119,12 @@ export default function DashboardPage() {
             });
             const data = await response.json();
 
+            if (response.status === 401) {
+                alert('Session expired. Please log in again.');
+                window.location.href = '/login';
+                return;
+            }
+
             if (!response.ok) throw new Error(data.error || 'Failed to publish');
 
             // Refresh posts (would ideally come from context)

@@ -498,14 +498,16 @@ async function saveToSupabase(
         const scheduledDate = new Date(today);
         scheduledDate.setDate(today.getDate() + daysUntil);
 
-        // Parse time safely
-        const timeParts = post.time?.split(' ') || ['10:00', 'AM'];
-        const [time, period] = timeParts;
-        const [hours, minutes] = (time || '10:00').split(':').map(Number);
-        let hour24 = hours || 10;
-        if (period === 'PM' && hours !== 12) hour24 += 12;
-        if (period === 'AM' && hours === 12) hour24 = 0;
-        scheduledDate.setHours(hour24, minutes || 0, 0, 0);
+        // Parse time safely - HARDCODED to 8:30 PM per user request
+        // const timeParts = post.time?.split(' ') || ['10:00', 'AM'];
+        // const [time, period] = timeParts;
+        // const [hours, minutes] = (time || '10:00').split(':').map(Number);
+        // let hour24 = hours || 10;
+        // if (period === 'PM' && hours !== 12) hour24 += 12;
+        // if (period === 'AM' && hours === 12) hour24 = 0;
+
+        // Force 8:30 PM (20:30)
+        scheduledDate.setHours(20, 30, 0, 0);
 
         // Normalize format
         let format = post.format?.toLowerCase().replace('-', '_').replace(' ', '_') || 'single';
