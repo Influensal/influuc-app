@@ -124,29 +124,23 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // Step 1: Generate weekly strategy
-        console.log('[Onboarding] Generating weekly strategy...');
-        const strategy = await generateStrategy(selectedPlatforms, body);
-
-        // Step 2: Generate content for each post
-        console.log('[Onboarding] Generating posts...');
-        const posts = await generatePosts(strategy.posts, body);
-
-        // Step 3: Save to Supabase
+        // Step 1: Save Profile to Supabase immediately (Skip generation to prevent Vercel Timeout)
+        console.log('[Onboarding] Saving profile to Supabase...');
         let profileId: string | null = null;
+
         if (isSupabaseConfigured() && user) {
-            console.log('[Onboarding] Saving to Supabase...');
-            profileId = await saveToSupabase(supabase, user.id, body, posts);
+            // Save with empty posts first
+            profileId = await saveToSupabase(supabase, user.id, body, []);
         } else {
             console.log('[Onboarding] Supabase not configured or no user (mock mode), skipping save');
-            // If mock mode, return a dummy ID
             profileId = 'mock-profile-id';
         }
 
         return NextResponse.json({
             success: true,
             profileId,
-            postsCount: posts.length,
+            postsCount: 0,
+            message: "Profile created. Ready to generate."
         });
 
     } catch (error) {
