@@ -143,7 +143,9 @@ export async function POST(request: NextRequest) {
             goal,
             xPostsCount: result.xPostsCount,
             linkedinPostsCount: result.linkedinPostsCount,
-            generationId: result.generationId
+            generationId: result.generationId,
+            postIds: result.postIds || [], // Return IDs for client iteration
+            message: "Strategy ready. Posts pending generation."
         });
 
     } catch (error) {

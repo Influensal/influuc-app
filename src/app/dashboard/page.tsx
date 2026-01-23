@@ -63,6 +63,7 @@ export default function DashboardPage() {
 
     // Handle generation with goal
     const handleGenerateWithGoal = async (goal: string, context: string) => {
+        // Step 1: Create Strategy & Placeholder Posts
         const response = await fetch('/api/generation/start', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -73,6 +74,23 @@ export default function DashboardPage() {
 
         if (!response.ok) {
             throw new Error(data.error || 'Generation failed');
+        }
+
+        // Step 2: Generate Content for each post individually (Client-Side Iteration)
+        // This avoids Vercel 504 Timeouts by keeping each request short
+        if (data.postIds && Array.isArray(data.postIds)) {
+            // We can run these in parallel batches of 3-4 to speed it up but single updates are safer for rate limits
+            const BATCH_SIZE = 3;
+            for (let i = 0; i < data.postIds.length; i += BATCH_SIZE) {
+                const batch = data.postIds.slice(i, i + BATCH_SIZE);
+                await Promise.all(batch.map((postId: string) =>
+                    fetch('/api/generation/single', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ postId })
+                    }).catch(e => console.error(`Failed to generate post ${postId}`, e))
+                ));
+            }
         }
 
         // Refresh posts after generation
