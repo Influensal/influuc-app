@@ -611,3 +611,96 @@ export async function getUserWeekNumber(accountId: string): Promise<number> {
 
     return (count || 0) + 1;
 }
+// ============================================
+// SINGLE POST GENERATION (REQUIRED FOR API)
+// ============================================
+
+export async function generateSinglePost(postId: string): Promise<{ success: boolean; content?: string; error?: string }> {
+    const supabase = createAdminClient();
+
+    // 1. Fetch the post and its profile context
+    const { data: post, error: fetchError } = await supabase
+        .from('posts')
+        .select(`
+            *,
+            founder_profiles!inner (
+                role,
+                company_name,
+                business_description,
+                expertise,
+                tone
+            )
+        `)
+        .eq('id', postId)
+        .single();
+
+    if (fetchError || !post) {
+        console.error('[SingleGen] Post not found:', fetchError);
+        return { success: false, error: 'Post not found' };
+    }
+
+    // 2. Prepare Prompt
+    const profile = post.founder_profiles;
+    // @ts-ignore
+    const tone = profile.tone || { boldness: 'bold', style: 'educational' };
+
+    const systemPrompt = `You are an elite ghostwriter for top founders.
+    
+You are writing a SINGLE post for ${post.platform === 'linkedin' ? 'LinkedIn' : 'X (Twitter)'}.
+
+CONTEXT:
+- Topic: ${post.topic || 'General Industry Insight'}
+- Format: ${post.format || 'single'}
+- Role: ${profile.role}
+- Company: ${profile.company_name}
+- Business: ${profile.business_description}
+- Expertise: ${profile.expertise}
+- Tone: ${tone.boldness} / ${tone.style}
+
+CONSTRAINTS:
+${post.platform === 'x' ? '- Max 280 chars\n- No Hashtags' : '- Professional formatting\n- 800-1200 chars'}
+- Start with a strong hook
+- Be concise and authoritative
+
+Return ONLY a JSON object:
+{
+    "content": "The post text",
+    "hooks": ["Alternative hook 1", "Alternative hook 2"],
+    "cta": "Call to action"
+}`;
+
+    // 3. Call AI
+    try {
+        const provider = await getProvider();
+        const result = await provider.complete({
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: `Write a ${post.platform} post about: ${post.topic || 'Industry trends'}` }
+            ],
+            temperature: 0.7,
+            responseFormat: { type: 'json_object' },
+        });
+
+        const cleanContent = result.content.replace(/```json\n?|\n?```/g, '').trim();
+        const parsed = JSON.parse(cleanContent);
+        const finalContent = parsed.content || 'Failed to generate content';
+
+        // 4. Update Post
+        await supabase
+            .from('posts')
+            .update({
+                content: finalContent,
+                hooks: parsed.hooks || [],
+                cta: parsed.cta || null,
+                status: 'scheduled', // Mark as ready
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', postId);
+
+        return { success: true, content: finalContent };
+
+    } catch (error) {
+        console.error('[SingleGen] AI Error:', error);
+        return { success: false, error: error instanceof Error ? error.message : 'Generation failed' };
+    }
+}
