@@ -5,7 +5,20 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
     const state = crypto.randomBytes(16).toString('hex');
-    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/auth/linkedin/callback`;
+
+    // robustly determine app url
+    let appUrl = process.env.NEXT_PUBLIC_APP_URL;
+    if (!appUrl) {
+        if (process.env.VERCEL_URL) {
+            appUrl = `https://${process.env.VERCEL_URL}`;
+        } else {
+            const host = request.headers.get('host') || 'localhost:3000';
+            const protocol = host.includes('localhost') ? 'http' : 'https';
+            appUrl = `${protocol}://${host}`;
+        }
+    }
+
+    const redirectUri = `${appUrl}/api/auth/linkedin/callback`;
     const clientId = process.env.LINKEDIN_CLIENT_ID!;
 
     // Scopes: openid profile email w_member_social

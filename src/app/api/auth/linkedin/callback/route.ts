@@ -15,7 +15,19 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-        const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/auth/linkedin/callback`;
+        // robustly determine app url
+        let appUrl = process.env.NEXT_PUBLIC_APP_URL;
+        if (!appUrl) {
+            if (process.env.VERCEL_URL) {
+                appUrl = `https://${process.env.VERCEL_URL}`;
+            } else {
+                const host = request.headers.get('host') || 'localhost:3000';
+                const protocol = host.includes('localhost') ? 'http' : 'https';
+                appUrl = `${protocol}://${host}`;
+            }
+        }
+
+        const redirectUri = `${appUrl}/api/auth/linkedin/callback`;
 
         // 1. Exchange Code for Token
         const tokenResponse = await fetch('https://www.linkedin.com/oauth/v2/accessToken', {

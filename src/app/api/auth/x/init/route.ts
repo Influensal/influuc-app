@@ -9,8 +9,20 @@ export async function GET(request: Request) {
         clientSecret: process.env.TWITTER_CLIENT_SECRET!,
     });
 
+    // robustly determine app url
+    let appUrl = process.env.NEXT_PUBLIC_APP_URL;
+    if (!appUrl) {
+        if (process.env.VERCEL_URL) {
+            appUrl = `https://${process.env.VERCEL_URL}`;
+        } else {
+            const host = request.headers.get('host') || 'localhost:3000';
+            const protocol = host.includes('localhost') ? 'http' : 'https';
+            appUrl = `${protocol}://${host}`;
+        }
+    }
+
     const { url, codeVerifier, state } = client.generateOAuth2AuthLink(
-        `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/auth/x/callback`,
+        `${appUrl}/api/auth/x/callback`,
         { scope: ['tweet.read', 'tweet.write', 'users.read', 'offline.access'] }
     );
 
