@@ -5,7 +5,7 @@ import { getProvider } from '@/lib/ai/providers';
 import { scrapeWebsite, extractBusinessSummary } from '@/lib/scraper';
 
 export const runtime = 'nodejs';
-export const maxDuration = 60; // Allow up to 60 seconds for AI generation
+export const maxDuration = 300; // Allow up to 5 minutes for full batch generation
 
 interface OnboardingData {
     platforms: {
@@ -124,13 +124,20 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // Step 1: Save Profile to Supabase immediately (Skip generation to prevent Vercel Timeout)
-        console.log('[Onboarding] Saving profile to Supabase...');
+        // Step 1: Generate weekly strategy
+        console.log('[Onboarding] Generating weekly strategy...');
+        const strategy = await generateStrategy(selectedPlatforms, body);
+
+        // Step 2: Generate content for ALL posts in ONE batch (2 logs total constraint)
+        console.log('[Onboarding] Generating all posts in single batch...');
+        const posts = await generatePostsBatched(strategy.posts, body);
+
+        // Step 3: Save to Supabase
+        console.log('[Onboarding] Saving profile and posts to Supabase...');
         let profileId: string | null = null;
 
         if (isSupabaseConfigured() && user) {
-            // Save with empty posts first
-            profileId = await saveToSupabase(supabase, user.id, body, []);
+            profileId = await saveToSupabase(supabase, user.id, body, posts);
         } else {
             console.log('[Onboarding] Supabase not configured or no user (mock mode), skipping save');
             profileId = 'mock-profile-id';
@@ -139,8 +146,8 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
             success: true,
             profileId,
-            postsCount: 0,
-            message: "Profile created. Ready to generate."
+            postsCount: posts.length,
+            message: "Generation complete."
         });
 
     } catch (error) {

@@ -156,7 +156,7 @@ export default function DashboardPage() {
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
-                    {/* Generate Week Button */}
+                    {/* Generate Week Button Removed - Only available via Onboarding/Weekly Goal flow explicitly or auto-schedule 
                     <button
                         onClick={() => setShowGoalModal(true)}
                         className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] hover:opacity-90 rounded-lg transition-all"
@@ -164,6 +164,7 @@ export default function DashboardPage() {
                         <Target className="w-4 h-4" />
                         Generate Week
                     </button>
+                    */}
                     <button
                         onClick={async () => {
                             setIsRefreshing(true);

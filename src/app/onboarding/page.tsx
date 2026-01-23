@@ -140,9 +140,21 @@ export default function OnboardingPage() {
                 if (savedData) {
                     try {
                         loadedData = JSON.parse(savedData);
+                        console.log('[Onboarding] Loaded user saved data');
                     } catch (e) {
                         console.error('Failed to parse saved onboarding data', e);
                     }
+                }
+            }
+
+            // 2. Fallback to temp data (critical during auth redirects or pre-login steps)
+            if (loadedData === initialData) {
+                const tempData = localStorage.getItem('onboarding_temp_data');
+                if (tempData) {
+                    try {
+                        loadedData = JSON.parse(tempData);
+                        console.log('[Onboarding] Loaded temp saved data');
+                    } catch (e) { console.error(e); }
                 }
             }
 
@@ -178,9 +190,15 @@ export default function OnboardingPage() {
         const save = async () => {
             const supabase = createClient();
             const { data: { user } } = await supabase.auth.getUser();
+            const json = JSON.stringify(data);
 
-            if (user && JSON.stringify(data) !== JSON.stringify(initialData)) {
-                localStorage.setItem(`onboarding_data_${user.id}`, JSON.stringify(data));
+            if (json === JSON.stringify(initialData)) return;
+
+            // Always save to temp (backup for redirects)
+            localStorage.setItem('onboarding_temp_data', json);
+
+            if (user) {
+                localStorage.setItem(`onboarding_data_${user.id}`, json);
             }
         };
         save();
