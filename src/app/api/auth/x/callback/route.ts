@@ -22,16 +22,18 @@ export async function GET(request: NextRequest) {
             clientSecret: process.env.TWITTER_CLIENT_SECRET!,
         });
 
-        // robustly determine app url
-        let appUrl = process.env.NEXT_PUBLIC_APP_URL;
-        if (!appUrl) {
-            if (process.env.VERCEL_URL) {
-                appUrl = `https://${process.env.VERCEL_URL}`;
-            } else {
-                const host = request.headers.get('host') || 'localhost:3000';
-                const protocol = host.includes('localhost') ? 'http' : 'https';
-                appUrl = `${protocol}://${host}`;
-            }
+        // Dynamic URL detection
+        let appUrl = '';
+        const host = request.headers.get('host');
+
+        if (host && !host.includes('localhost')) {
+            appUrl = `https://${host}`;
+        } else {
+            appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        }
+
+        if (process.env.VERCEL_URL && appUrl.includes('localhost')) {
+            appUrl = `https://${process.env.VERCEL_URL}`;
         }
 
         const { client: loggedClient, accessToken, refreshToken, expiresIn } = await client.loginWithOAuth2({
