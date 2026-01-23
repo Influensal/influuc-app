@@ -1,0 +1,357 @@
+@import "tailwindcss";
+
+/* ========================================
+   INFLUUC SOPHISTICATED DESIGN SYSTEM
+   "Sophisticated & Textured"
+   Reference: Equa / Linear / Refined SaaS
+======================================== */
+
+:root {
+  /* COLORS: SOPHISTICATED PALETTE */
+  /* Background is a warm, high-end off-white/grey, not clinical white */
+  --background: #F9FAFB;
+  --background-secondary: #F3F4F6;
+
+  /* The "Off-Black" you requested - Deep, rich, matte */
+  --foreground: #111111;
+  --foreground-secondary: #555555;
+  /* Sophisticated medium grey */
+  --foreground-muted: #999999;
+  /* Light matte grey */
+
+  /* Cards are pure white to pop against the off-white bg */
+  --card: #FFFFFF;
+  --card-hover: #FFFFFF;
+
+  /* Primary: Deep, matte, intelligent purple */
+  --primary: #7C3AED;
+  --primary-hover: #6D28D9;
+  --primary-light: #F3E8FF;
+
+  /* Accents */
+  --secondary: #F97316;
+  --secondary-light: #FFEDD5;
+
+  /* Borders - Extremely subtle, let shadows do the work */
+  --border: #F0F0F0;
+  --border-hover: #E5E5E5;
+
+  /* SHADOWS: The "100x" Beauty Secret */
+  /* Layered, diffuse shadows that feel like ambient occlusion */
+  --shadow-sm:
+    0 1px 2px rgba(0, 0, 0, 0.02),
+    0 2px 4px rgba(0, 0, 0, 0.02);
+
+  --shadow:
+    0 2px 4px rgba(0, 0, 0, 0.02),
+    0 8px 16px rgba(0, 0, 0, 0.04),
+    0 0 0 1px rgba(0, 0, 0, 0.02);
+  /* Subtle border ring */
+
+  --shadow-md:
+    0 4px 8px rgba(0, 0, 0, 0.02),
+    0 12px 24px rgba(0, 0, 0, 0.05),
+    0 0 0 1px rgba(0, 0, 0, 0.02);
+
+  --shadow-lg:
+    0 12px 24px rgba(0, 0, 0, 0.02),
+    0 32px 64px rgba(0, 0, 0, 0.08),
+    0 0 0 1px rgba(0, 0, 0, 0.02);
+
+  /* Radius - Friendly & Modern */
+  --radius-sm: 12px;
+  --radius: 16px;
+  --radius-md: 24px;
+  --radius-lg: 32px;
+  --radius-full: 9999px;
+
+  /* Layout */
+  --sidebar-width: 280px;
+}
+
+/* DARK MODE: Deep, Matte, "Off-Black" */
+[data-theme="dark"] {
+  --background: #050505;
+  /* True off-black */
+  --background-secondary: #111111;
+
+  --card: #111111;
+  --card-hover: #161616;
+
+  --foreground: #FFFFFF;
+  --foreground-secondary: #A0A0A0;
+  --foreground-muted: #666666;
+
+  --border: #222222;
+  --border-hover: #333333;
+
+  --primary: #8B5CF6;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+  --color-border: var(--border);
+  --font-sans: var(--font-outfit), system-ui, sans-serif;
+  /* Setup in layout.tsx */
+}
+
+/* ========================================
+   BASE STYLES
+======================================== */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-outfit), sans-serif;
+  font-size: 15px;
+  /* Premium readability */
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+
+  /* TEXTURE: Subtle noise overlay for that "physical" feel */
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
+}
+
+/* ========================================
+   TYPOGRAPHY
+   "Sophisticated & Geometric"
+======================================== */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--foreground);
+  line-height: 1.2;
+}
+
+/* Lighter weights for headings creates elegance */
+h1 {
+  font-size: 2.5rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+h2 {
+  font-size: 1.75rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+p {
+  color: var(--foreground-secondary);
+  font-weight: 400;
+}
+
+/* ========================================
+   LAYOUT & CARDS
+======================================== */
+.app-container {
+  display: flex;
+  min-height: 100vh;
+}
+
+.main-content {
+  flex: 1;
+  /* Sidebar width + left margin + gap */
+  margin-left: calc(var(--sidebar-width) + 40px);
+  padding: 40px 60px 40px 0;
+  /* Huge right padding */
+  max-width: fill-available;
+}
+
+.card {
+  background: var(--card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow);
+  /* Soft ambient shadow */
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  border: 1px solid transparent;
+  /* Prepare for hover border */
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  /* Deeper lift */
+  /* Subtle border reveal on hover */
+  border-color: rgba(0, 0, 0, 0.03);
+}
+
+/* ========================================
+   SIDEBAR (Detached & Soft)
+   Matches the "Equa" reference
+======================================== */
+.sidebar {
+  position: fixed;
+  left: 24px;
+  top: 24px;
+  bottom: 24px;
+  width: var(--sidebar-width);
+  background: var(--card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  /* Slightly stronger shadow for sidebar */
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  z-index: 50;
+}
+
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-left: 8px;
+  margin-bottom: 48px;
+  /* More breathing room */
+}
+
+.sidebar-logo-icon {
+  width: 32px;
+  height: 32px;
+  color: var(--primary);
+  /* Minimalist logo */
+}
+
+.sidebar-logo-text {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.sidebar-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--foreground-muted);
+  padding: 0 16px;
+  margin-bottom: 16px;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--foreground-secondary);
+  border-radius: var(--radius);
+  transition: all 0.2s ease;
+  margin-bottom: 6px;
+}
+
+.sidebar-link:hover {
+  background: var(--background);
+  /* Hover matches main bg */
+  color: var(--foreground);
+}
+
+.sidebar-link.active {
+  background: var(--background);
+  /* "Equa" style active: lighter bg with dark text */
+  color: var(--foreground);
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+}
+
+.sidebar-link.active .sidebar-link-icon {
+  color: var(--primary);
+  /* Only icon gets color */
+  opacity: 1;
+}
+
+.sidebar-link-icon {
+  width: 20px;
+  height: 20px;
+  opacity: 0.6;
+  transition: all 0.2s ease;
+}
+
+/* ========================================
+   COMPONENTS
+======================================== */
+/* Buttons - Understated Luxury */
+.btn {
+  display: inline-flex;
+  gap: 8px;
+  padding: 12px 24px;
+  font-weight: 500;
+  border-radius: var(--radius-full);
+  transition: all 0.2s ease;
+}
+
+.btn-primary {
+  background: var(--foreground);
+  /* "Off Black" button */
+  color: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  background: #000;
+}
+
+.icon-badge {
+  width: 56px;
+  /* Larger */
+  height: 56px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  background: var(--background);
+  /* Subtle bg */
+}
+
+/* Stat Cards */
+.stat-value {
+  font-size: 2.75rem;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  /* Tight tracking for numbers */
+  color: var(--foreground);
+}
+
+/* Responsive */
+@media (max-width: 1280px) {
+  .bento-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .main-content {
+    margin-left: 280px;
+    padding: 32px;
+  }
+
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    border-radius: 0;
+  }
+}

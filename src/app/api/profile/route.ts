@@ -1,0 +1,58 @@
+import { NextResponse } from 'next/server';
+import { createClient } from '@/utils/supabase/server';
+
+export const runtime = 'nodejs';
+
+export async function GET(req: Request) {
+    try {
+        const { searchParams } = new URL(req.url);
+        const profileId = searchParams.get('profileId');
+        const supabase = await createClient();
+
+        // Get authenticated user
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+        if (authError || !user) {
+            return NextResponse.json(
+                { error: 'Unauthorized' },
+                { status: 401 }
+            );
+        }
+
+        // Build query
+        let query = supabase
+            .from('founder_profiles')
+            .select('*')
+            .eq('account_id', user.id);
+
+        // If specific profile requested, filter by ID
+        if (profileId) {
+            query = query.eq('id', profileId);
+        }
+
+        // Get single profile (limit 1 to avoid error if multiple exist and no ID specified)
+        // Order by created_at desc to get most recent if multiple
+        const { data: profiles, error: profileError } = await query
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+        if (profileError) {
+            console.error('Error fetching profile:', profileError);
+            return NextResponse.json(
+                { error: `Failed to fetch profile: ${profileError.message}` },
+                { status: 500 }
+            );
+        }
+
+        // Return the first found profile, or null
+        const profile = profiles && profiles.length > 0 ? profiles[0] : null;
+
+        return NextResponse.json({ profile });
+    } catch (error) {
+        console.error('Error in profile API:', error);
+        return NextResponse.json(
+            { error: error instanceof Error ? error.message : 'Failed to fetch profile' },
+            { status: 500 }
+        );
+    }
+}
