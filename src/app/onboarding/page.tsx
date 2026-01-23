@@ -131,42 +131,51 @@ export default function OnboardingPage() {
         const init = async () => {
             const supabase = createClient();
             const { data: { user } } = await supabase.auth.getUser();
+            const params = new URLSearchParams(window.location.search);
+            const isRedirect = params.get('connect') === 'success' || !!params.get('error');
 
-            let loadedData = initialData;
+            let loadedData = initialData; // Start clean
 
-            if (user) {
-                // 1. Try to load saved state for THIS user
-                const savedData = localStorage.getItem(`onboarding_data_${user.id}`);
-                if (savedData) {
-                    try {
-                        loadedData = JSON.parse(savedData);
-                        console.log('[Onboarding] Loaded user saved data');
-                    } catch (e) {
-                        console.error('Failed to parse saved onboarding data', e);
-                    }
-                }
-            }
+            // STRATEGY: 
+            // 1. If Redirecting back (Auth flow), prioritize TEMP data (most recent).
+            // 2. If Normal load (Logged in), prioritize USER SAVED data.
 
-            // 2. Fallback to temp data (critical during auth redirects or pre-login steps)
-            if (loadedData === initialData) {
+            if (isRedirect) {
+                // Redirect Case: We just came back from X/LinkedIn. Data MUST be in temp.
                 const tempData = localStorage.getItem('onboarding_temp_data');
                 if (tempData) {
                     try {
                         loadedData = JSON.parse(tempData);
-                        console.log('[Onboarding] Loaded temp saved data');
-                    } catch (e) { console.error(e); }
+                        console.log('[Onboarding] Restored TEMP data after redirect');
+                    } catch (e) {
+                        console.error('Failed to parse temp data', e);
+                    }
+                }
+            } else if (user) {
+                // Normal Load Case: Check user saved data first
+                const savedData = localStorage.getItem(`onboarding_data_${user.id}`);
+                if (savedData) {
+                    try {
+                        loadedData = JSON.parse(savedData);
+                        console.log('[Onboarding] Restored USER Saved data');
+                    } catch (e) {
+                        console.error('Failed to parse user data', e);
+                    }
+                } else {
+                    // Fallback to temp if no user data found (e.g. reload before save)
+                    const tempData = localStorage.getItem('onboarding_temp_data');
+                    if (tempData) {
+                        try {
+                            loadedData = JSON.parse(tempData);
+                        } catch (e) { }
+                    }
                 }
             }
 
-            // 2. Check for redirect params (e.g. from OAuth)
-            const params = new URLSearchParams(window.location.search);
+            // Apply platform connection success state to data
             if (params.get('connect') === 'success') {
-                setCurrentStep(8); // Jump to Connect step
-
-                // Force enable the connected platform
                 const platform = params.get('platform');
                 if (platform === 'x' || platform === 'linkedin') {
-                    // Update loadedData to ensure the connected platform is selected
                     loadedData = {
                         ...loadedData,
                         platforms: {
@@ -175,11 +184,19 @@ export default function OnboardingPage() {
                         }
                     };
                 }
-            } else if (params.get('error')) {
-                setCurrentStep(8); // Jump to Connect step to show error
             }
 
+            // Set Data First
             setData(loadedData);
+
+            // Then Set Step (Delay slightly to ensure render if needed, but here sync is fine)
+            if (isRedirect) {
+                setCurrentStep(8); // Force Step 8 (Connect)
+            } else {
+                // Optional: Restore last step? For now start at 1 or keep logic simple.
+                // If data is filled, maybe jump? 
+                // Let's stick to 1 unless redirected for predictability, OR check if "Launch" was ready.
+            }
         };
 
         init();
