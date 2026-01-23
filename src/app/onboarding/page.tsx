@@ -375,7 +375,7 @@ export default function OnboardingPage() {
                 </div>
 
                 {/* Content area */}
-                <div className="flex-1 flex items-center justify-center p-8">
+                <div className="flex-1 flex items-center justify-center p-4 lg:p-8 overflow-y-auto">
                     <div className="w-full max-w-2xl">
                         <AnimatePresence mode="wait">
                             {currentStep === 1 && (
@@ -454,7 +454,7 @@ export default function OnboardingPage() {
                 </div>
 
                 {/* Bottom navigation */}
-                <div className="p-6 border-t border-[var(--border)]">
+                <div className="p-4 lg:p-4 border-t border-[var(--border)]">
                     <div className="max-w-2xl mx-auto flex items-center justify-between">
                         <button
                             onClick={prevStep}
@@ -513,7 +513,7 @@ function Step1Platforms({ data, updateData }: { data: OnboardingData; updateData
             transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
         >
             <motion.h1
-                className="text-4xl font-bold mb-3"
+                className="text-2xl md:text-3xl font-bold mb-2"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
@@ -521,7 +521,7 @@ function Step1Platforms({ data, updateData }: { data: OnboardingData; updateData
                 Where do you want to post?
             </motion.h1>
             <motion.p
-                className="text-lg text-[var(--foreground-secondary)] mb-10"
+                className="text-base text-[var(--foreground-secondary)] mb-6"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.15 }}
@@ -530,7 +530,7 @@ function Step1Platforms({ data, updateData }: { data: OnboardingData; updateData
             </motion.p>
 
             <motion.div
-                className="grid gap-4"
+                className="grid gap-3"
                 variants={containerVariants}
                 initial="hidden"
                 animate="show"
@@ -540,25 +540,25 @@ function Step1Platforms({ data, updateData }: { data: OnboardingData; updateData
                     variants={itemVariants}
                     onClick={() => togglePlatform('x')}
                     className={`
-            flex items-center gap-5 p-6 rounded-2xl border-2 transition-all duration-300 group
+            flex items-center gap-4 p-4 rounded-xl border-2 transition-all duration-300 group
             ${data.platforms.x
                             ? 'border-[var(--primary)] bg-[var(--primary)]/10 shadow-[0_0_30px_-10px_rgba(var(--primary),0.3)]'
                             : 'border-[var(--border)] hover:border-[var(--border-hover)] hover:bg-[var(--background-secondary)]'}
           `}
                 >
-                    <div className={`w-14 h-14 rounded-xl flex items-center justify-center transition-colors ${data.platforms.x ? 'bg-[var(--primary)] text-white' : 'bg-[var(--card)] text-[var(--foreground)] group-hover:scale-110 duration-300'
+                    <div className={`w-12 h-12 rounded-lg flex items-center justify-center transition-colors ${data.platforms.x ? 'bg-[var(--primary)] text-white' : 'bg-[var(--card)] text-[var(--foreground)] group-hover:scale-110 duration-300'
                         }`}>
-                        <Twitter className="w-7 h-7" />
+                        <Twitter className="w-6 h-6" />
                     </div>
                     <div className="text-left flex-1">
-                        <h3 className={`text-xl font-semibold transition-colors ${data.platforms.x ? 'text-[var(--primary)]' : ''}`}>X (Twitter)</h3>
-                        <p className="text-[var(--foreground-secondary)]">Short-form posts, threads, and quick takes</p>
+                        <h3 className={`text-lg font-semibold transition-colors ${data.platforms.x ? 'text-[var(--primary)]' : ''}`}>X (Twitter)</h3>
+                        <p className="text-sm text-[var(--foreground-secondary)]">Short-form posts, threads, and quick takes</p>
                     </div>
-                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${data.platforms.x
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${data.platforms.x
                         ? 'border-[var(--primary)] bg-[var(--primary)]'
                         : 'border-[var(--border)]'
                         }`}>
-                        {data.platforms.x && <Check className="w-4 h-4 text-white" />}
+                        {data.platforms.x && <Check className="w-3 h-3 text-white" />}
                     </div>
                 </motion.button>
 
@@ -567,25 +567,25 @@ function Step1Platforms({ data, updateData }: { data: OnboardingData; updateData
                     variants={itemVariants}
                     onClick={() => togglePlatform('linkedin')}
                     className={`
-            flex items-center gap-5 p-6 rounded-2xl border-2 transition-all duration-300 group
+            flex items-center gap-4 p-4 rounded-xl border-2 transition-all duration-300 group
             ${data.platforms.linkedin
                             ? 'border-[var(--primary)] bg-[var(--primary)]/10 shadow-[0_0_30px_-10px_rgba(var(--primary),0.3)]'
                             : 'border-[var(--border)] hover:border-[var(--border-hover)] hover:bg-[var(--background-secondary)]'}
           `}
                 >
-                    <div className={`w-14 h-14 rounded-xl flex items-center justify-center transition-colors ${data.platforms.linkedin ? 'bg-[var(--primary)] text-white' : 'bg-[var(--card)] text-[var(--foreground)] group-hover:scale-110 duration-300'
+                    <div className={`w-12 h-12 rounded-lg flex items-center justify-center transition-colors ${data.platforms.linkedin ? 'bg-[var(--primary)] text-white' : 'bg-[var(--card)] text-[var(--foreground)] group-hover:scale-110 duration-300'
                         }`}>
-                        <Linkedin className="w-7 h-7" />
+                        <Linkedin className="w-6 h-6" />
                     </div>
                     <div className="text-left flex-1">
-                        <h3 className={`text-xl font-semibold transition-colors ${data.platforms.linkedin ? 'text-[var(--primary)]' : ''}`}>LinkedIn</h3>
-                        <p className="text-[var(--foreground-secondary)]">Professional content, thought leadership, long-form</p>
+                        <h3 className={`text-lg font-semibold transition-colors ${data.platforms.linkedin ? 'text-[var(--primary)]' : ''}`}>LinkedIn</h3>
+                        <p className="text-sm text-[var(--foreground-secondary)]">Professional content, thought leadership, long-form</p>
                     </div>
-                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${data.platforms.linkedin
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${data.platforms.linkedin
                         ? 'border-[var(--primary)] bg-[var(--primary)]'
                         : 'border-[var(--border)]'
                         }`}>
-                        {data.platforms.linkedin && <Check className="w-4 h-4 text-white" />}
+                        {data.platforms.linkedin && <Check className="w-3 h-3 text-white" />}
                     </div>
                 </motion.button>
 
@@ -617,7 +617,7 @@ function Step2Industry({ data, updateData }: { data: OnboardingData; updateData:
             transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
         >
             <motion.h1
-                className="text-4xl font-bold mb-3"
+                className="text-2xl md:text-3xl font-bold mb-2"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
@@ -625,7 +625,7 @@ function Step2Industry({ data, updateData }: { data: OnboardingData; updateData:
                 What's your industry?
             </motion.h1>
             <motion.p
-                className="text-lg text-[var(--foreground-secondary)] mb-10"
+                className="text-base text-[var(--foreground-secondary)] mb-6"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.15 }}
@@ -698,7 +698,7 @@ function StepUserContext({ data, updateData }: { data: OnboardingData; updateDat
             transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
         >
             <motion.h1
-                className="text-4xl font-bold mb-3"
+                className="text-2xl md:text-3xl font-bold mb-2"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
@@ -706,7 +706,7 @@ function StepUserContext({ data, updateData }: { data: OnboardingData; updateDat
                 Tell us about you & your business
             </motion.h1>
             <motion.p
-                className="text-lg text-[var(--foreground-secondary)] mb-8"
+                className="text-base text-[var(--foreground-secondary)] mb-6"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.15 }}
@@ -808,7 +808,7 @@ function Step3Goals({ data, updateData }: { data: OnboardingData; updateData: (u
             transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
         >
             <motion.h1
-                className="text-4xl font-bold mb-3"
+                className="text-2xl md:text-3xl font-bold mb-2"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
@@ -816,7 +816,7 @@ function Step3Goals({ data, updateData }: { data: OnboardingData; updateData: (u
                 What's your primary goal?
             </motion.h1>
             <motion.p
-                className="text-lg text-[var(--foreground-secondary)] mb-10"
+                className="text-base text-[var(--foreground-secondary)] mb-6"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.15 }}
@@ -894,7 +894,7 @@ function Step4Topics({ data, updateData }: { data: OnboardingData; updateData: (
             transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
         >
             <motion.h1
-                className="text-4xl font-bold mb-3"
+                className="text-2xl md:text-3xl font-bold mb-2"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
@@ -902,7 +902,7 @@ function Step4Topics({ data, updateData }: { data: OnboardingData; updateData: (
                 What topics will you cover?
             </motion.h1>
             <motion.p
-                className="text-lg text-[var(--foreground-secondary)] mb-8"
+                className="text-base text-[var(--foreground-secondary)] mb-6"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.15 }}
@@ -1015,7 +1015,7 @@ function Step5Cadence({ data, updateData }: { data: OnboardingData; updateData: 
             transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
         >
             <motion.h1
-                className="text-4xl font-bold mb-3"
+                className="text-2xl md:text-3xl font-bold mb-2"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
@@ -1023,7 +1023,7 @@ function Step5Cadence({ data, updateData }: { data: OnboardingData; updateData: 
                 How often do you want to post?
             </motion.h1>
             <motion.p
-                className="text-lg text-[var(--foreground-secondary)] mb-10"
+                className="text-base text-[var(--foreground-secondary)] mb-6"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.15 }}
@@ -1043,7 +1043,7 @@ function Step5Cadence({ data, updateData }: { data: OnboardingData; updateData: 
                         variants={itemVariants}
                         onClick={() => updateData({ cadence: cadence.value })}
                         className={`
-              w-full flex items-center gap-5 p-6 rounded-2xl border-2 transition-all duration-300 text-left relative hover:translate-x-1 group
+              w-full flex items-center gap-5 p-4 rounded-2xl border-2 transition-all duration-300 text-left relative hover:translate-x-1 group
               ${data.cadence === cadence.value
                                 ? 'border-[var(--primary)] bg-[var(--primary)]/10 shadow-[0_0_20px_-5px_rgba(var(--primary),0.2)]'
                                 : 'border-[var(--border)] hover:border-[var(--border-hover)] hover:bg-[var(--background-secondary)]'}
@@ -1124,7 +1124,7 @@ function Step6Tone({ data, updateData }: { data: OnboardingData; updateData: (up
             transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
         >
             <motion.h1
-                className="text-4xl font-bold mb-3"
+                className="text-2xl md:text-3xl font-bold mb-2"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
@@ -1132,7 +1132,7 @@ function Step6Tone({ data, updateData }: { data: OnboardingData; updateData: (up
                 How do you want to sound?
             </motion.h1>
             <motion.p
-                className="text-lg text-[var(--foreground-secondary)] mb-10"
+                className="text-base text-[var(--foreground-secondary)] mb-6"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.15 }}
@@ -1208,7 +1208,7 @@ function Step7Voice({ data, updateData }: { data: OnboardingData; updateData: (u
             transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
         >
             <motion.h1
-                className="text-4xl font-bold mb-3"
+                className="text-2xl md:text-3xl font-bold mb-2"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
@@ -1216,7 +1216,7 @@ function Step7Voice({ data, updateData }: { data: OnboardingData; updateData: (u
                 Help us learn your voice
             </motion.h1>
             <motion.p
-                className="text-lg text-[var(--foreground-secondary)] mb-8"
+                className="text-base text-[var(--foreground-secondary)] mb-6"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.15 }}
@@ -1444,7 +1444,7 @@ function Step9Subscribe({
                         key={plan.id}
                         variants={itemVariants}
                         className={`
-                            relative p-6 rounded-2xl border-2 transition-all duration-300
+                            relative p-4 rounded-2xl border-2 transition-all duration-300
                             ${plan.popular
                                 ? 'border-[var(--primary)] bg-[var(--primary)]/5'
                                 : 'border-[var(--border)] hover:border-[var(--border-hover)]'
@@ -1555,13 +1555,13 @@ function Step9Publishing({ data, updateData }: { data: OnboardingData; updateDat
                 </p>
             </motion.div>
 
-            <motion.div variants={itemVariants} className="grid md:grid-cols-2 gap-6">
+            <motion.div variants={itemVariants} className="grid md:grid-cols-2 gap-4">
                 {publishingModes.map((mode) => (
                     <button
                         key={mode.id}
                         onClick={() => updateData({ autoPublish: mode.value })}
                         className={`
-                            p-6 rounded-2xl border-2 text-left transition-all duration-300
+                            p-4 rounded-2xl border-2 text-left transition-all duration-300
                             ${data.autoPublish === mode.value
                                 ? 'border-[var(--primary)] bg-[var(--primary)]/5 shadow-lg shadow-[var(--primary)]/10'
                                 : 'border-[var(--border)] hover:border-[var(--primary)]/50 bg-[var(--card)]'}
@@ -1688,7 +1688,7 @@ function Step10Launch({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.25 }}
-                className="bg-[var(--card)] rounded-2xl p-6 mb-8 border border-[var(--border)]"
+                className="bg-[var(--card)] rounded-2xl p-4 mb-8 border border-[var(--border)]"
             >
                 <div className="grid gap-4">
                     <div className="flex justify-between items-center py-2 border-b border-[var(--border)]">
@@ -1754,7 +1754,7 @@ function StepConnect({ data }: { data: OnboardingData }) {
             transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
         >
             <motion.h1
-                className="text-4xl font-bold mb-3"
+                className="text-2xl md:text-3xl font-bold mb-2"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
@@ -1762,7 +1762,7 @@ function StepConnect({ data }: { data: OnboardingData }) {
                 Connect your accounts
             </motion.h1>
             <motion.p
-                className="text-lg text-[var(--foreground-secondary)] mb-10"
+                className="text-base text-[var(--foreground-secondary)] mb-6"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.15 }}
@@ -1778,7 +1778,7 @@ function StepConnect({ data }: { data: OnboardingData }) {
             >
                 {/* X Connection */}
                 {data.platforms.x && (
-                    <motion.div variants={itemVariants} className="p-6 rounded-2xl border border-[var(--border)] bg-[var(--card)] flex items-center justify-between">
+                    <motion.div variants={itemVariants} className="p-4 rounded-2xl border border-[var(--border)] bg-[var(--card)] flex items-center justify-between">
                         <div className="flex items-center gap-4">
                             <div className="w-12 h-12 rounded-xl bg-black text-white dark:bg-white dark:text-black flex items-center justify-center">
                                 <Twitter className="w-6 h-6" />
