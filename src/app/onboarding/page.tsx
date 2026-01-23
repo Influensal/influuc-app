@@ -203,7 +203,7 @@ export default function OnboardingPage() {
     };
 
     const nextStep = () => {
-        if (currentStep < 9) {
+        if (currentStep < 10) {
             setCurrentStep(prev => prev + 1);
         }
     };
