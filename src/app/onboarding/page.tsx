@@ -277,7 +277,7 @@ export default function OnboardingPage() {
 
 
     return (
-        <div className="min-h-screen bg-[var(--background)] flex">
+        <div className="h-screen overflow-hidden bg-[var(--background)] flex">
             {/* Left side - Progress */}
             <motion.div
                 initial={{ opacity: 0, x: -30 }}
