@@ -443,13 +443,7 @@ Output the JSON. Nothing else.`;
 }
 
 // Note: generatePosts function below is no longer used by main flow but kept for reference or legacy tools
-async function generatePosts(
-    schedule: ScheduledPost[],
-    profile: UserProfile
-): Promise<Array<ScheduledPost & GeneratedPost>> {
-    // ... existing implementation implementation kept as legacy ...
-    return createPendingPosts(schedule); // Modified to just return pending for safety if called
-}
+// Deprecated generatePosts function removed. Use generatePostsParallel instead.
 
 // ... savePostsToDatabase ... hiding unchanged code ...
 // We need to modify savePostsToDatabase to return the SAVED posts with IDs
