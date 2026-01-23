@@ -132,9 +132,9 @@ export async function generateWeeklyContent(
         // Step 2: Generate strategy (schedule)
         const strategy = await generateStrategy(platforms, profile);
 
-        // Step 3: Create pending posts (don't generate content yet to avoid timeout)
-        // We set content to empty string and status to 'draft' or 'pending'
-        const posts = createPendingPosts(strategy.posts);
+        // Step 3: Generate actual post content IN PARALLEL (Massive Speedup)
+        // This fires all request simultaneously to fit in Vercel timeout
+        const posts = await generatePostsParallel(strategy.posts, profile);
 
         // Step 4: Save posts to database
         const savedPosts = await savePostsToDatabase(
@@ -149,7 +149,7 @@ export async function generateWeeklyContent(
         const xPostsCount = savedPosts.filter(p => p.platform === 'x').length;
         const linkedinPostsCount = savedPosts.filter(p => p.platform === 'linkedin').length;
 
-        // Step 5: Update generation record as completed (strategy wise)
+        // Step 5: Update generation record as completed
         await supabase
             .from('content_generations')
             .update({
@@ -171,14 +171,13 @@ export async function generateWeeklyContent(
             })
             .eq('id', profile.id);
 
-        console.log(`[Generation] Strategy created! ${savedPosts.length} pending posts ready for generation.`);
+        console.log(`[Generation] Completed! ${xPostsCount} X posts, ${linkedinPostsCount} LinkedIn posts`);
 
         return {
             success: true,
             generationId: generation.id,
             xPostsCount,
-            linkedinPostsCount,
-            postIds: savedPosts.map(p => p.id) // Return IDs so client can trigger generation
+            linkedinPostsCount
         };
 
     } catch (error) {
@@ -230,93 +229,74 @@ async function archiveOldPosts(supabase: any, profileId: string): Promise<number
 }
 
 // ============================================
-// HELPERS
+// PARALLEL GENERATION
 // ============================================
 
-function createPendingPosts(schedule: ScheduledPost[]): Array<ScheduledPost & GeneratedPost> {
-    return schedule.map(post => ({
-        ...post,
-        content: '', // Empty content indicates pending generation
-        hooks: [],
-        cta: null
-    }));
-}
-
-export async function generateSinglePost(postId: string): Promise<{ success: boolean; content?: string; error?: string }> {
-    const supabase = createAdminClient();
+async function generatePostsParallel(
+    schedule: ScheduledPost[],
+    profile: UserProfile
+): Promise<Array<ScheduledPost & GeneratedPost>> {
     const provider = await getProvider();
 
-    // Fetch post and profile
-    const { data: post, error: postError } = await supabase
-        .from('posts')
-        .select('*, founder_profiles(*)')
-        .eq('id', postId)
-        .single();
+    // We create a promise for each post to generate them all at once
+    const promises = schedule.map(async (post) => {
+        const systemPrompt = `You are an elite ghostwriter for top founders.
+        
+You are writing a SINGLE post for ${post.platform === 'linkedin' ? 'LinkedIn' : 'X (Twitter)'}.
 
-    if (postError || !post) {
-        return { success: false, error: 'Post not found' };
-    }
+CONTEXT:
+- Topic: ${post.topic}
+- Format: ${post.format}
+- Role: ${profile.role}
+- Company: ${profile.company_name}
+- Business: ${profile.business_description}
+- Expertise: ${profile.expertise}
+- Tone: ${profile.tone?.boldness || 'bold'} / ${profile.tone?.style || 'educational'}
 
-    const profile = post.founder_profiles;
+CONSTRAINTS:
+${post.platform === 'x' ? '- Max 280 chars\n- No Hashtags' : '- Professional formatting\n- 800-1200 chars'}
+- Start with a strong hook
+- Be concise and authoritative
 
-    // Use specific system prompt similar to batch but optimized for single post
-    const systemPrompt = `You are an elite ghostwriter for top founders.
-    
-    You are writing a SINGLE post for ${post.platform === 'linkedin' ? 'LinkedIn' : 'X (Twitter)'}.
-    
-    CONTEXT:
-    - Topic: ${post.topic || 'General Industry Insight'}
-    - Format: ${post.format || 'single'}
-    - Role: ${profile.role}
-    - Company: ${profile.company_name}
-    - Business: ${profile.business_description}
-    - Expertise: ${profile.expertise}
-    - Tone: ${profile.tone?.boldness || 'bold'} / ${profile.tone?.style || 'educational'}
-    
-    CONSTRAINTS:
-    ${post.platform === 'x' ? '- Max 280 chars\n- No Hashtags' : '- Professional formatting\n- 800-1200 chars'}
-    - Start with a strong hook
-    - Be concise and authoritative
-    
-    Return ONLY a JSON object:
-    {
-      "content": "The post text",
-      "hooks": ["Alternative hook 1", "Alternative hook 2"],
-      "cta": "Call to action"
-    }`;
+Return ONLY a JSON object:
+{
+    "content": "The post text",
+    "hooks": ["Alternative hook 1", "Alternative hook 2"],
+    "cta": "Call to action"
+}`;
 
-    try {
-        const result = await provider.complete({
-            messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: `Write a ${post.platform} post about: ${post.topic || 'Industry trends'}` }
-            ],
-            temperature: 0.7,
-            responseFormat: { type: 'json_object' },
-        });
+        try {
+            const result = await provider.complete({
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: `Write a ${post.platform} post about: ${post.topic}` }
+                ],
+                temperature: 0.7,
+                responseFormat: { type: 'json_object' },
+            });
 
-        const cleanContent = result.content.replace(/```json\n?|\n?```/g, '').trim();
-        const parsed = JSON.parse(cleanContent);
+            const cleanContent = result.content.replace(/```json\n?|\n?```/g, '').trim();
+            const parsed = JSON.parse(cleanContent);
 
-        // Update post in DB
-        const { error: updateError } = await supabase
-            .from('posts')
-            .update({
-                content: parsed.content,
+            return {
+                ...post,
+                content: parsed.content || 'Failed to generate',
                 hooks: parsed.hooks || [],
-                cta: parsed.cta,
-                status: 'scheduled' // Ready to go
-            })
-            .eq('id', postId);
+                cta: parsed.cta || null
+            };
+        } catch (e) {
+            console.error(`Failed to generate post for ${post.topic}:`, e);
+            return {
+                ...post,
+                content: 'Generation failed. Please edit.',
+                hooks: [],
+                cta: null
+            };
+        }
+    });
 
-        if (updateError) throw updateError;
-
-        return { success: true, content: parsed.content };
-
-    } catch (error) {
-        console.error('[SingleGen] Error:', error);
-        return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
-    }
+    // Wait for all posts to generate
+    return Promise.all(promises);
 }
 
 // ============================================

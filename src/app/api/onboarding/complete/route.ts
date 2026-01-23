@@ -289,7 +289,7 @@ Output the JSON. Nothing else.`;
 }
 
 
-async function generatePosts(
+async function generatePostsBatched(
     schedule: ScheduledPost[],
     data: OnboardingData
 ): Promise<Array<ScheduledPost & GeneratedPost>> {
@@ -297,139 +297,74 @@ async function generatePosts(
 
     const systemPrompt = `You are an elite ghostwriter for top founders.
 
-You write platform-native, high-conversion content that sounds like it came from a real operator — not a content marketer.
+You are writing specific posts based on a provided schedule.
+You must return ALL posts in a SINGLE JSON object.
 
-Your work optimizes for:
-- Authority
-- Memorability
-- Saves, shares, and thoughtful replies
-- Clear next actions (without sounding salesy)
+PLATFORMS & FORMATS:
+- X (Twitter): Max 280 chars, no hashtags.
+- LinkedIn: Professional, 800-1500 chars. Long-form = up to 3000 chars.
 
-PLATFORMS & FORMAT CONSTRAINTS (STRICT)
-
-X (Twitter):
-- Short post: max 280 characters
-- Long post: ~2,400 characters
-- Single post only (NO threads)
-
-LinkedIn:
-- Short post: ~1,000 characters
-- Long post: ~3,000 characters
-- Single post only
-
-Global rules:
-- NO threads
-- NO hashtags unless explicitly requested
-- Respect character limits precisely
-
-TONE & WRITING STYLE (NON-NEGOTIABLE)
-
-Voice:
-- Bold, confident, opinionated
-- Calm conviction, not hype
-- Sounds like an experienced founder talking to peers
-
-Style rules:
-- Start with a scroll-stopping hook in the first 1–2 lines
-- Short, punchy sentences mixed with longer explanatory ones
-- Clear POVs, sharp contrasts, or reframes
-- No corporate jargon
-- No generic “tips”
-- No fluff or filler — every sentence earns its place
-
-“Crazy / Viral / Polarizing” means:
-- Pattern interrupts
-- Contrarian or unexpected angles
-- Calling out common mistakes directly
-- Strong framing, not shock-for-shock
-- Always brand-safe and credible
-
-Ending:
-- Close with a clear, specific CTA
-- CTAs should invite thought or action (comment, reflect, DM, save)
-- Never pushy or salesy
-
-USER CONTEXT (WRITE FROM THIS POV)
-
+TONE:
 - Role: ${data.userContext.role}
 - Company: ${data.userContext.companyName}
-- Business Description: ${data.userContext.businessDescription}
-- Core Expertise: ${data.userContext.expertise}
-- Desired Boldness Level: ${data.tone.boldness}
-- Writing Style Preferences: ${data.tone.style}
+- Expertise: ${data.userContext.expertise}
+- Style: ${data.tone.style}, ${data.tone.boldness}
 
-Assume the audience is:
-- Intelligent
-- Busy
-- Skeptical
-- Familiar with surface-level advice already
-
-INPUT
-
-You will receive:
-- A list of topics
-- The desired platform (X or LinkedIn)
-- The desired length (short or long)
-
-OUTPUT REQUIREMENTS (STRICT)
-
-Return ONLY a valid JSON object with this structure:
-
+OUTPUT FORMAT (STRICT JSON):
 {
   "posts": [
     {
-      "platform": "x" | "linkedin",
-      "length": "short" | "long",
-      "topic": "Topic provided",
-      "content": "The fully written post"
+      "content": "Full post content here...",
+      "hooks": ["Hook 1", "Hook 2"],
+      "cta": "Call to action"
     }
   ]
 }
 
-RULES:
-- Write one complete post per topic
-- Do NOT include explanations, notes, or alternatives
-- Do NOT include multiple versions
-- Do NOT include titles, labels, or hashtags
-- Content only inside the JSON
+CRITICAL: The "posts" array in your response MUST imply the exact same order as the input schedule. If the input has 12 items, you must return 12 items.
+`;
 
-QUALITY BAR (NON-NEGOTIABLE)
-
-Before finalizing each post, ensure:
-- It sounds like a real founder with real experience
-- The hook stops the scroll immediately
-- The idea is clear and memorable
-- The CTA feels natural, not forced
-- This would stand out in a crowded LinkedIn or X feed
-
-If any inputs are missing, make strong, reasonable assumptions and proceed.
-
-Return the JSON. Nothing else.`;
-
-    const result = await provider.complete({
-        messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: JSON.stringify(schedule) }
-        ],
-        temperature: 0.8, // Increased for creativity
-        responseFormat: { type: 'json_object' },
-    });
+    // Optimize: Strip heavy context to ensure we fit in token window if schedule is large
+    // Sending just the essential fields for each post to the AI
+    const simplifiedSchedule = schedule.map(p => ({
+        platform: p.platform,
+        format: p.format,
+        topic: p.topic
+    }));
 
     try {
+        const result = await provider.complete({
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: JSON.stringify(simplifiedSchedule) }
+            ],
+            temperature: 0.7,
+            responseFormat: { type: 'json_object' },
+        });
+
         const cleanContent = result.content.replace(/```json\n?|\n?```/g, '').trim();
         const parsed = JSON.parse(cleanContent);
 
-        // Merge generated content with schedule
-        return schedule.map((post, index) => ({
-            ...post,
-            content: parsed.posts[index]?.content || parsed.posts[index] || 'Failed to generate content',
-            hooks: parsed.posts[index]?.hooks || [],
-            cta: parsed.posts[index]?.cta || null,
-        }));
+        // Map back to schedule
+        return schedule.map((post, index) => {
+            const generated = parsed.posts[index];
+            return {
+                ...post,
+                content: generated?.content || 'Generation failed',
+                hooks: generated?.hooks || [],
+                cta: generated?.cta || null
+            };
+        });
+
     } catch (e) {
-        console.error('Failed to parse batched posts:', e);
-        // Fallback: If batch fails, return empty content for now (or retry strictly)
-        return schedule.map(post => ({ ...post, content: 'Generation failed. Please try again.', hooks: [], cta: null }));
+        console.error('Batch generation failed:', e);
+        // Fallback: Return empty posts so at least the schedule is saved
+        return schedule.map(post => ({
+            ...post,
+            content: 'Generation failed. Please edit.',
+            hooks: [],
+            cta: null
+        }));
     }
 }
 
