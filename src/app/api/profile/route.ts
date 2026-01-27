@@ -56,3 +56,52 @@ export async function GET(req: Request) {
         );
     }
 }
+
+export async function PUT(req: Request) {
+    try {
+        const supabase = await createClient();
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+        if (authError || !user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const body = await req.json();
+
+        // Fields allowed to be updated
+        const updates = {
+            name: body.name,
+            role: body.role,
+            company_name: body.companyName,
+            company_website: body.companyWebsite,
+            business_description: body.businessDescription,
+            industry: body.industry,
+            target_audience: body.targetAudience,
+            context_data: body.contextData,
+            auto_publish: body.autoPublish
+        };
+
+        // Filter out undefined
+        const cleanUpdates = Object.fromEntries(
+            Object.entries(updates).filter(([_, v]) => v !== undefined)
+        );
+
+        const { data, error } = await supabase
+            .from('founder_profiles')
+            .update(cleanUpdates)
+            .eq('account_id', user.id)
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        return NextResponse.json({ profile: data });
+
+    } catch (error) {
+        console.error('Error updating profile:', error);
+        return NextResponse.json(
+            { error: 'Failed to update profile' },
+            { status: 500 }
+        );
+    }
+}

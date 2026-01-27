@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -22,24 +22,62 @@ import {
     User,
     Building,
     Zap,
-    Loader2
+    Loader2,
+    Hammer,
+    BookOpen,
+    Plus,
+    Trash2,
+    Globe,
+    X
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { LogOut } from 'lucide-react';
+import { extractTextFromPdf } from '@/utils/pdf';
+import MindBlowingLoader from '@/components/MindBlowingLoader';
+import StepPayment from '@/components/onboarding/StepPayment';
+import StepVisualFork from '@/components/onboarding/StepVisualFork';
 
 // Types
 interface OnboardingData {
+    // Basics
+    name: string;
+    role: string;
+    companyName: string;
+    companyWebsite: string;
+
+    // Strategy
     platforms: {
         x: boolean;
         linkedin: boolean;
     };
-    industry: string;
+    connections: {
+        x: boolean;
+        linkedin: boolean;
+    };
+    industry: string; // Keep for AI context
     targetAudience: string;
+    // Context Profile (New Structure)
+    aboutYou: string; // The main bio/pitch
+    personalContext: {
+        id: string;
+        type: 'url' | 'text';
+        label: string; // e.g. "My Website"
+        value: string;
+    }[];
+    productContext: {
+        id: string;
+        type: 'url' | 'text';
+        label: string; // e.g. "Landing Page"
+        value: string;
+    }[];
+
     contentGoal: string;
     topics: string[];
-    cadence: 'light' | 'moderate' | 'active';
-    tone: {
+
+    // Style
+    archetype: 'builder' | 'teacher' | 'contrarian' | 'executive' | 'custom';
+    tone: { // Keep specifically for 'custom' or fine-tuning
         formality: 'professional' | 'casual';
         boldness: 'bold' | 'measured';
         style: 'educational' | 'conversational';
@@ -49,23 +87,37 @@ interface OnboardingData {
         content: string;
         type: 'paste' | 'upload' | 'voicenote' | 'url';
     }[];
-    userContext: {
-        role: string;
-        companyName: string;
-        companyWebsite: string;
-        businessDescription: string;
-        expertise: string;
-    };
+
+    // Connect
     autoPublish: boolean;
+
+    // Subscription & Visuals
+    subscriptionTier?: 'starter' | 'growth' | 'authority';
+    visualMode?: 'none' | 'faceless' | 'clone';
+    style_faceless?: string;
+    style_carousel?: string;
+    style_face?: string;
+    avatar_urls?: string[];
 }
 
 const initialData: OnboardingData = {
-    platforms: { x: false, linkedin: false },
-    industry: '',
+    name: '',
+    role: '',
+    companyName: '',
+    companyWebsite: '',
+    industry: '', // Default
+
+    platforms: { x: true, linkedin: true },
+    connections: { x: false, linkedin: false },
     targetAudience: '',
+    aboutYou: '',
+    personalContext: [],
+    productContext: [],
+
     contentGoal: '',
     topics: [],
-    cadence: 'moderate',
+
+    archetype: 'builder', // Default
     tone: {
         formality: 'professional',
         boldness: 'bold',
@@ -73,28 +125,30 @@ const initialData: OnboardingData = {
         approach: 'story-driven',
     },
     voiceSamples: [],
-    userContext: {
-        role: '',
-        companyName: '',
-        companyWebsite: '',
-        businessDescription: '',
-        expertise: '',
-    },
+
     autoPublish: false,
+    subscriptionTier: undefined,
+    visualMode: 'none',
+    style_faceless: undefined,
+    style_carousel: undefined,
+    style_face: undefined,
+    avatar_urls: [],
 };
 
 // Step Components
 const steps = [
-    { id: 1, title: 'Platforms', subtitle: 'Where do you want to post?', icon: Target },
-    { id: 2, title: 'Industry', subtitle: 'Tell us about your business', icon: Briefcase },
-    { id: 3, title: 'Context', subtitle: 'Tell us about you & your business', icon: User },
-    { id: 4, title: 'Goals', subtitle: 'What do you want to achieve?', icon: Target },
-    { id: 5, title: 'Topics', subtitle: 'What will you talk about?', icon: Lightbulb },
-    { id: 6, title: 'Tone', subtitle: 'How do you want to sound?', icon: Palette },
-    { id: 7, title: 'Voice', subtitle: 'Help us learn your style', icon: FileText },
-    { id: 8, title: 'Connect', subtitle: 'Link your social accounts', icon: Link },
-    { id: 9, title: 'Publishing', subtitle: 'How should posts go live?', icon: Zap },
-    { id: 10, title: 'Launch', subtitle: 'Ready to generate your first week', icon: Sparkles },
+    { id: 1, title: 'The Basics', subtitle: 'Who are you?', icon: User },
+    // Step 2 Removed: Both platforms enabled by default
+    { id: 2, title: 'Industry', subtitle: 'Your Niche', icon: Building }, // Was Step 3
+    { id: 3, title: 'Context', subtitle: 'About Business', icon: Briefcase }, // Was Step 4
+    { id: 4, title: 'Goals', subtitle: 'Success metric', icon: Target }, // Was Step 5
+    { id: 5, title: 'Archetype', subtitle: 'Choose your persona', icon: Palette }, // Was Step 6
+    { id: 6, title: 'Topics', subtitle: 'Content pillars', icon: Lightbulb }, // Was Step 7
+    { id: 7, title: 'Voice', subtitle: 'Writing style', icon: FileText }, // Was Step 8
+    { id: 8, title: 'Connect', subtitle: 'Link accounts', icon: Link }, // Was Step 9
+    { id: 9, title: 'Launch', subtitle: 'Generate content', icon: Sparkles }, // Was Step 10
+    { id: 10, title: 'Plan', subtitle: 'Choose Tier', icon: Check },
+    { id: 11, title: 'Style', subtitle: 'Visual Setup', icon: Palette },
 ];
 
 // Animation variants
@@ -178,8 +232,8 @@ export default function OnboardingPage() {
                 if (platform === 'x' || platform === 'linkedin') {
                     loadedData = {
                         ...loadedData,
-                        platforms: {
-                            ...loadedData.platforms,
+                        connections: {
+                            ...loadedData.connections,
                             [platform]: true
                         }
                     };
@@ -191,7 +245,7 @@ export default function OnboardingPage() {
 
             // Then Set Step (Delay slightly to ensure render if needed, but here sync is fine)
             if (isRedirect) {
-                setCurrentStep(8); // Force Step 8 (Connect)
+                setCurrentStep(8); // Force Step 8 (Connect) - shifted from 9
             } else {
                 // Optional: Restore last step? For now start at 1 or keep logic simple.
                 // If data is filled, maybe jump? 
@@ -222,23 +276,44 @@ export default function OnboardingPage() {
     }, [data]);
 
     const handleSignOut = async () => {
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
+        try {
+            const supabase = createClient();
 
-        if (user) {
-            localStorage.removeItem(`onboarding_data_${user.id}`);
+            // Clear local storage to prevent data leakage to other accounts
+            localStorage.removeItem('onboarding_temp_data');
+
+            // Also clear any user-specific keys if possible, or just all onboarding keys
+            Object.keys(localStorage).forEach(key => {
+                if (key.startsWith('onboarding_data_')) {
+                    localStorage.removeItem(key);
+                }
+            });
+            const { data: { user } } = await supabase.auth.getUser();
+
+            // Clear all local storage
+            localStorage.removeItem('onboarding_temp_data');
+            if (user) {
+                localStorage.removeItem(`onboarding_data_${user.id}`);
+            }
+
+            await supabase.auth.signOut();
+            console.log('[Onboarding] Signed out successfully');
+        } catch (error) {
+            console.error('[Onboarding] Sign out error:', error);
+        } finally {
+            // Force hard redirect to clear state
+            window.location.href = '/signup';
         }
-
-        await supabase.auth.signOut();
-        router.push('/signup');
     };
 
     const updateData = (updates: Partial<OnboardingData>) => {
         setData(prev => ({ ...prev, ...updates }));
     };
 
+
     const nextStep = () => {
-        if (currentStep < 10) {
+        // Validation handled in render or canProceed
+        if (currentStep < 11) {
             setCurrentStep(prev => prev + 1);
         }
     };
@@ -251,28 +326,28 @@ export default function OnboardingPage() {
 
     const canProceed = () => {
         switch (currentStep) {
-            case 1:
-                return data.platforms.x || data.platforms.linkedin;
-            case 2:
-                return data.industry !== '';
-            case 3:
-                // Context step - require at least role and description
-                return data.userContext.role !== '' && data.userContext.businessDescription !== '';
-            case 4:
+            case 1: // Basics
+                return data.name !== '' && data.role !== '' && data.companyName !== '';
+            case 2: // Industry & Audience
+                return data.industry !== '' && data.targetAudience !== '';
+            case 3: // Context
+                return data.aboutYou !== '';
+            case 4: // Goals
                 return data.contentGoal !== '';
-            case 5:
+            case 5: // Archetype
+                return true;
+            case 6: // Topics
                 return data.topics.length > 0;
-            case 6:
+            case 7: // Voice
                 return true;
-            case 7:
-                return data.voiceSamples.length > 0 || true; // Allow skip for now
-            case 8:
-                // Connection step is optional or verified inside component (allow proceed always or check connection?)
-                // For now, allow proceed even if skipped, or maybe force at least one?
-                // Let's allow skip.
+            case 8: // Connect
                 return true;
-            case 9:
+            case 9: // Connect
                 return true;
+            case 10: // Payment
+                return !!data.subscriptionTier; // Block until tier selected
+            case 11: // Visuals
+                return true; // handled internally
             default:
                 return false;
         }
@@ -313,6 +388,9 @@ export default function OnboardingPage() {
 
     return (
         <div className="h-screen overflow-hidden bg-[var(--background)] flex">
+            <AnimatePresence>
+                {isGenerating && <MindBlowingLoader />}
+            </AnimatePresence>
             {/* Left side - Progress */}
             <motion.div
                 initial={{ opacity: 0, x: -30 }}
@@ -411,77 +489,92 @@ export default function OnboardingPage() {
 
                 {/* Content area */}
                 <div className="flex-1 flex items-center justify-center p-4 lg:p-8 overflow-y-auto">
-                    <div className="w-full max-w-2xl">
+                    <div className={`w-full transition-all duration-500 ${currentStep === 10 ? 'max-w-6xl' : currentStep === 11 ? 'max-w-4xl' : 'max-w-xl'}`}>
                         <AnimatePresence mode="wait">
                             {currentStep === 1 && (
-                                <Step1Platforms
+                                <Step1Basics
                                     key="step1"
                                     data={data}
                                     updateData={updateData}
                                 />
                             )}
                             {currentStep === 2 && (
-                                <Step2Industry
-                                    key="step2"
-                                    data={data}
-                                    updateData={updateData}
-                                />
-                            )}
-                            {currentStep === 3 && (
-                                <StepUserContext
+                                <Step3Industry
                                     key="step3"
                                     data={data}
                                     updateData={updateData}
                                 />
                             )}
-                            {currentStep === 4 && (
-                                <Step3Goals
+                            {currentStep === 3 && (
+                                <Step4Context
                                     key="step4"
                                     data={data}
                                     updateData={updateData}
                                 />
                             )}
-                            {currentStep === 5 && (
-                                <Step4Topics
+                            {currentStep === 4 && (
+                                <Step5Goals
                                     key="step5"
                                     data={data}
                                     updateData={updateData}
                                 />
                             )}
-                            {currentStep === 6 && (
-                                <Step6Tone
+                            {currentStep === 5 && (
+                                <Step6Archetype
                                     key="step6"
                                     data={data}
                                     updateData={updateData}
                                 />
                             )}
-                            {currentStep === 7 && (
-                                <Step7Voice
+                            {currentStep === 6 && (
+                                <Step7Topics
                                     key="step7"
                                     data={data}
                                     updateData={updateData}
                                 />
                             )}
-                            {currentStep === 8 && (
-                                <StepConnect
+                            {currentStep === 7 && (
+                                <Step8Voice
                                     key="step8"
                                     data={data}
+                                    updateData={updateData}
+                                />
+                            )}
+                            {currentStep === 8 && (
+                                <Step9Connect
+                                    key="step9"
+                                    data={data}
+                                    updateData={updateData}
                                 />
                             )}
                             {currentStep === 9 && (
-                                <Step9Publishing
+                                <Step9Connect
                                     key="step9"
                                     data={data}
                                     updateData={updateData}
                                 />
                             )}
                             {currentStep === 10 && (
-                                <Step10Launch
-                                    key="step10"
+                                <StepPayment
+                                    key="step10_pay"
                                     data={data}
-                                    isGenerating={isGenerating}
-                                    onGenerate={handleGenerate}
-                                    error={error}
+                                    updateData={updateData}
+                                    onNext={() => {
+                                        // Logic Fork
+                                        if (data.subscriptionTier === 'starter') {
+                                            handleGenerate(); // Tier 1 ends here
+                                        } else {
+                                            nextStep(); // Tier 2/3 go to visuals
+                                        }
+                                    }}
+                                />
+                            )}
+                            {currentStep === 11 && (
+                                <StepVisualFork
+                                    key="step11_visual"
+                                    data={data}
+                                    updateData={updateData}
+                                    onComplete={handleGenerate}
                                 />
                             )}
                         </AnimatePresence>
@@ -505,7 +598,9 @@ export default function OnboardingPage() {
                             Back
                         </button>
 
-                        {/* Show Continue button for steps 1-9, hide for step 10 (Launch) */}
+                        {/* Show Continue button for steps 1-9 (Launch is now handled differently? No, Step 9 is Connect. Step 10 is Payment.) */}
+                        {/* Actually, Step 9 (Connect) needs 'Continue' to go to Paywall. */}
+                        {/* Step 10 (Payment) has internal selection buttons, but maybe hide main continue? */}
                         {currentStep < 10 ? (
                             <button
                                 onClick={nextStep}
@@ -526,382 +621,311 @@ export default function OnboardingPage() {
             </div>
         </div>
     );
+
 }
 
-// Step 1: Platforms
-function Step1Platforms({ data, updateData }: { data: OnboardingData; updateData: (updates: Partial<OnboardingData>) => void }) {
-    const togglePlatform = (platform: 'x' | 'linkedin') => {
-        updateData({
-            platforms: {
-                ...data.platforms,
-                [platform]: !data.platforms[platform],
-            },
-        });
-    };
+// Step 1: Basics (New)
+// Step 1: Basics (New)
+// Step 1: Basics (New)
+function Step1Basics({ data, updateData }: { data: OnboardingData; updateData: (updates: Partial<OnboardingData>) => void }) {
+    const roles = [
+        "Founder / Co-Founder",
+        "C-Suite (CEO, CTO, CMO)",
+        "VP / Head of",
+        "Director",
+        "Manager",
+        "Individual Contributor",
+        "Freelancer / Consultant",
+        "Other"
+    ];
 
     return (
-        <motion.div
-            variants={pageVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-        >
-            <motion.h1
-                className="text-2xl md:text-3xl font-bold mb-2"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-            >
-                Where do you want to post?
-            </motion.h1>
-            <motion.p
-                className="text-base text-[var(--foreground-secondary)] mb-6"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15 }}
-            >
-                Select the platforms where you want to build your presence
-            </motion.p>
+        <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.4 }}>
+            <motion.h1 className="text-2xl md:text-3xl font-bold mb-2">First things first.</motion.h1>
+            <motion.p className="text-base text-[var(--foreground-secondary)] mb-6">What do we call you?</motion.p>
 
-            <motion.div
-                className="grid gap-3"
-                variants={containerVariants}
-                initial="hidden"
-                animate="show"
-            >
-                {/* X/Twitter */}
-                <motion.button
-                    variants={itemVariants}
-                    onClick={() => togglePlatform('x')}
-                    className={`
-            flex items-center gap-4 p-4 rounded-xl border-2 transition-all duration-300 group
-            ${data.platforms.x
-                            ? 'border-[var(--primary)] bg-[var(--primary)]/10 shadow-[0_0_30px_-10px_rgba(var(--primary),0.3)]'
-                            : 'border-[var(--border)] hover:border-[var(--border-hover)] hover:bg-[var(--background-secondary)]'}
-          `}
-                >
-                    <div className={`w-12 h-12 rounded-lg flex items-center justify-center transition-colors ${data.platforms.x ? 'bg-[var(--primary)] text-white' : 'bg-[var(--card)] text-[var(--foreground)] group-hover:scale-110 duration-300'
-                        }`}>
-                        <Twitter className="w-6 h-6" />
+            <div className="space-y-4">
+                <div className="space-y-2">
+                    <label className="text-sm font-medium">Your Name</label>
+                    <input type="text" value={data.name} onChange={e => updateData({ name: e.target.value })} placeholder="e.g. Elon Musk" className="w-full p-4 rounded-xl bg-[var(--card)] border border-[var(--border)] focus:border-[var(--primary)] outline-none transition-all placeholder-[var(--foreground-muted)]/50" />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">Your Role</label>
+                        <div className="relative">
+                            <select
+                                value={data.role}
+                                onChange={e => updateData({ role: e.target.value })}
+                                className="w-full p-4 rounded-xl bg-[var(--card)] border border-[var(--border)] focus:border-[var(--primary)] outline-none transition-all appearance-none cursor-pointer pr-10"
+                            >
+                                <option value="" disabled>Select your role</option>
+                                {roles.map(r => (
+                                    <option key={r} value={r}>{r}</option>
+                                ))}
+                            </select>
+                            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--foreground-muted)]">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+                            </div>
+                        </div>
                     </div>
-                    <div className="text-left flex-1">
-                        <h3 className={`text-lg font-semibold transition-colors ${data.platforms.x ? 'text-[var(--primary)]' : ''}`}>X (Twitter)</h3>
-                        <p className="text-sm text-[var(--foreground-secondary)]">Short-form posts, threads, and quick takes</p>
+                    <div className="space-y-2">
+                        <label className="text-sm font-medium">Company Name</label>
+                        <input type="text" value={data.companyName} onChange={e => updateData({ companyName: e.target.value })} placeholder="e.g. SpaceX" className="w-full p-4 rounded-xl bg-[var(--card)] border border-[var(--border)] focus:border-[var(--primary)] outline-none transition-all placeholder-[var(--foreground-muted)]/50" />
                     </div>
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${data.platforms.x
-                        ? 'border-[var(--primary)] bg-[var(--primary)]'
-                        : 'border-[var(--border)]'
-                        }`}>
-                        {data.platforms.x && <Check className="w-3 h-3 text-white" />}
-                    </div>
-                </motion.button>
-
-                {/* LinkedIn */}
-                <motion.button
-                    variants={itemVariants}
-                    onClick={() => togglePlatform('linkedin')}
-                    className={`
-            flex items-center gap-4 p-4 rounded-xl border-2 transition-all duration-300 group
-            ${data.platforms.linkedin
-                            ? 'border-[var(--primary)] bg-[var(--primary)]/10 shadow-[0_0_30px_-10px_rgba(var(--primary),0.3)]'
-                            : 'border-[var(--border)] hover:border-[var(--border-hover)] hover:bg-[var(--background-secondary)]'}
-          `}
-                >
-                    <div className={`w-12 h-12 rounded-lg flex items-center justify-center transition-colors ${data.platforms.linkedin ? 'bg-[var(--primary)] text-white' : 'bg-[var(--card)] text-[var(--foreground)] group-hover:scale-110 duration-300'
-                        }`}>
-                        <Linkedin className="w-6 h-6" />
-                    </div>
-                    <div className="text-left flex-1">
-                        <h3 className={`text-lg font-semibold transition-colors ${data.platforms.linkedin ? 'text-[var(--primary)]' : ''}`}>LinkedIn</h3>
-                        <p className="text-sm text-[var(--foreground-secondary)]">Professional content, thought leadership, long-form</p>
-                    </div>
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${data.platforms.linkedin
-                        ? 'border-[var(--primary)] bg-[var(--primary)]'
-                        : 'border-[var(--border)]'
-                        }`}>
-                        {data.platforms.linkedin && <Check className="w-3 h-3 text-white" />}
-                    </div>
-                </motion.button>
-
-
-            </motion.div>
+                </div>
+            </div>
         </motion.div>
     );
 }
 
-// Step 2: Industry
-function Step2Industry({ data, updateData }: { data: OnboardingData; updateData: (updates: Partial<OnboardingData>) => void }) {
-    const industries = [
-        { value: 'saas', label: 'SaaS / Software', emoji: '💻' },
-        { value: 'ecommerce', label: 'E-commerce / DTC', emoji: '🛍️' },
-        { value: 'fintech', label: 'Fintech / Finance', emoji: '💰' },
-        { value: 'healthcare', label: 'Healthcare / Biotech', emoji: '🏥' },
-        { value: 'agency', label: 'Agency / Services', emoji: '🏢' },
-        { value: 'creator', label: 'Creator Economy', emoji: '🎨' },
-        { value: 'ai', label: 'AI / Machine Learning', emoji: '🤖' },
-        { value: 'other', label: 'Other', emoji: '✨' },
-    ];
+// Step 2: Platforms (Renamed from Step1Platforms)
+function Step2Platforms({ data, updateData }: { data: OnboardingData; updateData: (updates: Partial<OnboardingData>) => void }) {
+    const toggle = (p: 'x' | 'linkedin') => updateData({ platforms: { ...data.platforms, [p]: !data.platforms[p] } });
+    return (
+        <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit">
+            <h1 className="text-3xl font-bold mb-2">Where do you post?</h1>
+            <div className="grid gap-3 mt-6">
+                {['x', 'linkedin'].map(p => (
+                    <div key={p} onClick={() => toggle(p as any)} className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${data.platforms[p as 'x' | 'linkedin'] ? 'border-[var(--primary)] bg-[var(--primary)]/10' : 'border-[var(--border)] hover:bg-[var(--card)]'}`}>
+                        {p === 'x' ? <Twitter className="w-6 h-6" /> : <Linkedin className="w-6 h-6" />}
+                        <span className="font-bold capitalize">{p}</span>
+                        <div className="ml-auto">{data.platforms[p as 'x' | 'linkedin'] && <Check className="w-4 h-4 text-[var(--primary)]" />}</div>
+                    </div>
+                ))}
+            </div>
+        </motion.div>
+    );
+}
+
+// Step 3: Strategy (Merged Context)
+// Step 3: Strategy (Merged Context)
+// Step 3: Strategy (Overhauled UI)
+// Context Item Component (Inline for simplicity)
+function ContextItem({
+    item,
+    onChange,
+    onRemove
+}: {
+    item: { id: string, type: 'url' | 'text', label: string, value: string },
+    onChange: (updates: any) => void,
+    onRemove: () => void
+}) {
+    // Local state for the tab, initialize based on item type or default to 'url'
+    // If the item has value but type mismatch, the user can switch tabs to see other input types if needed, 
+    // but here we simplify: type drives the view.
+    const [activeTab, setActiveTab] = useState<'url' | 'text' | 'file'>(item.type === 'url' ? 'url' : 'text');
 
     return (
-        <motion.div
-            variants={pageVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-        >
-            <motion.h1
-                className="text-2xl md:text-3xl font-bold mb-2"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-            >
-                What's your industry?
-            </motion.h1>
-            <motion.p
-                className="text-base text-[var(--foreground-secondary)] mb-6"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15 }}
-            >
-                This helps us tailor your content to your audience
-            </motion.p>
+        <div className="p-4 rounded-xl bg-[var(--card)] border border-[var(--border)] group animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex gap-1 bg-[var(--background)] p-1 rounded-lg border border-[var(--border)]">
+                    {(['url', 'text', 'file'] as const).map(tab => (
+                        <button
+                            key={tab}
+                            onClick={() => {
+                                setActiveTab(tab);
+                                // If switching to URL, set type to URL. If text/file, set type to text (file content becomes text)
+                                onChange({ type: tab === 'url' ? 'url' : 'text' });
+                            }}
+                            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-2 ${activeTab === tab ? 'bg-[var(--card)] shadow-sm text-[var(--foreground)]' : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'}`}
+                        >
+                            {tab === 'url' ? <Globe className="w-3 h-3" /> : tab === 'text' ? <Type className="w-3 h-3" /> : <Upload className="w-3 h-3" />}
+                            {tab === 'url' ? 'Website' : tab === 'text' ? 'Text' : 'File'}
+                        </button>
+                    ))}
+                </div>
+                <button onClick={onRemove} className="text-[var(--foreground-muted)] hover:text-red-500 transition-colors p-1">
+                    <X className="w-4 h-4" />
+                </button>
+            </div>
 
-            <motion.div
-                className="grid grid-cols-2 gap-3"
-                variants={containerVariants}
-                initial="hidden"
-                animate="show"
-            >
-                {industries.map((industry) => (
-                    <motion.button
-                        key={industry.value}
-                        variants={itemVariants}
-                        onClick={() => updateData({ industry: industry.value })}
-                        className={`
-              flex items-center gap-3 p-4 rounded-xl border-2 transition-all duration-300 text-left hover:scale-[1.02]
-              ${data.industry === industry.value
-                                ? 'border-[var(--primary)] bg-[var(--primary)]/10 shadow-[0_0_20px_-5px_rgba(var(--primary),0.2)]'
-                                : 'border-[var(--border)] hover:border-[var(--border-hover)] hover:bg-[var(--background-secondary)]'}
-            `}
-                    >
-                        <span className="text-2xl">{industry.emoji}</span>
-                        <span className={`font-medium ${data.industry === industry.value ? 'text-[var(--primary)]' : ''}`}>{industry.label}</span>
-                    </motion.button>
-                ))}
-            </motion.div>
-
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="mt-8"
-            >
-                <label className="block text-sm font-medium mb-2 text-[var(--foreground-secondary)]">
-                    Who's your target audience?
-                </label>
+            <div className="space-y-3">
                 <input
                     type="text"
-                    value={data.targetAudience}
-                    onChange={(e) => updateData({ targetAudience: e.target.value })}
-                    placeholder="e.g., B2B SaaS founders, startup CTOs, marketing leaders..."
-                    className="input border-[var(--border)] focus:border-[var(--primary)] bg-[var(--background-secondary)]/50"
+                    value={item.label}
+                    onChange={(e) => onChange({ label: e.target.value })}
+                    placeholder="Label (e.g. My Website, Company Bio)"
+                    className="w-full bg-transparent border-none p-0 text-sm font-semibold placeholder-[var(--foreground-muted)] focus:ring-0"
                 />
-            </motion.div>
-        </motion.div>
+
+                {activeTab === 'url' && (
+                    <div className="relative">
+                        <Link className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--foreground-muted)]" />
+                        <input
+                            type="text"
+                            value={item.value}
+                            onChange={(e) => onChange({ value: e.target.value })}
+                            placeholder="https://example.com"
+                            className="w-full pl-10 pr-4 py-3 rounded-lg bg-[var(--background-secondary)] border border-[var(--border)] focus:border-[var(--primary)] outline-none text-sm font-mono"
+                        />
+                    </div>
+                )}
+
+                {activeTab === 'text' && (
+                    <textarea
+                        value={item.value}
+                        onChange={(e) => onChange({ value: e.target.value })}
+                        placeholder="Paste text here..."
+                        className="w-full h-24 p-3 rounded-lg bg-[var(--background-secondary)] border border-[var(--border)] focus:border-[var(--primary)] outline-none text-sm resize-none"
+                    />
+                )}
+
+                {activeTab === 'file' && (
+                    <div className="relative border-2 border-dashed border-[var(--border)] rounded-lg p-6 text-center hover:bg-[var(--background-secondary)] transition-colors cursor-pointer group/file">
+                        <div className="w-8 h-8 bg-[var(--background)] rounded-full flex items-center justify-center mx-auto mb-2 text-[var(--foreground-muted)]">
+                            <Upload className="w-4 h-4" />
+                        </div>
+                        <p className="text-xs text-[var(--foreground-muted)]">Click to upload PDF/TXT</p>
+                        <input
+                            type="file"
+                            className="absolute inset-0 opacity-0 cursor-pointer"
+                            accept=".pdf,.txt,.md"
+                            onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                    if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+                                        try {
+                                            const text = await extractTextFromPdf(file);
+                                            onChange({ value: text, type: 'text' });
+                                            setActiveTab('text');
+                                        } catch (e) { alert("Failed to parse PDF"); }
+                                    } else {
+                                        const reader = new FileReader();
+                                        reader.onload = (ev) => {
+                                            onChange({ value: ev.target?.result as string, type: 'text' });
+                                            setActiveTab('text');
+                                        };
+                                        reader.readAsText(file);
+                                    }
+                                }
+                            }}
+                        />
+                    </div>
+                )}
+            </div>
+        </div>
     );
 }
 
-// Step 3: User Context
-function StepUserContext({ data, updateData }: { data: OnboardingData; updateData: (updates: Partial<OnboardingData>) => void }) {
-    const updateContext = (field: keyof OnboardingData['userContext'], value: string) => {
-        updateData({
-            userContext: {
-                ...data.userContext,
-                [field]: value
-            }
-        });
-    };
+// --- Smart Defaults Configuration ---
+const INDUSTRY_AUDIENCES: Record<string, string[]> = {
+    'SaaS / Software': ['B2B Founders', 'Product Managers', 'Devs / CTOs', 'Investors', 'Enterprise Buyers'],
+    'E-commerce / DTC': ['DTC Founders', 'Brand Owners', 'Marketers', 'Gen Z Consumers', 'Agency Owners'],
+    'Fintech / Finance': ['CFOs', 'Traders', 'Retail Investors', 'Crypto Natvies', 'Financial Advisors'],
+    'Healthcare / Biotech': ['Doctors', 'Patients', 'MedTech Investors', 'Health Conscious', 'Researchers'],
+    'Agency / Services': ['B2B Clients', 'Marketing Directors', 'Small Business Owners', 'Freelancers'],
+    'Creator Economy': ['YouTubers', 'Influencers', 'Course Creators', 'Aspiring Creators', 'Brands'],
+    'AI / Machine Learning': ['AI Researchers', 'Tech Optimists', 'Developers', 'Startup Founders', 'VCs'],
+    'Other': ['General Public', 'Professionals', 'Students', 'Hobbyists']
+};
+
+const INDUSTRY_TOPICS: Record<string, string[]> = {
+    'SaaS / Software': ['SaaS Ops', 'Fundraising', 'Product-Led Growth', 'Go-To-Market', 'Engineering Culture'],
+    'E-commerce / DTC': ['Brand Building', 'FB Ads', 'Retention', 'Supply Chain', 'Viral Marketing'],
+    'Fintech / Finance': ['Investing', 'Personal Finance', 'Macroeconomics', 'Crypto/Web3', 'Wealth Management'],
+    'Healthcare / Biotech': ['Longevity', 'Biohacking', 'Mental Health', 'Future of Medicine', 'Wellness'],
+    'Agency / Services': ['Client Acquisition', 'Offer Creation', 'Team Scaling', 'Sales Processes', 'Remote Work'],
+    'Creator Economy': ['Audience Building', 'Monetization', 'Video Editing', 'Storytelling', 'Personal Branding'],
+    'AI / Machine Learning': ['LLMs', 'Automation', 'Future of Work', 'Prompt Engineering', 'AGI'],
+    'Other': ['Productivity', 'Mindset', 'Career Growth', 'Leadership', 'Motivation']
+};
+
+const VOICE_PRESETS = [
+    { id: 'visionary', label: 'The Visionary', desc: 'Like Steve Jobs. Crisp, inspiring, minimal.', text: "Here's to the crazy ones. The misfits. The rebels. We don't just build products; we craft experiences that change how people live. Simplicity is the ultimate sophistication." },
+    { id: 'operator', label: 'The Operator', desc: 'Like Alex Hormozi. Direct, value-packed, no fluff.', text: "Stop trying to be smart. Be useful. Volume negates luck. If you want to make $1M, solve a $1M problem. Do the work everyone else is afraid to do." },
+    { id: 'academic', label: 'The Professor', desc: 'Like Adam Grant. Insightful, research-backed, thoughtful.', text: "We often mistake confidence for competence. The data suggests that humility is the single biggest predictor of long-term leadership success. Rethink what you know." },
+    { id: 'contrarian', label: 'The Contrarian', desc: 'Like Naval. Philosophical, high-signal, punchy.', text: "Play long term games with long term people. Specific knowledge cannot be taught, but it can be learned. Wealth is having assets that earn while you sleep." }
+];
+
+// Step 3: Industry & Audience (New)
+function Step3Industry({ data, updateData }: { data: OnboardingData; updateData: (updates: Partial<OnboardingData>) => void }) {
+    const industries = [
+        { id: 'SaaS / Software', icon: '💻' },
+        { id: 'E-commerce / DTC', icon: '🛍️' },
+        { id: 'Fintech / Finance', icon: '💰' },
+        { id: 'Healthcare / Biotech', icon: '🏥' },
+        { id: 'Agency / Services', icon: '🏢' },
+        { id: 'Creator Economy', icon: '🎨' },
+        { id: 'AI / Machine Learning', icon: '🤖' },
+        { id: 'Other', icon: '✨' }
+    ];
+
+    const audiences = data.industry ? INDUSTRY_AUDIENCES[data.industry] || [] : [];
 
     return (
-        <motion.div
-            variants={pageVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-        >
-            <motion.h1
-                className="text-2xl md:text-3xl font-bold mb-2"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-            >
-                Tell us about you & your business
-            </motion.h1>
-            <motion.p
-                className="text-base text-[var(--foreground-secondary)] mb-6"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15 }}
-            >
-                The more context we have, the better your AI content will be.
-            </motion.p>
+        <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit" className="max-w-2xl mx-auto pb-10">
+            <div className="text-left mb-8">
+                <h1 className="text-3xl font-bold mb-2">What's your niche?</h1>
+                <p className="text-[var(--foreground-muted)]">We'll tailor content to this industry.</p>
+            </div>
 
-            <motion.div
-                className="space-y-6"
-                variants={containerVariants}
-                initial="hidden"
-                animate="show"
-            >
-                {/* Role & Company */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <motion.div variants={itemVariants}>
-                        <label className="block text-sm font-medium mb-2 text-[var(--foreground-secondary)]">
-                            Your Role <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                            type="text"
-                            value={data.userContext.role}
-                            onChange={(e) => updateContext('role', e.target.value)}
-                            placeholder="e.g. Founder, CEO, Freelancer"
-                            className="input w-full bg-[var(--background-secondary)] border-[var(--border)] focus:border-[var(--primary)]"
-                        />
-                    </motion.div>
-                    <motion.div variants={itemVariants}>
-                        <label className="block text-sm font-medium mb-2 text-[var(--foreground-secondary)]">
-                            Company Name
-                        </label>
-                        <input
-                            type="text"
-                            value={data.userContext.companyName}
-                            onChange={(e) => updateContext('companyName', e.target.value)}
-                            placeholder="e.g. Acme Corp"
-                            className="input w-full bg-[var(--background-secondary)] border-[var(--border)] focus:border-[var(--primary)]"
-                        />
-                    </motion.div>
+            <div className="space-y-8">
+                <div className="space-y-2">
+                    <label className="text-sm font-bold">Industry</label>
+                    <div className="grid grid-cols-2 gap-2">
+                        {industries.map((ind) => (
+                            <button
+                                key={ind.id}
+                                onClick={() => updateData({ industry: ind.id })}
+                                className={`
+                                    flex items-center gap-2 p-3 rounded-lg border transition-all text-left
+                                    ${data.industry === ind.id
+                                        ? 'border-[var(--primary)] bg-[var(--primary)]/5 text-[var(--foreground)]'
+                                        : 'border-[var(--border)] hover:bg-[var(--card)] text-[var(--foreground-secondary)]'}
+                                `}
+                            >
+                                <span className="text-lg">{ind.icon}</span>
+                                <span className="font-medium text-xs sm:text-sm">{ind.id}</span>
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
-                <motion.div variants={itemVariants}>
-                    <label className="block text-sm font-medium mb-2 text-[var(--foreground-secondary)]">
-                        Company Website <span className="text-xs text-[var(--foreground-muted)]">(We'll scrape this for context)</span>
-                    </label>
+                <div className="space-y-2">
+                    <label className="text-sm font-bold">Target Audience</label>
                     <input
-                        type="url"
-                        value={data.userContext.companyWebsite}
-                        onChange={(e) => updateContext('companyWebsite', e.target.value)}
-                        placeholder="https://example.com"
-                        className="input w-full bg-[var(--background-secondary)] border-[var(--border)] focus:border-[var(--primary)]"
+                        type="text"
+                        value={data.targetAudience}
+                        onChange={e => updateData({ targetAudience: e.target.value })}
+                        placeholder="e.g. B2B SaaS founders"
+                        className="w-full p-4 rounded-xl bg-[var(--card)] border border-[var(--border)] focus:border-[var(--primary)] outline-none"
                     />
-                </motion.div>
-
-                <motion.div variants={itemVariants}>
-                    <label className="block text-sm font-medium mb-2 text-[var(--foreground-secondary)]">
-                        Business Description <span className="text-red-500">*</span>
-                    </label>
-                    <textarea
-                        value={data.userContext.businessDescription}
-                        onChange={(e) => updateContext('businessDescription', e.target.value)}
-                        placeholder="What do you sell? Who do you help? What's your unique value proposition?"
-                        className="input w-full h-32 bg-[var(--background-secondary)] border-[var(--border)] focus:border-[var(--primary)]"
-                    />
-                </motion.div>
-
-                <motion.div variants={itemVariants}>
-                    <label className="block text-sm font-medium mb-2 text-[var(--foreground-secondary)]">
-                        Your Expertise / Topics
-                    </label>
-                    <textarea
-                        value={data.userContext.expertise}
-                        onChange={(e) => updateContext('expertise', e.target.value)}
-                        placeholder="What define topics are you an expert in? (e.g. B2B Sales, React Native, Leadership)"
-                        className="input w-full h-24 bg-[var(--background-secondary)] border-[var(--border)] focus:border-[var(--primary)] text-sm"
-                    />
-                </motion.div>
-            </motion.div>
+                    {/* Smart Chips */}
+                    {audiences.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                            {audiences.map(aud => (
+                                <button
+                                    key={aud}
+                                    onClick={() => updateData({ targetAudience: aud })}
+                                    className="text-xs px-3 py-1 rounded-full bg-[var(--card)] border border-[var(--border)] hover:border-[var(--primary)] hover:text-[var(--primary)] transition-colors"
+                                >
+                                    + {aud}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
         </motion.div>
     );
 }
 
-// Step 3: Goals
-function Step3Goals({ data, updateData }: { data: OnboardingData; updateData: (updates: Partial<OnboardingData>) => void }) {
-    const goals = [
-        { value: 'thought-leadership', label: 'Thought Leadership', description: 'Establish yourself as an industry expert', icon: '🎯' },
-        { value: 'lead-generation', label: 'Lead Generation', description: 'Drive inbound leads and sales opportunities', icon: '📈' },
-        { value: 'brand-awareness', label: 'Brand Awareness', description: 'Increase visibility for your company', icon: '🌟' },
-        { value: 'community', label: 'Community Building', description: 'Build a loyal following and engage with peers', icon: '🤝' },
-        { value: 'hiring', label: 'Hiring & Recruiting', description: 'Attract top talent to your team', icon: '👥' },
-    ];
+// ... Step 4, 5, 6 remain unchanged ...
 
-    return (
-        <motion.div
-            variants={pageVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-        >
-            <motion.h1
-                className="text-2xl md:text-3xl font-bold mb-2"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-            >
-                What's your primary goal?
-            </motion.h1>
-            <motion.p
-                className="text-base text-[var(--foreground-secondary)] mb-6"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15 }}
-            >
-                We'll optimize your content strategy around this goal
-            </motion.p>
-
-            <motion.div
-                className="space-y-3"
-                variants={containerVariants}
-                initial="hidden"
-                animate="show"
-            >
-                {goals.map((goal) => (
-                    <motion.button
-                        key={goal.value}
-                        variants={itemVariants}
-                        onClick={() => updateData({ contentGoal: goal.value })}
-                        className={`
-              w-full flex items-center gap-4 p-5 rounded-xl border-2 transition-all duration-300 text-left hover:translate-x-1
-              ${data.contentGoal === goal.value
-                                ? 'border-[var(--primary)] bg-[var(--primary)]/10 shadow-[0_0_20px_-5px_rgba(var(--primary),0.2)]'
-                                : 'border-[var(--border)] hover:border-[var(--border-hover)] hover:bg-[var(--background-secondary)]'}
-            `}
-                    >
-                        <span className="text-3xl">{goal.icon}</span>
-                        <div className="flex-1">
-                            <h3 className={`font-semibold text-lg ${data.contentGoal === goal.value ? 'text-[var(--primary)]' : ''}`}>{goal.label}</h3>
-                            <p className="text-[var(--foreground-secondary)]">{goal.description}</p>
-                        </div>
-                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${data.contentGoal === goal.value
-                            ? 'border-[var(--primary)] bg-[var(--primary)]'
-                            : 'border-[var(--border)]'
-                            }`}>
-                            {data.contentGoal === goal.value && <Check className="w-4 h-4 text-white" />}
-                        </div>
-                    </motion.button>
-                ))}
-            </motion.div>
-        </motion.div>
-    );
-}
-
-// Step 4: Topics
-function Step4Topics({ data, updateData }: { data: OnboardingData; updateData: (updates: Partial<OnboardingData>) => void }) {
-    const suggestedTopics = [
+// Step 7: Topics (Renamed from Step6Topics)
+function Step7Topics({ data, updateData }: { data: OnboardingData; updateData: (updates: Partial<OnboardingData>) => void }) {
+    const genericTopics = [
         'Leadership', 'Product', 'Fundraising', 'Growth', 'Sales',
         'Marketing', 'Engineering', 'Culture', 'Hiring', 'Strategy',
-        'AI/ML', 'Remote Work', 'Startups', 'Productivity', 'Innovation'
+        'Remote Work', 'Startups', 'Productivity', 'Innovation'
     ];
+
+    // Merge generic with industry specific
+    const industryTopics = data.industry ? (INDUSTRY_TOPICS[data.industry] || []) : [];
+    // Combine, unique, and prioritize industry ones
+    const suggestedTopics = Array.from(new Set([...industryTopics, ...genericTopics]));
+
+    const [customTopic, setCustomTopic] = useState('');
 
     const toggleTopic = (topic: string) => {
         if (data.topics.includes(topic)) {
@@ -911,8 +935,6 @@ function Step4Topics({ data, updateData }: { data: OnboardingData; updateData: (
         }
     };
 
-    const [customTopic, setCustomTopic] = useState('');
-
     const addCustomTopic = () => {
         if (customTopic.trim() && !data.topics.includes(customTopic.trim())) {
             updateData({ topics: [...data.topics, customTopic.trim()] });
@@ -920,957 +942,516 @@ function Step4Topics({ data, updateData }: { data: OnboardingData; updateData: (
         }
     };
 
+
     return (
-        <motion.div
-            variants={pageVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-        >
-            <motion.h1
-                className="text-2xl md:text-3xl font-bold mb-2"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-            >
-                What topics will you cover?
-            </motion.h1>
-            <motion.p
-                className="text-base text-[var(--foreground-secondary)] mb-6"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15 }}
-            >
-                Select topics you're passionate about or add your own
-            </motion.p>
+        <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit">
+            <h1 className="text-3xl font-bold mb-2">Content Pillars</h1>
+            <p className="text-[var(--foreground-muted)] mb-6">What 3-5 topics will you own?</p>
 
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="flex flex-wrap gap-2 mb-6"
-            >
-                {suggestedTopics.map((topic) => (
-                    <button
-                        key={topic}
-                        onClick={() => toggleTopic(topic)}
-                        className={`
-              px-4 py-2 rounded-full text-sm font-medium transition-all duration-300
-              ${data.topics.includes(topic)
-                                ? 'bg-[var(--primary)] text-white'
-                                : 'bg-[var(--background-secondary)] hover:bg-[var(--border)]'}
-            `}
-                    >
-                        {topic}
-                    </button>
-                ))}
-            </motion.div>
 
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="flex gap-2"
-            >
+
+            <div className="flex flex-wrap gap-2 mb-8 max-h-60 overflow-y-auto custom-scrollbar p-1">
+                {suggestedTopics.map((topic) => {
+                    const isIndustrySpecific = industryTopics.includes(topic);
+                    return (
+                        <button
+                            key={topic}
+                            onClick={() => toggleTopic(topic)}
+                            className={`
+                                px-4 py-2 rounded-full text-sm font-medium transition-all duration-300 border
+                                ${data.topics.includes(topic)
+                                    ? 'bg-[var(--primary)] text-white border-[var(--primary)]'
+                                    : 'bg-[var(--card)] border-[var(--border)] hover:border-[var(--primary)]/50'}
+                                ${isIndustrySpecific ? 'ring-1 ring-[var(--primary)]/20 shadow-sm' : ''}
+                            `}
+                        >
+                            {isIndustrySpecific && <span className="mr-1 text-xs opacity-70">✨</span>}
+                            {topic}
+                        </button>
+                    );
+                })}
+            </div>
+
+            <div className="flex gap-3">
                 <input
-                    type="text"
                     value={customTopic}
-                    onChange={(e) => setCustomTopic(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && addCustomTopic()}
+                    onChange={e => setCustomTopic(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && addCustomTopic()}
                     placeholder="Add a custom topic..."
-                    className="input flex-1"
+                    className="flex-1 p-4 rounded-xl bg-[var(--card)] border border-[var(--border)] focus:border-[var(--primary)] outline-none"
                 />
                 <button
                     onClick={addCustomTopic}
                     disabled={!customTopic.trim()}
-                    className="btn btn-primary"
+                    className="px-6 rounded-xl bg-[var(--primary)] text-white font-medium disabled:opacity-50 hover:bg-[var(--primary-hover)] transition-colors"
                 >
                     Add
                 </button>
-            </motion.div>
+            </div>
 
             {data.topics.length > 0 && (
-                <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mt-6 p-4 bg-[var(--background-secondary)] rounded-xl"
-                >
-                    <p className="text-sm text-[var(--foreground-muted)] mb-2">Selected topics ({data.topics.length})</p>
+                <div className="mt-6">
+                    <p className="text-sm text-[var(--foreground-muted)] mb-3">Selected ({data.topics.length})</p>
                     <div className="flex flex-wrap gap-2">
-                        {data.topics.map((topic) => (
-                            <span
-                                key={topic}
-                                className="inline-flex items-center gap-1 px-3 py-1 bg-[var(--primary)] text-white rounded-full text-sm"
-                            >
-                                {topic}
-                                <button onClick={() => toggleTopic(topic)} className="hover:opacity-70">×</button>
+                        {data.topics.map((t) => (
+                            <span key={t} className="inline-flex items-center gap-2 px-3 py-1 bg-[var(--primary)]/10 text-[var(--primary)] rounded-full text-sm border border-[var(--primary)]/20">
+                                {t}
+                                <button onClick={() => toggleTopic(t)} className="hover:text-[var(--primary-hover)]">×</button>
                             </span>
                         ))}
                     </div>
-                </motion.div>
+                </div>
             )}
         </motion.div>
     );
 }
 
-// Step 5: Cadence
-function Step5Cadence({ data, updateData }: { data: OnboardingData; updateData: (updates: Partial<OnboardingData>) => void }) {
-    const cadences = [
-        {
-            value: 'light' as const,
-            label: 'Light',
-            posts: '2-3 posts/week',
-            description: 'Great for getting started or busy schedules',
-            icon: '🌱'
-        },
-        {
-            value: 'moderate' as const,
-            label: 'Moderate',
-            posts: '3-5 posts/week',
-            description: 'Consistent presence without overwhelming',
-            icon: '🌿',
-            recommended: true
-        },
-        {
-            value: 'active' as const,
-            label: 'Active',
-            posts: '5-7 posts/week',
-            description: 'Maximum visibility and engagement',
-            icon: '🌳'
-        },
-    ];
+// Step 8: Voice (Renamed from Step7Voice)
+function Step8Voice({ data, updateData }: { data: OnboardingData; updateData: (updates: Partial<OnboardingData>) => void }) {
+    const [pendingContent, setPendingContent] = useState('');
+    const [inputType, setInputType] = useState<'text' | 'file' | 'preset'>('text');
 
-    return (
-        <motion.div
-            variants={pageVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-        >
-            <motion.h1
-                className="text-2xl md:text-3xl font-bold mb-2"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-            >
-                How often do you want to post?
-            </motion.h1>
-            <motion.p
-                className="text-base text-[var(--foreground-secondary)] mb-6"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15 }}
-            >
-                We'll plan your content calendar based on your preferred cadence
-            </motion.p>
-
-            <motion.div
-                className="space-y-4"
-                variants={containerVariants}
-                initial="hidden"
-                animate="show"
-            >
-                {cadences.map((cadence) => (
-                    <motion.button
-                        key={cadence.value}
-                        variants={itemVariants}
-                        onClick={() => updateData({ cadence: cadence.value })}
-                        className={`
-              w-full flex items-center gap-5 p-4 rounded-2xl border-2 transition-all duration-300 text-left relative hover:translate-x-1 group
-              ${data.cadence === cadence.value
-                                ? 'border-[var(--primary)] bg-[var(--primary)]/10 shadow-[0_0_20px_-5px_rgba(var(--primary),0.2)]'
-                                : 'border-[var(--border)] hover:border-[var(--border-hover)] hover:bg-[var(--background-secondary)]'}
-            `}
-                    >
-                        {cadence.recommended && (
-                            <span className="absolute -top-2 right-4 px-3 py-0.5 bg-[var(--secondary)] text-white text-xs font-medium rounded-full shadow-lg">
-                                Recommended
-                            </span>
-                        )}
-                        <span className="text-4xl group-hover:scale-110 transition-transform">{cadence.icon}</span>
-                        <div className="flex-1">
-                            <div className="flex items-center gap-3">
-                                <h3 className={`font-semibold text-xl ${data.cadence === cadence.value ? 'text-[var(--primary)]' : ''}`}>{cadence.label}</h3>
-                                <span className={`text-sm font-medium px-2 py-0.5 rounded-full ${data.cadence === cadence.value ? 'bg-[var(--primary)] text-white' : 'bg-[var(--primary)]/10 text-[var(--primary)]'}`}>
-                                    {cadence.posts}
-                                </span>
-                            </div>
-                            <p className="text-[var(--foreground-secondary)] mt-1">{cadence.description}</p>
-                        </div>
-                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${data.cadence === cadence.value
-                            ? 'border-[var(--primary)] bg-[var(--primary)]'
-                            : 'border-[var(--border)]'
-                            }`}>
-                            {data.cadence === cadence.value && <Check className="w-4 h-4 text-white" />}
-                        </div>
-                    </motion.button>
-                ))}
-            </motion.div>
-        </motion.div>
-    );
-}
-
-// Step 6: Tone
-function Step6Tone({ data, updateData }: { data: OnboardingData; updateData: (updates: Partial<OnboardingData>) => void }) {
-    const toneOptions = [
-        {
-            key: 'formality', label: 'Voice', options: [
-                { value: 'professional', label: 'Professional', emoji: '👔' },
-                { value: 'casual', label: 'Casual', emoji: '😊' },
-            ]
-        },
-        {
-            key: 'boldness', label: 'Energy', options: [
-                { value: 'bold', label: 'Bold', emoji: '🔥' },
-                { value: 'measured', label: 'Measured', emoji: '🎯' },
-            ]
-        },
-        {
-            key: 'style', label: 'Approach', options: [
-                { value: 'educational', label: 'Educational', emoji: '📚' },
-                { value: 'conversational', label: 'Conversational', emoji: '💬' },
-            ]
-        },
-        {
-            key: 'approach', label: 'Style', options: [
-                { value: 'story-driven', label: 'Story-driven', emoji: '📖' },
-                { value: 'data-driven', label: 'Data-driven', emoji: '📊' },
-            ]
-        },
-    ];
-
-    const updateTone = (key: string, value: string) => {
+    const addSample = (content: string, type: 'paste' | 'upload' = 'paste') => {
+        if (!content.trim()) return;
         updateData({
-            tone: {
-                ...data.tone,
-                [key]: value,
-            },
+            voiceSamples: [...data.voiceSamples, { content: content.trim(), type }]
+        });
+        setPendingContent('');
+        setInputType('text');
+    };
+
+    const removeSample = (index: number) => {
+        updateData({
+            voiceSamples: data.voiceSamples.filter((_, i) => i !== index)
         });
     };
 
     return (
-        <motion.div
-            variants={pageVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-        >
-            <motion.h1
-                className="text-2xl md:text-3xl font-bold mb-2"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-            >
-                How do you want to sound?
-            </motion.h1>
-            <motion.p
-                className="text-base text-[var(--foreground-secondary)] mb-6"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15 }}
-            >
-                Set the tone for all your content
-            </motion.p>
+        <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit" className="max-w-xl mx-auto">
+            <div className="text-left mb-6">
+                <h1 className="text-3xl font-bold mb-2">Teach us your Voice</h1>
+                <p className="text-[var(--foreground-muted)] text-lg">Examples help AI sound just like you.</p>
+            </div>
 
-            <motion.div
-                className="space-y-6"
-                variants={containerVariants}
-                initial="hidden"
-                animate="show"
-            >
-                {toneOptions.map((option) => (
-                    <motion.div key={option.key} variants={itemVariants}>
-                        <label className="block text-sm font-medium mb-3 text-[var(--foreground-secondary)] tracking-wide uppercase text-xs">
-                            {option.label}
-                        </label>
-                        <div className="grid grid-cols-2 gap-3">
-                            {option.options.map((opt) => (
+            <div className="space-y-6">
+                {/* List of saved samples */}
+                {data.voiceSamples.length > 0 && (
+                    <div className="space-y-3">
+                        <label className="text-sm font-medium text-[var(--foreground-muted)]">Saved Posts ({data.voiceSamples.length})</label>
+                        <div className="grid gap-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                            {data.voiceSamples.map((sample, i) => (
+                                <div key={i} className="group relative p-4 rounded-xl bg-[var(--card)] border border-[var(--border)] hover:border-[var(--primary)]/50 transition-all">
+                                    <div className="flex justify-between items-start mb-1">
+                                        <p className="text-xs text-[var(--foreground-muted)] uppercase tracking-wider font-semibold">
+                                            {`Sample ${i + 1}`}
+                                        </p>
+                                    </div>
+                                    <p className="text-sm text-[var(--foreground)] whitespace-pre-wrap line-clamp-3">{sample.content}</p>
+                                    <button
+                                        onClick={() => removeSample(i)}
+                                        className="absolute top-2 right-2 p-1.5 rounded-lg text-[var(--foreground-muted)] hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
+                                        title="Remove post"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Input Area */}
+                <div>
+                    <div className="flex gap-1 mb-4 overflow-x-auto pb-1">
+                        <button
+                            onClick={() => setInputType('text')}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${inputType === 'text' ? 'bg-[var(--primary)] text-white' : 'text-[var(--foreground-muted)] hover:bg-[var(--card)]'}`}
+                        >
+                            Paste Text
+                        </button>
+                        <button
+                            onClick={() => setInputType('preset')}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap flex items-center gap-1 ${inputType === 'preset' ? 'bg-[var(--primary)] text-white' : 'text-[var(--foreground-muted)] hover:bg-[var(--card)]'}`}
+                        >
+                            <Zap className="w-3 h-3" /> Presets
+                        </button>
+                        <button
+                            onClick={() => setInputType('file')}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${inputType === 'file' ? 'bg-[var(--primary)] text-white' : 'text-[var(--foreground-muted)] hover:bg-[var(--card)]'}`}
+                        >
+                            Upload File
+                        </button>
+                    </div>
+
+                    {inputType === 'text' && (
+                        <div className="space-y-3">
+                            <textarea
+                                value={pendingContent}
+                                onChange={e => setPendingContent(e.target.value)}
+                                placeholder="Paste a recent high-performing post here..."
+                                className="w-full h-32 p-4 rounded-xl bg-[var(--card)] border border-[var(--border)] focus:border-[var(--primary)] outline-none resize-none transition-all placeholder-[var(--foreground-muted)]/50"
+                            />
+                            <div className="flex justify-end">
                                 <button
-                                    key={opt.value}
-                                    onClick={() => updateTone(option.key, opt.value)}
-                                    className={`
-                    flex items-center gap-3 p-4 rounded-xl border-2 transition-all duration-300 hover:scale-[1.02]
-                    ${(data.tone as Record<string, string>)[option.key] === opt.value
-                                            ? 'border-[var(--primary)] bg-[var(--primary)]/10 shadow-[0_0_15px_-5px_rgba(var(--primary),0.2)]'
-                                            : 'border-[var(--border)] hover:border-[var(--border-hover)] bg-[var(--card)]'}
-                  `}
+                                    onClick={() => addSample(pendingContent)}
+                                    disabled={!pendingContent.trim()}
+                                    className="px-6 py-2 rounded-xl bg-[var(--primary)] text-white font-medium disabled:opacity-50 hover:bg-[var(--primary-hover)] transition-colors"
                                 >
-                                    <span className="text-2xl">{opt.emoji}</span>
-                                    <span className={`font-medium ${(data.tone as Record<string, string>)[option.key] === opt.value ? 'text-[var(--primary)]' : ''}`}>{opt.label}</span>
+                                    Add Sample
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {inputType === 'preset' && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {VOICE_PRESETS.map(preset => (
+                                <button
+                                    key={preset.id}
+                                    onClick={() => addSample(preset.text, 'paste')}
+                                    className="p-4 rounded-xl border border-[var(--border)] hover:border-[var(--primary)] hover:bg-[var(--primary)]/5 text-left transition-all group"
+                                >
+                                    <div className="font-bold flex items-center gap-2 mb-1 group-hover:text-[var(--primary)]">
+                                        {preset.label}
+                                        <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
+                                    </div>
+                                    <p className="text-xs text-[var(--foreground-muted)]">{preset.desc}</p>
                                 </button>
                             ))}
                         </div>
-                    </motion.div>
-                ))}
-            </motion.div>
+                    )}
+
+                    {inputType === 'file' && (
+                        <div className="border-2 border-dashed border-[var(--border)] rounded-xl p-8 text-center hover:bg-[var(--card)] transition-colors cursor-pointer group relative">
+                            <div className="w-12 h-12 bg-[var(--background-secondary)] rounded-full flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
+                                <Upload className="w-6 h-6 text-[var(--foreground-muted)]" />
+                            </div>
+                            <p className="text-sm font-medium mb-1">Click to upload text file</p>
+                            <p className="text-xs text-[var(--foreground-muted)]">.txt or .md only</p>
+                            <input
+                                type="file"
+                                className="absolute inset-0 opacity-0 cursor-pointer"
+                                accept=".txt,.md,.pdf"
+                                onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                        if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+                                            try {
+                                                const text = await extractTextFromPdf(file);
+                                                addSample(text, 'upload');
+                                            } catch (e) { alert("Failed"); }
+                                        } else {
+                                            const reader = new FileReader();
+                                            reader.onload = (ev) => addSample(ev.target?.result as string, 'upload');
+                                            reader.readAsText(file);
+                                        }
+                                    }
+                                }}
+                            />
+                        </div>
+                    )}
+                </div>
+            </div>
         </motion.div>
     );
 }
 
-// Step 7: Voice
-function Step7Voice({ data, updateData }: { data: OnboardingData; updateData: (updates: Partial<OnboardingData>) => void }) {
-    const [activeTab, setActiveTab] = useState<'paste' | 'upload' | 'voicenote' | 'url'>('paste');
-    const [pasteContent, setPasteContent] = useState('');
+// Step 4: Context (Refactored from Step3Strategy)
+function Step4Context({ data, updateData }: { data: OnboardingData; updateData: (updates: Partial<OnboardingData>) => void }) {
+    // Removed Industries array logic from here
 
-    const wordCount = pasteContent.split(/\s+/).filter(word => word.length > 0).length;
-    const minWords = 300;
-
-    const addSample = () => {
-        if (pasteContent.trim()) {
-            updateData({
-                voiceSamples: [...data.voiceSamples, { content: pasteContent, type: activeTab }],
-            });
-            setPasteContent('');
-        }
+    const addContextItem = (section: 'personalContext' | 'productContext') => {
+        const newItem = {
+            id: Math.random().toString(36).substr(2, 9),
+            type: 'url' as const,
+            label: '',
+            value: ''
+        };
+        updateData({ [section]: [...(data[section] || []), newItem] });
     };
 
-    const tabs = [
-        { id: 'paste' as const, label: 'Paste', icon: Type },
-        { id: 'upload' as const, label: 'Upload', icon: Upload },
-        { id: 'voicenote' as const, label: 'Voice', icon: Mic },
-        { id: 'url' as const, label: 'URL', icon: Link },
-    ];
+    const updateContextItem = (section: 'personalContext' | 'productContext', index: number, updates: any) => {
+        const newItems = [...(data[section] || [])];
+        newItems[index] = { ...newItems[index], ...updates };
+        updateData({ [section]: newItems });
+    };
+
+    const removeContextItem = (section: 'personalContext' | 'productContext', index: number) => {
+        const newItems = (data[section] || []).filter((_, i) => i !== index);
+        updateData({ [section]: newItems });
+    };
 
     return (
-        <motion.div
-            variants={pageVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-        >
-            <motion.h1
-                className="text-2xl md:text-3xl font-bold mb-2"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-            >
-                Help us learn your voice
-            </motion.h1>
-            <motion.p
-                className="text-base text-[var(--foreground-secondary)] mb-6"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15 }}
-            >
-                Share examples of your writing so we can match your style
-            </motion.p>
+        <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit" className="max-w-2xl mx-auto pb-10">
+            <div className="text-left mb-8">
+                <h1 className="text-3xl font-bold mb-2">Help us understand your business</h1>
+                <p className="text-[var(--foreground-muted)]">We'll use this to generate personalized content ideas.</p>
+            </div>
 
-            {/* Tabs */}
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="flex gap-2 mb-6"
-            >
-                {tabs.map((tab) => {
-                    const Icon = tab.icon;
-                    return (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`
-                flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300
-                ${activeTab === tab.id
-                                    ? 'bg-[var(--primary)] text-white'
-                                    : 'bg-[var(--background-secondary)] hover:bg-[var(--border)]'}
-              `}
-                        >
-                            <Icon className="w-4 h-4" />
-                            {tab.label}
-                        </button>
-                    );
-                })}
-            </motion.div>
-
-            {/* Content based on tab */}
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.25 }}
-            >
-                {activeTab === 'paste' && (
-                    <div>
-                        <textarea
-                            value={pasteContent}
-                            onChange={(e) => setPasteContent(e.target.value)}
-                            placeholder="Paste a tweet, LinkedIn post, email, or anything you've written that sounds like you..."
-                            className="input textarea h-48"
-                        />
-                        <div className="flex items-center justify-between mt-3">
-                            <div className="text-sm">
-                                <span className={wordCount >= minWords ? 'text-[var(--success)]' : 'text-[var(--foreground-muted)]'}>
-                                    {wordCount} words
-                                </span>
-                                <span className="text-[var(--foreground-muted)]"> / {minWords} recommended</span>
-                            </div>
-                            <button
-                                onClick={addSample}
-                                disabled={!pasteContent.trim()}
-                                className="btn btn-primary"
-                            >
-                                Add Sample
-                            </button>
-                        </div>
+            <div className="space-y-8">
+                {/* About You */}
+                <div className="space-y-2">
+                    <div className="flex justify-between">
+                        <label className="text-sm font-bold flex items-center gap-1">About You <span className="text-red-500">*</span></label>
+                        <span className={`text-xs ${(data.aboutYou || '').length > 1000 ? 'text-red-500' : 'text-[var(--foreground-muted)]'}`}>{(data.aboutYou || '').length} / 1000</span>
                     </div>
-                )}
+                    <textarea
+                        value={data.aboutYou || ''}
+                        onChange={e => updateData({ aboutYou: e.target.value })}
+                        placeholder="I'm a SaaS founder passionate about... I typically post about..."
+                        className="w-full h-32 p-4 rounded-xl bg-[var(--card)] border border-[var(--border)] focus:border-[var(--primary)] outline-none resize-none transition-all placeholder-[var(--foreground-muted)]/50 focus:ring-1 focus:ring-[var(--primary)]"
+                        maxLength={1000}
+                    />
+                </div>
 
-                {activeTab === 'upload' && (
-                    <div className="border-2 border-dashed border-[var(--border)] rounded-2xl p-12 text-center">
-                        <Upload className="w-12 h-12 mx-auto mb-4 text-[var(--foreground-muted)]" />
-                        <p className="text-lg font-medium mb-2">Drop files here or click to upload</p>
-                        <p className="text-[var(--foreground-muted)]">Supports .txt, .md, .doc files</p>
+                {/* Personal Context */}
+                <div className="space-y-4">
+                    <div className="space-y-1">
+                        <label className="text-sm font-bold">Personal Context</label>
+                        <p className="text-xs text-[var(--foreground-muted)]">Your website, LinkedIn profile, or bio page (optional)</p>
                     </div>
-                )}
 
-                {activeTab === 'voicenote' && (
-                    <div className="border-2 border-dashed border-[var(--border)] rounded-2xl p-12 text-center">
-                        <Mic className="w-12 h-12 mx-auto mb-4 text-[var(--foreground-muted)]" />
-                        <p className="text-lg font-medium mb-2">Record a voice note</p>
-                        <p className="text-[var(--foreground-muted)]">We'll transcribe it and learn your speaking style</p>
-                        <button className="btn btn-outline mt-4">
-                            Start Recording
-                        </button>
+                    <div className="space-y-3">
+                        {(data.personalContext || []).map((item, i) => (
+                            <ContextItem
+                                key={item.id}
+                                item={item}
+                                onChange={(updates) => updateContextItem('personalContext', i, updates)}
+                                onRemove={() => removeContextItem('personalContext', i)}
+                            />
+                        ))}
                     </div>
-                )}
 
-                {activeTab === 'url' && (
-                    <div>
-                        <input
-                            type="url"
-                            placeholder="Paste a link to your blog post, tweet, or article..."
-                            className="input"
-                        />
-                        <p className="text-sm text-[var(--foreground-muted)] mt-2">
-                            We'll extract the content and analyze your writing style
-                        </p>
-                    </div>
-                )}
-            </motion.div>
-
-            {/* Existing samples */}
-            {data.voiceSamples.length > 0 && (
-                <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mt-6 p-4 bg-[var(--background-secondary)] rounded-xl"
-                >
-                    <p className="text-sm text-[var(--foreground-muted)] mb-2">
-                        Added samples ({data.voiceSamples.length})
-                    </p>
-                    {data.voiceSamples.map((sample, i) => (
-                        <div key={i} className="flex items-center gap-2 py-2 border-b border-[var(--border)] last:border-0">
-                            <Check className="w-4 h-4 text-[var(--success)]" />
-                            <span className="text-sm truncate flex-1">{sample.content.slice(0, 50)}...</span>
-                            <span className="text-xs text-[var(--foreground-muted)] capitalize">{sample.type}</span>
-                        </div>
-                    ))}
-                </motion.div>
-            )}
-
-            <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.4 }}
-                className="text-sm text-[var(--foreground-muted)] mt-6"
-            >
-                💡 The more examples you provide, the better we can match your voice
-            </motion.p>
-        </motion.div>
-    );
-}
-
-// Step 9: Subscribe
-function Step9Subscribe({
-    isLoading,
-    onSubscribe,
-    error
-}: {
-    isLoading: boolean;
-    onSubscribe: (plan: string) => void;
-    error: string | null;
-}) {
-    const plans = [
-        {
-            id: 'pro',
-            name: 'Pro',
-            price: 29,
-            description: 'Perfect for founders building their personal brand',
-            popular: true,
-            features: [
-                '7-day free trial',
-                'Unlimited AI-generated posts',
-                'All platforms',
-                'Voice cloning',
-                'Weekly content calendar',
-            ],
-        },
-        {
-            id: 'agency',
-            name: 'Agency',
-            price: 99,
-            description: 'For teams managing multiple brands',
-            popular: false,
-            features: [
-                'Everything in Pro',
-                'Unlimited everything',
-                'Multiple profiles',
-                'Team collaboration',
-                'Priority support',
-            ],
-        },
-    ];
-
-    return (
-        <motion.div
-            variants={pageVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-        >
-            <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.1 }}
-                className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center"
-            >
-                <Zap className="w-8 h-8 text-white" />
-            </motion.div>
-
-            <motion.h1
-                className="text-4xl font-bold mb-3 text-center"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15 }}
-            >
-                Start Your Free Trial
-            </motion.h1>
-            <motion.p
-                className="text-lg text-[var(--foreground-secondary)] mb-8 text-center"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-            >
-                7 days free, cancel anytime. No commitment.
-            </motion.p>
-
-            {error && (
-                <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-300 text-sm"
-                >
-                    <strong>Error:</strong> {error}
-                </motion.div>
-            )}
-
-            <motion.div
-                className="grid md:grid-cols-2 gap-4"
-                variants={containerVariants}
-                initial="hidden"
-                animate="show"
-            >
-                {plans.map((plan) => (
-                    <motion.div
-                        key={plan.id}
-                        variants={itemVariants}
-                        className={`
-                            relative p-4 rounded-2xl border-2 transition-all duration-300
-                            ${plan.popular
-                                ? 'border-[var(--primary)] bg-[var(--primary)]/5'
-                                : 'border-[var(--border)] hover:border-[var(--border-hover)]'
-                            }
-                        `}
-                    >
-                        {plan.popular && (
-                            <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                                <span className="px-3 py-1 text-xs font-semibold bg-[var(--primary)] text-white rounded-full">
-                                    Most Popular
-                                </span>
-                            </div>
-                        )}
-
-                        <h3 className="text-xl font-bold mb-1">{plan.name}</h3>
-                        <p className="text-sm text-[var(--foreground-secondary)] mb-4">
-                            {plan.description}
-                        </p>
-
-                        <div className="flex items-baseline gap-1 mb-4">
-                            <span className="text-3xl font-bold">${plan.price}</span>
-                            <span className="text-[var(--foreground-muted)]">/month</span>
-                        </div>
-
-                        <ul className="space-y-2 mb-6">
-                            {plan.features.map((feature, i) => (
-                                <li key={i} className="flex items-center gap-2 text-sm">
-                                    <Check className="w-4 h-4 text-[var(--success)]" />
-                                    <span>{feature}</span>
-                                </li>
-                            ))}
-                        </ul>
-
-                        <button
-                            onClick={() => onSubscribe(plan.id)}
-                            disabled={isLoading}
-                            className={`
-                                w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all
-                                ${plan.popular
-                                    ? 'bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)]'
-                                    : 'bg-[var(--background-secondary)] hover:bg-[var(--border)]'
-                                }
-                                ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}
-                            `}
-                        >
-                            {isLoading ? (
-                                <>
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                    Processing...
-                                </>
-                            ) : (
-                                <>
-                                    Start Free Trial
-                                    <ArrowRight className="w-4 h-4" />
-                                </>
-                            )}
-                        </button>
-                    </motion.div>
-                ))}
-            </motion.div>
-
-            <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.4 }}
-                className="text-center text-sm text-[var(--foreground-muted)] mt-6"
-            >
-                🔒 Secure payment by Stripe • Cancel anytime
-            </motion.p>
-        </motion.div>
-    );
-}
-
-// Step 9: Publishing Mode
-function Step9Publishing({ data, updateData }: { data: OnboardingData; updateData: (updates: Partial<OnboardingData>) => void }) {
-    const publishingModes = [
-        {
-            id: 'manual',
-            value: false,
-            icon: '🔒',
-            title: 'Approve Each Post',
-            description: 'Review and approve posts before they go live. You\'ll see them in your dashboard and click "Post Now" when ready.',
-            features: ['Full control over timing', 'Edit before posting', 'Best for beginners']
-        },
-        {
-            id: 'auto',
-            value: true,
-            icon: '🚀',
-            title: 'Auto-Pilot',
-            description: 'Posts go live automatically at their scheduled time. Completely hands-off experience.',
-            features: ['Set and forget', 'Consistent posting', 'Best for busy founders']
-        }
-    ];
-
-    return (
-        <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            animate="show"
-            className="space-y-8"
-        >
-            <motion.div variants={itemVariants} className="text-center mb-8">
-                <h2 className="text-3xl font-bold text-[var(--foreground)] mb-3">
-                    How should posts go live?
-                </h2>
-                <p className="text-[var(--foreground-muted)] text-lg">
-                    Choose how you want to manage your scheduled content
-                </p>
-            </motion.div>
-
-            <motion.div variants={itemVariants} className="grid md:grid-cols-2 gap-4">
-                {publishingModes.map((mode) => (
                     <button
-                        key={mode.id}
-                        onClick={() => updateData({ autoPublish: mode.value })}
-                        className={`
-                            p-4 rounded-2xl border-2 text-left transition-all duration-300
-                            ${data.autoPublish === mode.value
-                                ? 'border-[var(--primary)] bg-[var(--primary)]/5 shadow-lg shadow-[var(--primary)]/10'
-                                : 'border-[var(--border)] hover:border-[var(--primary)]/50 bg-[var(--card)]'}
-                        `}
+                        onClick={() => addContextItem('personalContext')}
+                        className="flex items-center gap-2 text-sm font-medium text-[var(--primary)] hover:text-[var(--primary-hover)] transition-colors px-2 py-1"
                     >
-                        <div className="flex items-start gap-4">
-                            <div className="text-4xl">{mode.icon}</div>
-                            <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <h3 className="font-bold text-lg text-[var(--foreground)]">
-                                        {mode.title}
-                                    </h3>
-                                    {data.autoPublish === mode.value && (
-                                        <span className="px-2 py-0.5 rounded-full bg-[var(--primary)] text-white text-xs font-bold">
-                                            Selected
-                                        </span>
-                                    )}
-                                </div>
-                                <p className="text-[var(--foreground-muted)] text-sm mb-4">
-                                    {mode.description}
-                                </p>
-                                <ul className="space-y-1">
-                                    {mode.features.map((feature, i) => (
-                                        <li key={i} className="flex items-center gap-2 text-sm text-[var(--foreground-secondary)]">
-                                            <Check className="w-4 h-4 text-[var(--primary)]" />
-                                            {feature}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
+                        <Plus className="w-4 h-4" /> Add personal context
+                    </button>
+                </div>
+
+                {/* Product Context */}
+                <div className="space-y-4 pt-4 border-t border-[var(--border)]/50">
+                    <div className="space-y-1">
+                        <label className="text-sm font-bold">Product Context</label>
+                        <p className="text-xs text-[var(--foreground-muted)]">Landing pages, product docs, or pitch materials (optional)</p>
+                    </div>
+
+                    <div className="space-y-3">
+                        {(data.productContext || []).map((item, i) => (
+                            <ContextItem
+                                key={item.id}
+                                item={item}
+                                onChange={(updates) => updateContextItem('productContext', i, updates)}
+                                onRemove={() => removeContextItem('productContext', i)}
+                            />
+                        ))}
+                    </div>
+
+                    <button
+                        onClick={() => addContextItem('productContext')}
+                        className="flex items-center gap-2 text-sm font-medium text-[var(--primary)] hover:text-[var(--primary-hover)] transition-colors px-2 py-1"
+                    >
+                        <Plus className="w-4 h-4" /> Add product context
+                    </button>
+                </div>
+
+                {/* Industry/Audience removed from here */}
+            </div>
+        </motion.div>
+    );
+}
+
+// Step 5: Goals (Renamed from Step4Goals)
+function Step5Goals({ data, updateData }: { data: OnboardingData; updateData: (updates: Partial<OnboardingData>) => void }) {
+    const goals = [
+        { id: 'sales', label: 'Drive Sales / Leeds', icon: Zap },
+        { id: 'hiring', label: 'Attract Talent', icon: User },
+        { id: 'authority', label: 'Build Authority', icon: StarIcon },
+        { id: 'investors', label: 'Attract Investors', icon: Briefcase },
+    ];
+    // Simple icon placeholder
+    function StarIcon(props: any) { return <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>; }
+
+    return (
+        <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit">
+            <h1 className="text-3xl font-bold mb-6">Primary Goal</h1>
+            <div className="grid grid-cols-1 gap-3">
+                {goals.map(g => (
+                    <button key={g.id} onClick={() => updateData({ contentGoal: g.id })} className={`flex items-center gap-4 p-4 rounded-xl border-2 text-left transition-all ${data.contentGoal === g.id ? 'border-[var(--primary)] bg-[var(--primary)]/10' : 'border-[var(--border)] hover:bg-[var(--card)]'}`}>
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${data.contentGoal === g.id ? 'bg-[var(--primary)] text-white' : 'bg-[var(--card)]'}`}>
+                            <g.icon className="w-5 h-5" />
                         </div>
+                        <span className="font-medium text-lg">{g.label}</span>
                     </button>
                 ))}
-            </motion.div>
-
-            <motion.div variants={itemVariants} className="text-center">
-                <p className="text-sm text-[var(--foreground-muted)]">
-                    💡 You can change this anytime in Settings
-                </p>
-            </motion.div>
+            </div>
         </motion.div>
     );
 }
 
-// Step 10: Launch
-function Step10Launch({
-    data,
-    isGenerating,
-    onGenerate,
-    error
-}: {
-    data: OnboardingData;
-    isGenerating: boolean;
-    onGenerate: () => void;
-    error: string | null;
-}) {
-    const selectedPlatforms = Object.entries(data.platforms)
-        .filter(([_, enabled]) => enabled)
-        .map(([platform]) => platform);
-
-    if (isGenerating) {
-        return (
-            <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="text-center py-12"
-            >
-                <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                    className="w-20 h-20 mx-auto mb-8"
-                >
-                    <div className="w-full h-full rounded-full border-4 border-[var(--border)] border-t-[var(--primary)]" />
-                </motion.div>
-                <h2 className="text-3xl font-bold mb-3">Generating your first week...</h2>
-                <p className="text-[var(--foreground-secondary)]">
-                    Our AI is crafting personalized content just for you
-                </p>
-                <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: "100%" }}
-                    transition={{ duration: 3 }}
-                    className="h-1 bg-[var(--primary)] rounded-full mt-8 max-w-md mx-auto"
-                />
-            </motion.div>
-        );
-    }
+// Step 6: Archetype (Renamed from Step5Archetype)
+function Step6Archetype({ data, updateData }: { data: OnboardingData; updateData: (updates: Partial<OnboardingData>) => void }) {
+    // Replaced broken emojis with Lucide icons (using mapped icons or SVG placeholders if needed)
+    // Using simple emojis that are standard, or we can use Lucide icons. Let's use Lucide icons for a premium feel.
+    const archetypes = [
+        { id: 'builder', label: 'The Builder', desc: 'Build in public. Share wins, losses, and raw lessons.', icon: Hammer },
+        { id: 'teacher', label: 'The Teacher', desc: 'Break down complex topics into frameworks.', icon: BookOpen },
+        { id: 'contrarian', label: 'The Contrarian', desc: 'Challenge the status quo. Say what others won\'t.', icon: Mic },
+        { id: 'executive', label: 'The Executive', desc: 'High-level vision, culture, and leadership.', icon: Briefcase },
+    ];
 
     return (
-        <motion.div
-            variants={pageVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-        >
-            <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.1 }}
-                className="w-20 h-20 mx-auto mb-8 rounded-2xl bg-gradient-to-br from-[var(--primary)] to-[var(--secondary)] flex items-center justify-center"
-            >
-                <Sparkles className="w-10 h-10 text-white" />
-            </motion.div>
+        <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit">
+            <h1 className="text-3xl font-bold mb-2">Choose your Persona</h1>
+            <p className="text-[var(--foreground-muted)] mb-6">How should the AI write for you?</p>
+            <div className="grid grid-cols-1 gap-4">
+                {archetypes.map(a => (
+                    <button key={a.id} onClick={() => updateData({ archetype: a.id as any })} className={`text-left p-5 rounded-xl border-2 transition-all ${data.archetype === a.id ? 'border-[var(--primary)] bg-[var(--primary)]/5' : 'border-[var(--border)] hover:bg-[var(--card)]'}`}>
+                        <div className="flex items-center gap-3 mb-2">
+                            <a.icon className={`w-6 h-6 ${data.archetype === a.id ? 'text-[var(--primary)]' : 'text-[var(--foreground)]'}`} />
+                            <span className="font-bold text-lg">{a.label}</span>
+                        </div>
+                        <p className="text-sm text-[var(--foreground-secondary)]">{a.desc}</p>
+                    </button>
+                ))}
+            </div>
+        </motion.div>
+    );
+}
 
-            <motion.h1
-                className="text-4xl font-bold mb-3 text-center"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15 }}
-            >
-                You're all set!
-            </motion.h1>
-            <motion.p
-                className="text-lg text-[var(--foreground-secondary)] mb-10 text-center"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-            >
-                Here's a summary of your content strategy
-            </motion.p>
 
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.25 }}
-                className="bg-[var(--card)] rounded-2xl p-4 mb-8 border border-[var(--border)]"
-            >
-                <div className="grid gap-4">
-                    <div className="flex justify-between items-center py-2 border-b border-[var(--border)]">
-                        <span className="text-[var(--foreground-secondary)]">Platforms</span>
-                        <span className="font-medium capitalize">{selectedPlatforms.join(', ')}</span>
+
+
+
+
+// Step 9: Connect (Added Auto-Publish)
+function Step9Connect({ data, updateData }: { data: OnboardingData; updateData: (updates: Partial<OnboardingData>) => void }) {
+    const handleConnect = (platform: 'x' | 'linkedin') => {
+        window.location.href = `/api/auth/${platform}/init?redirect=/onboarding`;
+    };
+
+    return (
+        <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit">
+            <h1 className="text-3xl font-bold mb-2">Connect Accounts</h1>
+            <p className="text-[var(--foreground-muted)] mb-8">Link your profiles so we can publish for you.</p>
+
+            <div className="space-y-4">
+                <button onClick={() => handleConnect('x')} disabled={data.connections.x} className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all ${data.connections.x ? 'border-green-500/50 bg-green-500/10' : 'border-[var(--border)] hover:bg-[var(--background-secondary)]'}`}>
+                    <div className="flex items-center gap-4">
+                        <Twitter className="w-5 h-5" />
+                        <div className="text-left">
+                            <div className="font-bold">X (Twitter)</div>
+                            <div className="text-xs opacity-70">{data.connections.x ? 'Connected' : 'Not connected'}</div>
+                        </div>
                     </div>
-                    <div className="flex justify-between items-center py-2 border-b border-[var(--border)]">
-                        <span className="text-[var(--foreground-secondary)]">Industry</span>
-                        <span className="font-medium capitalize">{data.industry || 'Not specified'}</span>
+                    {data.connections.x ? <Check className="text-green-500" /> : <ArrowRight className="text-[var(--muted-foreground)]" />}
+                </button>
+
+                <button onClick={() => handleConnect('linkedin')} disabled={data.connections.linkedin} className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all ${data.connections.linkedin ? 'border-green-500/50 bg-green-500/10' : 'border-[var(--border)] hover:bg-[var(--background-secondary)]'}`}>
+                    <div className="flex items-center gap-4">
+                        <Linkedin className="w-5 h-5" />
+                        <div className="text-left">
+                            <div className="font-bold">LinkedIn</div>
+                            <div className="text-xs opacity-70">{data.connections.linkedin ? 'Connected' : 'Not connected'}</div>
+                        </div>
                     </div>
-                    <div className="flex justify-between items-center py-2 border-b border-[var(--border)]">
-                        <span className="text-[var(--foreground-secondary)]">Goal</span>
-                        <span className="font-medium capitalize">{data.contentGoal.replace('-', ' ') || 'Not specified'}</span>
+                    {data.connections.linkedin ? <Check className="text-green-500" /> : <ArrowRight className="text-[var(--muted-foreground)]" />}
+                </button>
+            </div>
+
+            {/* Auto Publish Toggle (Moved from old step 9) */}
+            <div className="mt-8 pt-8 border-t border-[var(--border)]">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h3 className="font-bold">Auto-Publish</h3>
+                        <p className="text-sm text-[var(--foreground-muted)]">Post automatically at scheduled times?</p>
                     </div>
-                    <div className="flex justify-between items-center py-2 border-b border-[var(--border)]">
-                        <span className="text-[var(--foreground-secondary)]">Cadence</span>
-                        <span className="font-medium capitalize">{data.cadence}</span>
-                    </div>
-                    <div className="flex justify-between items-center py-2">
-                        <span className="text-[var(--foreground-secondary)]">Topics</span>
-                        <span className="font-medium">{data.topics.length} selected</span>
+                    <button
+                        onClick={() => updateData({ autoPublish: !data.autoPublish })}
+                        className={`w-12 h-6 rounded-full transition-colors relative ${data.autoPublish ? 'bg-[var(--primary)]' : 'bg-[var(--border)]'}`}
+                    >
+                        <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${data.autoPublish ? 'translate-x-6' : ''}`} />
+                    </button>
+                </div>
+            </div>
+        </motion.div>
+    );
+}
+
+// Deprecated Old Steps
+function Step9Publishing(props: any) { return null; }
+function Step10Launch(props: any) { return <StepFinal {...props} />; }
+
+// Step 9: Launch (Final)
+function StepFinal({ data, isGenerating, onGenerate, error }: { data: OnboardingData; isGenerating: boolean; onGenerate: () => void; error: string | null }) {
+    // Generate a mock calendar based on selected topics
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+    const mockSchedule = days.map((day, i) => ({
+        day,
+        topic: data.topics[i % data.topics.length] || 'General Strategy',
+        type: i % 2 === 0 ? 'Thought Leadership' : 'Engagement'
+    }));
+
+    return (
+        <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit">
+            <div className="text-center mb-8">
+                <h1 className="text-4xl font-bold mb-2">Strategy Locked 🔒</h1>
+                <p className="text-[var(--foreground-muted)]">Your first week of content is ready to be revealed.</p>
+            </div>
+
+            {/* Visual Calendar */}
+            <div className="max-w-2xl mx-auto grid gap-3 mb-10 relative">
+                {/* Blur Overlay */}
+                <div className="absolute inset-0 bg-[var(--background)]/10 backdrop-blur-[2px] z-10 flex items-center justify-center rounded-xl border border-[var(--border)]/50 pointer-events-none">
+                    <div className="px-6 py-3 bg-[var(--background)]/80 backdrop-blur-md rounded-full shadow-2xl border border-[var(--primary)]/20 flex items-center gap-3">
+                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                        <span className="font-bold text-sm">AI Agent is ready</span>
                     </div>
                 </div>
-            </motion.div>
 
-            {error && (
-                <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-300 text-sm"
-                >
-                    <strong>Error:</strong> {error}
-                </motion.div>
-            )}
-
-            <motion.button
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                onClick={onGenerate}
-                className="w-full btn py-4 text-lg bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] text-white rounded-xl hover:opacity-90 transition-all shadow-lg shadow-[var(--primary)]/25"
-            >
-                <Sparkles className="w-5 h-5" />
-                Generate My First Week
-                <ArrowRight className="w-5 h-5" />
-            </motion.button>
-        </motion.div>
-    );
-}
-
-// Step 8: Connect Accounts
-function StepConnect({ data }: { data: OnboardingData }) {
-    const searchParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
-    const connectedPlatform = searchParams.get('platform');
-    const connectSuccess = searchParams.get('connect') === 'success';
-
-    return (
-        <motion.div
-            variants={pageVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-        >
-            <motion.h1
-                className="text-2xl md:text-3xl font-bold mb-2"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-            >
-                Connect your accounts
-            </motion.h1>
-            <motion.p
-                className="text-base text-[var(--foreground-secondary)] mb-6"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15 }}
-            >
-                We need permission to post content on your behalf.
-            </motion.p>
-
-            <motion.div
-                className="grid gap-4"
-                variants={containerVariants}
-                initial="hidden"
-                animate="show"
-            >
-                {/* X Connection */}
-                {data.platforms.x && (
-                    <motion.div variants={itemVariants} className="p-4 rounded-2xl border border-[var(--border)] bg-[var(--card)] flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-xl bg-black text-white dark:bg-white dark:text-black flex items-center justify-center">
-                                <Twitter className="w-6 h-6" />
-                            </div>
-                            <div>
-                                <h3 className="font-semibold text-lg">X (Twitter)</h3>
-                                <p className="text-sm text-[var(--foreground-secondary)]">Auto-post threads & tweets</p>
+                {mockSchedule.map((item, i) => (
+                    <div key={i} className="flex items-center gap-4 p-4 rounded-xl border border-[var(--border)] bg-[var(--card)]/50 opacity-60">
+                        <div className="w-24 text-sm font-bold opacity-50">{item.day}</div>
+                        <div className="flex-1">
+                            <div className="h-4 w-32 bg-[var(--foreground)]/10 rounded mb-2"></div>
+                            <div className="flex gap-2">
+                                <span className="px-2 py-0.5 rounded text-[10px] bg-[var(--primary)]/10 text-[var(--primary)] font-bold">{item.topic}</span>
+                                <span className="px-2 py-0.5 rounded text-[10px] bg-[var(--border)] text-[var(--foreground-muted)]">{item.type}</span>
                             </div>
                         </div>
-                        {connectSuccess && connectedPlatform === 'x' ? (
-                            <div className="flex items-center gap-2 text-green-500 font-medium px-4 py-2 bg-green-500/10 rounded-lg">
-                                <Check className="w-4 h-4" /> Connected
-                            </div>
-                        ) : (
-                            <a
-                                href="/api/auth/x/init"
-                                className="px-6 py-2 rounded-lg bg-[var(--foreground)] text-[var(--background)] font-medium hover:opacity-90 transition-opacity"
-                            >
-                                Connect
-                            </a>
-                        )}
-                    </motion.div>
-                )}
+                        <div className="w-8 h-8 rounded-full bg-[var(--border)]/50" />
+                    </div>
+                ))}
+            </div>
 
-                {/* LinkedIn Connection */}
-                {data.platforms.linkedin && (
-                    <motion.div variants={itemVariants} className="p-6 rounded-2xl border border-[var(--border)] bg-[var(--card)] flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-xl bg-[#0077b5] text-white flex items-center justify-center">
-                                <Linkedin className="w-6 h-6" />
-                            </div>
-                            <div>
-                                <h3 className="font-semibold text-lg">LinkedIn</h3>
-                                <p className="text-sm text-[var(--foreground-secondary)]">Publish posts & articles</p>
-                            </div>
-                        </div>
-                        {connectSuccess && connectedPlatform === 'linkedin' ? (
-                            <div className="flex items-center gap-2 text-green-500 font-medium px-4 py-2 bg-green-500/10 rounded-lg">
-                                <Check className="w-4 h-4" /> Connected
-                            </div>
-                        ) : (
-                            <a
-                                href="/api/auth/linkedin/init"
-                                className="px-6 py-2 rounded-lg bg-[var(--foreground)] text-[var(--background)] font-medium hover:opacity-90 transition-opacity"
-                            >
-                                Connect
-                            </a>
-                        )}
-                    </motion.div>
-                )}
-
-                {!data.platforms.x && !data.platforms.linkedin && (
-                    <div className="p-6 rounded-xl bg-[var(--background-secondary)] text-center text-[var(--foreground-muted)]">
-                        No platforms selected in Step 1. Please go back and select a platform.
+            <div className="max-w-md mx-auto">
+                {error && (
+                    <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded-xl mb-6 text-sm">
+                        {error}
                     </div>
                 )}
-            </motion.div>
+
+                <button
+                    onClick={onGenerate}
+                    disabled={isGenerating}
+                    className="w-full py-4 text-lg font-bold rounded-xl bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] shadow-xl shadow-[var(--primary)]/30 disabled:opacity-70 disabled:cursor-not-allowed transition-all hover:scale-[1.02] active:scale-[0.98] group relative overflow-hidden"
+                >
+                    <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+                    {isGenerating ? (
+                        <span className="flex items-center justify-center gap-2 relative z-10">
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            Crafting your posts...
+                        </span>
+                    ) : (
+                        <span className="relative z-10 flex items-center justify-center gap-2">
+                            <Sparkles className="w-5 h-5" /> Unlock My Schedule
+                        </span>
+                    )}
+                </button>
+                <p className="mt-4 text-sm text-[var(--foreground-muted)] text-center">Takes about 45 seconds to write 12 posts</p>
+            </div>
         </motion.div>
     );
 }
+

@@ -8,16 +8,38 @@ export const runtime = 'nodejs';
 export const maxDuration = 300; // Allow up to 5 minutes for full batch generation
 
 interface OnboardingData {
+    // Basics
+    name: string;
+    role: string;
+    companyName: string;
+    companyWebsite: string;
+
+    // Strategy
     platforms: {
         x: boolean;
         linkedin: boolean;
-
+    };
+    connections: {
+        x: boolean;
+        linkedin: boolean;
     };
     industry: string;
     targetAudience: string;
+
+    // New Context Fields (mapped to businessDescription for AI/DB)
+    aboutYou: string;
+    personalContext: Array<{ type: string; label: string; value: string }>;
+    productContext: Array<{ type: string; label: string; value: string }>;
+
+    // Legacy support (optional now)
+    businessDescription?: string;
+    expertise: string;
+
     contentGoal: string;
     topics: string[];
-    cadence: 'light' | 'moderate' | 'active';
+
+    // Style
+    archetype: 'builder' | 'teacher' | 'contrarian' | 'executive' | 'custom';
     tone: {
         formality: 'professional' | 'casual';
         boldness: 'bold' | 'measured';
@@ -28,14 +50,16 @@ interface OnboardingData {
         content: string;
         type: 'paste' | 'upload' | 'voicenote' | 'url';
     }[];
-    userContext: {
-        role: string;
-        companyName: string;
-        companyWebsite: string;
-        businessDescription: string;
-        expertise: string;
-    };
+
     autoPublish?: boolean;
+
+    // Subscription & Visuals (New)
+    subscriptionTier?: 'starter' | 'growth' | 'authority';
+    visualMode?: 'none' | 'faceless' | 'clone';
+    style_faceless?: string;
+    style_carousel?: string;
+    style_face?: string;
+    avatar_urls?: string[];
 }
 
 interface ScheduledPost {
@@ -48,33 +72,58 @@ interface ScheduledPost {
 
 interface GeneratedPost {
     content: string;
-    hooks: string[];
-    cta: string | null;
 }
-
-
 
 export async function POST(request: NextRequest) {
     try {
         const body: OnboardingData = await request.json();
 
-        // Ensure userContext has default values
-        const userContext = body.userContext || {
-            role: '',
-            companyName: '',
-            companyWebsite: '',
-            businessDescription: '',
-            expertise: '',
-        };
-        body.userContext = userContext;
-
-        // Validate required fields
-        if (!body.industry || !body.contentGoal || body.topics.length === 0) {
+        // Validate required fields (New check uses aboutYou)
+        if (!body.industry || !body.contentGoal || body.topics.length === 0 || !body.aboutYou) {
             return NextResponse.json(
                 { error: 'Missing required onboarding data' },
                 { status: 400 }
             );
         }
+
+        // Aggregate context into a single string for AI and legacy DB storage
+        let fullContext = body.aboutYou;
+
+        // Helper to scrape if it's a URL
+        const processContextItem = async (label: string, value: string) => {
+            if (value.includes('.') && (value.startsWith('http') || value.startsWith('www'))) {
+                try {
+                    const url = value.startsWith('http') ? value : `https://${value}`;
+                    console.log(`[Onboarding] Scraping context URL: ${url}`);
+                    const scraped = await scrapeWebsite(url);
+                    const summary = extractBusinessSummary(scraped);
+                    return `${label}: ${url}\n[Analyzed Content]: ${summary}`;
+                } catch (e) {
+                    console.warn(`[Onboarding] Failed to scrape ${value}:`, e);
+                    return `${label}: ${value} (Scraping Failed)`;
+                }
+            }
+            return `${label}: ${value}`;
+        };
+
+        if (body.personalContext?.length > 0) {
+            fullContext += '\n\n-- PERSONAL CONTEXT --\n';
+            const personalDetails = await Promise.all(
+                body.personalContext.map(i => processContextItem(i.label || 'Link', i.value))
+            );
+            fullContext += personalDetails.join('\n\n');
+        }
+
+        if (body.productContext?.length > 0) {
+            fullContext += '\n\n-- PRODUCT CONTEXT --\n';
+            const productDetails = await Promise.all(
+                body.productContext.map(i => processContextItem(i.label || 'Link', i.value))
+            );
+            fullContext += productDetails.join('\n\n');
+        }
+
+        // Assign to legacy field for compatibility
+        body.businessDescription = fullContext;
 
         // Get selected platforms
         const selectedPlatforms = Object.entries(body.platforms)
@@ -109,18 +158,18 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Scrape Website if provided
-        if (body.userContext.companyWebsite && body.userContext.companyWebsite.startsWith('http')) {
+        // Scrape Website if provided (Company Website)
+        if (body.companyWebsite && body.companyWebsite.includes('.')) {
             try {
-                console.log('[Onboarding] Scraping website:', body.userContext.companyWebsite);
-                const scraped = await scrapeWebsite(body.userContext.companyWebsite);
+                const url = body.companyWebsite.startsWith('http') ? body.companyWebsite : `https://${body.companyWebsite}`;
+                console.log('[Onboarding] Scraping company website:', url);
+                const scraped = await scrapeWebsite(url);
                 const companyContext = extractBusinessSummary(scraped);
-                console.log('[Onboarding] Scraped summary length:', companyContext.length);
 
-                // Replace URL with scraped text context for AI and Storage
-                body.userContext.companyWebsite = companyContext;
+                // Append scraped context to description context for AI
+                body.businessDescription += `\n\n-- COMPANY WEBSITE --\n${companyContext}`;
             } catch (e) {
-                console.warn('[Onboarding] Failed to scrape website:', e);
+                console.warn('[Onboarding] Failed to scrape company website:', e);
             }
         }
 
@@ -168,79 +217,97 @@ async function generateStrategy(
 ): Promise<{ posts: ScheduledPost[] }> {
     const provider = await getProvider();
 
-    const systemPrompt = `You are an elite content strategist for founders with deep experience in audience psychology, platform mechanics, and leverage-based content systems.
+    // Calculate strict targets
+    const targetX = platforms.includes('x') ? 7 : 0;
+    const targetLi = platforms.includes('linkedin') ? 5 : 0;
+    const totalTarget = targetX + targetLi;
 
-You think like a strategist, not a social media manager.
+    const systemPrompt = `You are an elite content strategist for founders.
 
-Your work prioritizes:
+You specialize in turning a founder’s lived experience, thinking, and POV into high-signal content that builds authority over time.
+
+Your User's Persona:
+- Archetype: ${data.archetype.toUpperCase()}
+- Archetype Description: ${getArchetypeDesc(data.archetype)}
+
+You prioritize:
 - Clarity over cleverness
-- Signal over noise
-- Authority over vanity
-- Consistency over virality
+- Signal over volume
+- Authority over virality
 
-Every post must feel intentional, founder-led, and worth saving.
+Every post should feel intentional, credible, and worth saving.
 
 MISSION  
-Create a 1-week content calendar that positions the user as a credible, thoughtful authority in their space while moving them toward their stated content goal.
+Create a 1-week content calendar that positions the user as a thoughtful, trusted authority with their target audience.
 
-The calendar must:
-- Be realistic to execute
-- Respect platform-specific norms
+The calendar should:
+- Reflect the user’s real expertise and role
 - Build narrative momentum across the week
-- Balance value, authority, and light conversion
+- Balance teaching, perspective, and light conversion
 
 INPUTS YOU WILL RECEIVE
 
-PROFILE:
+- Name: ${data.name}
+- Role: ${data.role}
+- Company: ${data.companyName}
 - Industry: ${data.industry}
-- Primary Content Goal: ${data.contentGoal}
+- Primary Goal: ${data.contentGoal}
 - Core Topics / Pillars: ${data.topics.join(', ')}
-- Platforms: ${platforms.join(', ')}
+- Business Description: ${data.businessDescription}
+- Target Audience: ${data.targetAudience}
 
-USER CONTEXT:
-- Role: ${data.userContext.role}
-- Company: ${data.userContext.companyName}
-- Company Context: ${data.userContext.companyWebsite}
-- Business Description: ${data.userContext.businessDescription}
-- Core Expertise: ${data.userContext.expertise}
+VOICE & STYLE CONSTRAINTS
 
-STRATEGIC CONTENT PRINCIPLES (APPLY BY DEFAULT)
+You MUST mimic the tone, cadence, and framing of the provided voice samples.
 
-Audience sophistication:
+VOICE SAMPLES (REFERENCE ONLY — DO NOT COPY):
+${data.voiceSamples.map((s, i) => `Sample ${i + 1}: ${s.content}`).join('\n\n')}
+
+Apply:
+- Similar sentence length and rhythm
+- Similar level of directness and confidence
+- Similar use of clarity, contrast, and framing
+
+Do NOT:
+- Copy phrases verbatim
+- Introduce jargon not present in the samples
+- Over-polish or “marketing-ize” the voice
+
+CONTENT STRATEGY PRINCIPLES (APPLY BY DEFAULT)
+
 - Write for intelligent peers, not beginners
-- Avoid generic “tips” unless reframed as insights or frameworks
-- Assume the reader is busy, skeptical, and outcome-driven
+- Avoid generic tips or surface-level advice
+- Reframe ideas as insights, lessons, or frameworks
+- Assume the audience is busy and skeptical
 
 Weekly intent mix (guideline, not rigid):
-- 60–70% Educate (teach, explain, reframe)
-- 20–30% Authority (POV, experience, pattern recognition)
-- 10–20% Soft Conversion (invites, not pitches)
+- ~60% Educate (teach, explain, reframe)
+- ~30% Authority (POV, experience, pattern recognition)
+- ~10% Soft Conversion (invites, never salesy)
 
-Platform alignment:
-- LinkedIn: long-form, structured thinking, professional POV
-- X: concise, sharp, single-idea posts
-- No threads. Ever.
+PLATFORM RULES (STRICT)
 
-CALENDAR LOGIC
+X:
+- Single posts only (NO threads)
+- Mix of short and long_form
+- One clear idea per post
+- Concise, sharp, opinionated
 
-- Distribute posts intentionally across the week (no random spacing)
+LinkedIn:
+- Mostly long_form
+- Structured thinking, frameworks, POVs
+- Professional, calm, confident tone
+
+SCHEDULING RULES (NON-NEGOTIABLE)
+
+- Start date: Next Monday
+- TOTAL POSTS TO GENERATE: ${totalTarget}
+${targetX > 0 ? `- X: Exactly ${targetX} posts (1 per day, Mon-Sun)` : ''}
+${targetLi > 0 ? `- LinkedIn: Exactly ${targetLi} posts (1 per day, Mon-Fri)` : ''}
+- Do not schedule posts on weekends for LinkedIn
 - Avoid repeating the same topic on consecutive days
-- Vary formats to prevent fatigue
-- Each post must have a clear strategic reason to exist
 
-SCHEDULE RULES (STRICT NON-NEGOTIABLE):
-
-If Platform is X (Twitter):
-- Schedule exactly 7 posts (1 per day).
-- Format Mix: 3 "long_form" (approx 2400 chars), 4 "single" (short, max 280 chars).
-
-If Platform is LinkedIn:
-- Schedule exactly 5 posts (e.g. Mon-Fri).
-- Format Mix: 3 "long_form", 2 "single" (short).
-
-If BOTH platforms are selected, generate SEPARATE schedules for each according to the rules above (Total 12 posts).
-
-OUTPUT REQUIREMENTS (STRICT)
+OUTPUT FORMAT (STRICT)
 
 Return ONLY a valid JSON object with this structure:
 
@@ -248,50 +315,96 @@ Return ONLY a valid JSON object with this structure:
   "posts": [
     {
       "day": "Monday",
-      "platform": "linkedin",
-      "format": "long_form",
+      "date": "YYYY-MM-DD",
+      "platform": "x" | "linkedin",
+      "format": "single" | "long_form",
       "topic": "Brief but specific topic description",
-      "time": "Best time to post"
+      "intent": "educate" | "authority" | "soft_conversion"
     }
   ]
 }
 
 RULES:
-- Allowed formats only: "single", "long_form", "video_script"
-- Allowed platforms only: "x" or "linkedin"
-- Ensure formats align with platform norms
-  - LinkedIn → long_form preferred
-  - X → single preferred
-- Do NOT schedule threads
-- Do NOT include captions, hooks, copy, or explanations
-- Calendar output only
+- The "posts" array MUST contain EXACTLY ${totalTarget} items.
+- Output calendar only — no explanations
+- Do NOT write post copy
+- Do NOT include hooks, captions, or CTAs
+- Ensure the intent mix roughly follows the strategy principles
+- Every post must have a clear strategic reason to exist
 
 QUALITY BAR (NON-NEGOTIABLE)
 
 Before finalizing, ensure:
 - A credible founder would actually post this
-- Each topic clearly maps to the stated goal
-- The week feels cohesive, not random
-- There is a clear balance between thinking, teaching, and inviting
+- The topics ladder logically across the week
+- The voice matches the provided samples
+- The calendar serves the stated goal clearly
+- YOU HAVE GENERATED EXACTLY ${totalTarget} POSTS.
 
-If required information is missing, make reasonable assumptions and proceed.
+If any required input is missing, make strong, reasonable assumptions and proceed.
 
 Output the JSON. Nothing else.`;
 
     const result = await provider.complete({
-        messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: 'Generate the weekly schedule.' }],
+        messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: 'Generate schedule.' }],
         temperature: 0.7,
         responseFormat: { type: 'json_object' },
     });
 
     try {
-        // Strip markdown code blocks if present
-        const cleanContent = result.content.replace(/```json\n?|\n?```/g, '').trim();
-        return JSON.parse(cleanContent);
+        const cleanContent = extractJson(result.content);
+        const parsed = JSON.parse(cleanContent);
+
+        // Strict Platform Enforcement
+        // The AI sometimes hallucinates platforms even when instructed otherwise.
+        // We force the platform field to match the request.
+
+        if (parsed.posts && Array.isArray(parsed.posts)) {
+            parsed.posts = parsed.posts.map((post: any) => {
+                // If only X requested, force X
+                if (targetX > 0 && targetLi === 0) {
+                    return { ...post, platform: 'x' };
+                }
+                // If only LinkedIn requested, force LinkedIn
+                if (targetLi > 0 && targetX === 0) {
+                    return { ...post, platform: 'linkedin' };
+                }
+
+                // If both, ensure it's one of them, default to X if invalid
+                if (!['x', 'linkedin'].includes(post.platform?.toLowerCase())) {
+                    return { ...post, platform: 'x' }; // Default fallback
+                }
+
+                return post;
+            });
+
+            // Double check counts? 
+            // If we have mixed request, we might want to ensure distribution, but for now 
+            // let's trust the AI's count if it matches totalTarget. 
+            // The main issue is single-platform requests getting mixed results.
+        }
+
+        return parsed;
     } catch (e) {
-        console.error('[Strategy] JSON Parse Error:', e);
-        console.log('[Strategy] Raw Content:', result.content);
+        console.error('Strategy JSON Parse Failed. Content:', result.content);
         throw new Error('Failed to parse strategy JSON');
+    }
+}
+
+function extractJson(text: string): string {
+    const start = text.indexOf('{');
+    const end = text.lastIndexOf('}');
+    if (start === -1 || end === -1) return text; // Fallback to original if no brackets
+    return text.substring(start, end + 1);
+}
+
+function getArchetypeDesc(type: string): string {
+    switch (type) {
+        case 'builder': return 'Build in public. Share wins, losses, and raw lessons.';
+        case 'teacher': return 'Break down complex topics into frameworks and guides.';
+        case 'contrarian': return 'Challenge the status quo. Say what others won\'t.';
+        case 'executive': return 'High-level vision, culture, leadership, and industry trends.';
+        default: return 'Professional and authoritative.';
     }
 }
 
@@ -302,73 +415,169 @@ async function generatePostsBatched(
 ): Promise<Array<ScheduledPost & GeneratedPost>> {
     const provider = await getProvider();
 
-    const systemPrompt = `You are an elite ghostwriter for top founders.
 
-You are writing specific posts based on a provided schedule.
-You must return ALL posts in a SINGLE JSON object.
 
-PLATFORMS & FORMATS:
-- X (Twitter): Max 280 chars, no hashtags.
-- LinkedIn: Professional, 800-1500 chars. Long-form = up to 3000 chars.
+    // Helper function to generate all posts in one go
+    const generateBatch = async (batchSchedule: ScheduledPost[]): Promise<GeneratedPost[]> => {
+        if (batchSchedule.length === 0) return [];
 
-TONE:
-- Role: ${data.userContext.role}
-- Company: ${data.userContext.companyName}
-- Expertise: ${data.userContext.expertise}
-- Style: ${data.tone.style}, ${data.tone.boldness}
+        const count = batchSchedule.length;
+        const systemPrompt = `You are an elite ghostwriter for top founders.
 
-OUTPUT FORMAT (STRICT JSON):
+You write from lived experience, not theory. Your work sounds like a real operator speaking to intelligent peers.
+
+PERSONA (NON-NEGOTIABLE)
+- Archetype: ${data.archetype.toUpperCase()}.
+- Description: ${getArchetypeDesc(data.archetype)}.
+
+Your voice must match this persona exactly — tone, cadence, confidence, and worldview.
+
+VOICE SAMPLES (MIMIC — DO NOT COPY)
+Use the samples below to match:
+- Sentence length and rhythm
+- Level of directness and conviction
+- Use of contrast, framing, and clarity
+
+VOICE SAMPLES:
+${data.voiceSamples.map((s, i) => `Sample ${i + 1}: ${s.content}`).join('\n\n')}
+
+Do NOT reuse phrases, metaphors, or structure verbatim.
+Do NOT introduce jargon not present in the samples.
+
+CONTEXT (WRITE FROM THIS POV)
+- Name: ${data.name}
+- Role: ${data.role}
+- Company: ${data.companyName}
+- Core Expertise: ${data.expertise}
+- Target Audience: ${data.targetAudience}
+
+Assume the audience is smart, busy, skeptical, and already past surface-level advice.
+
+MISSION
+Generate high-conviction, platform-native content that builds authority, trust, and thoughtful engagement.
+
+Your task is to write content for the following CONTENT PLAN:
+${JSON.stringify(batchSchedule.map(p => ({ platform: p.platform, topic: p.topic, length: p.format })), null, 2)}
+
+PLATFORMS & FORMAT CONSTRAINTS (STRICT — NON-NEGOTIABLE)
+
+X (Twitter):
+- Short post: MAX 280 characters (hard cap)
+- Long post: TARGET ~2,400 characters (±5% tolerance)
+- Single post only
+- NO threads under any circumstance
+
+LinkedIn:
+- Short post: TARGET ~1,000 characters (±10% tolerance)
+- Long post: TARGET ~3,000 characters (±10% tolerance)
+- Single post only
+- NO threads under any circumstance
+
+GLOBAL RULES:
+- One post = one standalone update
+- NO threads
+- NO hashtags unless explicitly requested
+- Do NOT include numbered parts, continuations, or “Part 1/2” language
+- Respect character limits precisely for the selected platform and length
+
+GLOBAL WRITING RULES
+
+- Open with a scroll-stopping hook in the first 1–2 lines
+- No fluff, no filler, no corporate jargon
+- Write like you’re talking to a respected peer
+- Bold means conviction, not exaggeration
+- One clear idea per post
+
+HOOKS & CTA
+- Open with a strong hook (first line)
+- End with a natural CTA (final line)
+- Do NOT separate them into different fields. Just write the post.
+
+OUTPUT REQUIREMENTS (STRICT — READ CAREFULLY)
+
+You MUST generate EXACTLY ${count} complete posts matching the CONTENT PLAN above.
+
+Return ONLY a valid JSON object with this structure:
+
 {
   "posts": [
     {
-      "content": "Full post content here...",
-      "hooks": ["Hook 1", "Hook 2"],
-      "cta": "Call to action"
+      "platform": "x" | "linkedin",
+      "content": "Full post content"
     }
   ]
 }
 
-CRITICAL: The "posts" array in your response MUST imply the exact same order as the input schedule. If the input has 12 items, you must return 12 items.
-`;
+RULES:
+- The "posts" array MUST contain exactly ${count} items
+- Content must respect the character limits for its platform and length
+- Do NOT include titles, hashtags, emojis, explanations, or alternatives
+- Output JSON only — nothing before or after
 
-    // Optimize: Strip heavy context to ensure we fit in token window if schedule is large
-    // Sending just the essential fields for each post to the AI
-    const simplifiedSchedule = schedule.map(p => ({
-        platform: p.platform,
-        format: p.format,
-        topic: p.topic
-    }));
+QUALITY BAR (NON-NEGOTIABLE)
 
+Before finalizing, ensure:
+- All posts sound like they were written by the same founder
+- The hook stops the scroll
+- The post has one clear, memorable idea
+- CTAs feel natural and non-pushy
+- No repetition across the generated posts
+
+If any required inputs are missing, make strong assumptions and proceed.
+
+Return the JSON. Nothing else.`;
+
+        // Strip heavy context for the AI input
+        const simplifiedSchedule = batchSchedule.map(p => ({
+            platform: p.platform,
+            format: p.format,
+            topic: p.topic
+        }));
+
+        try {
+            console.log(`[Batch] Generating ${count} posts in single request...`);
+            const result = await provider.complete({
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: 'Generate the posts according to the content plan.' }
+                ],
+                temperature: 0.4,
+                maxTokens: 8192,
+                responseFormat: { type: 'json_object' },
+            });
+
+            const cleanContent = extractJson(result.content);
+            const parsed = JSON.parse(cleanContent);
+            return parsed.posts || [];
+
+        } catch (e) {
+            console.error(`*** BATCH FAILED ***`, e);
+            throw e;
+        }
+    };
+
+    // Execute single batch
     try {
-        const result = await provider.complete({
-            messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: JSON.stringify(simplifiedSchedule) }
-            ],
-            temperature: 0.7,
-            responseFormat: { type: 'json_object' },
-        });
+        const results = await generateBatch(schedule);
 
-        const cleanContent = result.content.replace(/```json\n?|\n?```/g, '').trim();
-        const parsed = JSON.parse(cleanContent);
-
-        // Map back to schedule
         return schedule.map((post, index) => {
-            const generated = parsed.posts[index];
+            const generated = results[index];
             return {
                 ...post,
-                content: generated?.content || 'Generation failed',
-                hooks: generated?.hooks || [],
-                cta: generated?.cta || null
+                content: generated?.content || `Generation failed: Missing content`,
+                hooks: [],
+                cta: null
             };
         });
 
     } catch (e) {
-        console.error('Batch generation failed:', e);
-        // Fallback: Return empty posts so at least the schedule is saved
+        console.error('*** OVERALL GENERATION FAILED ***', e);
+        const errorMessage = e instanceof Error ? e.message : String(e);
+
+        // Fallback
         return schedule.map(post => ({
             ...post,
-            content: 'Generation failed. Please edit.',
+            content: `Generation failed: ${errorMessage}. Please edit.`,
             hooks: [],
             cta: null
         }));
@@ -395,21 +604,36 @@ async function saveToSupabase(
         const { data: updated, error } = await supabase
             .from('founder_profiles')
             .update({
-                name: 'User',
+                name: data.name, // Now using actual name
                 platforms: data.platforms,
+                connections: data.connections, // Save connection state
                 industry: data.industry,
                 target_audience: data.targetAudience,
                 content_goal: data.contentGoal,
                 topics: data.topics,
-                cadence: data.cadence,
-                tone: data.tone,
-                role: data.userContext.role,
-                company_name: data.userContext.companyName,
-                company_website: data.userContext.companyWebsite,
-                business_description: data.userContext.businessDescription,
-                expertise: data.userContext.expertise,
+                // cadence: 'moderate', // Removed from frontend, default
+                tone: data.tone, // Mapping tone object (maybe update this later to include archetype)
+                // We should probably save archetype in metadata or repurpose a column, but for now let's stick to existing
+                role: data.role,
+                company_name: data.companyName,
+                company_website: data.companyWebsite,
+                business_description: data.businessDescription,
+                expertise: data.expertise,
                 auto_publish: data.autoPublish ?? false,
-                updated_at: new Date().toISOString()
+                context_data: {
+                    aboutYou: data.aboutYou,
+                    personalContext: data.personalContext,
+                    productContext: data.productContext
+                },
+                updated_at: new Date().toISOString(),
+
+                // New Fields (Pricing & Visuals)
+                subscription_tier: data.subscriptionTier || 'starter',
+                visual_mode: data.visualMode || 'none',
+                style_faceless: data.style_faceless,
+                style_carousel: data.style_carousel,
+                style_face: data.style_face,
+                avatar_urls: data.avatar_urls,
             })
             .eq('id', existingProfiles[0].id)
             .select()
@@ -431,25 +655,39 @@ async function saveToSupabase(
             .from('founder_profiles')
             .insert({
                 account_id: userId,
-                name: 'User',
+                name: data.name,
                 platforms: data.platforms,
+                connections: data.connections,
                 industry: data.industry,
                 target_audience: data.targetAudience,
                 content_goal: data.contentGoal,
                 topics: data.topics,
-                cadence: data.cadence,
+                // cadence: 'moderate',
                 tone: data.tone,
-                role: data.userContext.role,
-                company_name: data.userContext.companyName,
-                company_website: data.userContext.companyWebsite,
-                business_description: data.userContext.businessDescription,
-                expertise: data.userContext.expertise,
+                role: data.role,
+                company_name: data.companyName,
+                company_website: data.companyWebsite,
+                business_description: data.businessDescription,
+                expertise: data.expertise,
                 auto_publish: data.autoPublish ?? false,
+                context_data: {
+                    aboutYou: data.aboutYou,
+                    personalContext: data.personalContext,
+                    productContext: data.productContext
+                },
                 // Rolling schedule fields
                 next_generation_date: nextGenerationDate.toISOString(),
                 generation_day_of_week: generationDayOfWeek,
                 generation_count: 1, // This is their first week
                 timezone: 'UTC',
+
+                // New Fields (Pricing & Visuals)
+                subscription_tier: data.subscriptionTier || 'starter',
+                visual_mode: data.visualMode || 'none',
+                style_faceless: data.style_faceless,
+                style_carousel: data.style_carousel,
+                style_face: data.style_face,
+                avatar_urls: data.avatar_urls,
             })
             .select()
             .single();
@@ -522,9 +760,6 @@ async function saveToSupabase(
             platform,
             scheduled_date: scheduledDate.toISOString(),
             content: post.content || 'Generated post content',
-            hooks: Array.isArray(post.hooks) ? post.hooks : [post.hooks || 'Hook'],
-            selected_hook: (Array.isArray(post.hooks) ? post.hooks[0] : post.hooks) || '',
-            cta: post.cta || null,
             format,
             status: 'scheduled',
         };

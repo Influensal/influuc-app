@@ -15,17 +15,33 @@ export interface Post {
     content: string;
     type: PostType;
     duration?: string;
+    status: string;
 }
 
 interface UserProfile {
     id: string;
     name: string;
+    role?: string;
+    companyName?: string;
+    companyWebsite?: string;
+    businessDescription?: string;
+    targetAudience?: string;
     platforms: {
+        x: boolean;
+        linkedin: boolean;
+    };
+    connections?: {
         x: boolean;
         linkedin: boolean;
     };
     industry?: string;
     contentGoal?: string;
+    autoPublish?: boolean;
+    contextData?: {
+        aboutYou: string;
+        personalContext: Array<{ id: string; type: string; label: string; value: string }>;
+        productContext: Array<{ id: string; type: string; label: string; value: string }>;
+    };
 }
 
 interface PostContextType {
@@ -51,6 +67,7 @@ function convertDbPost(dbPost: {
     content: string;
     format: string;
     hooks?: string[];
+    status?: string;
 }): Post {
     const platformMap: Record<string, Platform> = {
         'linkedin': 'LinkedIn',
@@ -75,6 +92,7 @@ function convertDbPost(dbPost: {
         content: content.split('\n').slice(1).join('\n').substring(0, 100) || content.substring(0, 100),
         type: typeMap[dbPost.format] || 'Single Post',
         duration: dbPost.format === 'video_script' ? '0:30' : undefined,
+        status: dbPost.status || 'scheduled',
     };
 }
 
@@ -90,8 +108,29 @@ export function PostProvider({ children }: { children: ReactNode }) {
             // Fetch profile first
             const profileRes = await fetch('/api/profile');
             if (profileRes.ok) {
-                const profileData = await profileRes.json();
-                setProfile(profileData.profile);
+                const data = await profileRes.json();
+                const dbProfile = data.profile;
+
+                if (dbProfile) {
+                    setProfile({
+                        id: dbProfile.id,
+                        name: dbProfile.name,
+                        role: dbProfile.role,
+                        companyName: dbProfile.company_name,
+                        companyWebsite: dbProfile.company_website,
+                        businessDescription: dbProfile.business_description,
+                        targetAudience: dbProfile.target_audience,
+                        industry: dbProfile.industry,
+                        contentGoal: dbProfile.weekly_goal, // mapping weekly_goal to contentGoal
+                        platforms: {
+                            x: dbProfile.platforms?.x || false,
+                            linkedin: dbProfile.platforms?.linkedin || false,
+                        },
+                        connections: dbProfile.connections || { x: false, linkedin: false },
+                        autoPublish: dbProfile.auto_publish || false,
+                        contextData: dbProfile.context_data || { aboutYou: '', personalContext: [], productContext: [] }
+                    });
+                }
             }
 
             // Then fetch posts
@@ -126,7 +165,7 @@ export function PostProvider({ children }: { children: ReactNode }) {
 
     const getPostsForToday = () => {
         return posts
-            .filter((post) => isToday(post.scheduledTime))
+            .filter((post) => isToday(post.scheduledTime) && post.status !== 'posted')
             .sort((a, b) => a.scheduledTime.getTime() - b.scheduledTime.getTime());
     };
 

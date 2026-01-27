@@ -49,27 +49,54 @@ export class AnthropicProvider implements AIProviderInterface {
             requestBody.temperature = options.temperature;
         }
 
-        const response = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-api-key': this.apiKey,
-                'anthropic-version': '2023-06-01',
-            },
-            body: JSON.stringify(requestBody),
-        });
+        let lastError: Error | null = null;
+        const maxRetries = 3;
 
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(`Anthropic API error: ${error.error?.message || JSON.stringify(error)}`);
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            try {
+                if (attempt > 0) {
+                    const delay = Math.pow(2, attempt) * 1000;
+                    console.log(`[Anthropic] Provider overloaded/error. Retrying in ${delay}ms (Attempt ${attempt}/${maxRetries})...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+
+                const response = await fetch('https://api.anthropic.com/v1/messages', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': this.apiKey,
+                        'anthropic-version': '2023-06-01',
+                    },
+                    body: JSON.stringify(requestBody),
+                });
+
+                if (response.status === 529 || response.status >= 500) {
+                    const errorText = await response.text();
+                    throw new Error(`Anthropic Server Error (${response.status}): ${errorText}`);
+                }
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(`Anthropic API error: ${error.error?.message || JSON.stringify(error)}`);
+                }
+
+                const data = await response.json();
+
+                return {
+                    content: data.content[0]?.text || '',
+                    provider: 'anthropic',
+                    tokensUsed: (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0),
+                };
+            } catch (error) {
+                lastError = error instanceof Error ? error : new Error(String(error));
+                // If it's not a server error (e.g. 400 Bad Request), throw immediately
+                if (lastError.message.includes('Anthropic API error')) throw lastError;
+
+                // If last attempt, throw
+                if (attempt === maxRetries) throw lastError;
+            }
         }
 
-        const data = await response.json();
-
-        return {
-            content: data.content[0]?.text || '',
-            provider: 'anthropic',
-            tokensUsed: (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0),
-        };
+        throw lastError;
     }
 }

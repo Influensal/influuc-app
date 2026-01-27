@@ -47,32 +47,42 @@ export default function LibraryPage() {
     }, []);
 
     const fetchPosts = async () => {
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
+        try {
+            const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getUser();
 
-        if (!user) return;
+            if (!user) {
+                setLoading(false);
+                return;
+            }
 
-        // Get profile first
-        const { data: profile } = await supabase
-            .from('founder_profiles')
-            .select('id')
-            .eq('account_id', user.id)
-            .single();
+            // Get profile first
+            const { data: profile } = await supabase
+                .from('founder_profiles')
+                .select('id')
+                .eq('account_id', user.id)
+                .single();
 
-        if (!profile) return;
+            if (!profile) {
+                setLoading(false);
+                return;
+            }
 
-        // Get all posts including archived
-        const { data: postsData, error } = await supabase
-            .from('posts')
-            .select('*')
-            .eq('profile_id', profile.id)
-            .order('scheduled_date', { ascending: false });
+            // Get all posts including archived
+            const { data: postsData, error } = await supabase
+                .from('posts')
+                .select('*')
+                .eq('profile_id', profile.id)
+                .order('scheduled_date', { ascending: false });
 
-        if (!error && postsData) {
-            setPosts(postsData);
+            if (!error && postsData) {
+                setPosts(postsData);
+            }
+        } catch (error) {
+            console.error('Failed to fetch library:', error);
+        } finally {
+            setLoading(false);
         }
-
-        setLoading(false);
     };
 
     // Filter and sort posts
@@ -231,8 +241,8 @@ export default function LibraryPage() {
                         <button
                             onClick={() => setSelectedPlatform('all')}
                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${selectedPlatform === 'all'
-                                    ? 'bg-[var(--primary)] text-white'
-                                    : 'bg-[var(--background)] text-[var(--muted-foreground)] hover:bg-[var(--background)]/80'
+                                ? 'bg-[var(--primary)] text-white'
+                                : 'bg-[var(--background)] text-[var(--muted-foreground)] hover:bg-[var(--background)]/80'
                                 }`}
                         >
                             All
@@ -240,8 +250,8 @@ export default function LibraryPage() {
                         <button
                             onClick={() => setSelectedPlatform('x')}
                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${selectedPlatform === 'x'
-                                    ? 'bg-black text-white'
-                                    : 'bg-[var(--background)] text-[var(--muted-foreground)] hover:bg-[var(--background)]/80'
+                                ? 'bg-black text-white'
+                                : 'bg-[var(--background)] text-[var(--muted-foreground)] hover:bg-[var(--background)]/80'
                                 }`}
                         >
                             <Twitter className="w-4 h-4" />
@@ -250,8 +260,8 @@ export default function LibraryPage() {
                         <button
                             onClick={() => setSelectedPlatform('linkedin')}
                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${selectedPlatform === 'linkedin'
-                                    ? 'bg-[#0077b5] text-white'
-                                    : 'bg-[var(--background)] text-[var(--muted-foreground)] hover:bg-[var(--background)]/80'
+                                ? 'bg-[#0077b5] text-white'
+                                : 'bg-[var(--background)] text-[var(--muted-foreground)] hover:bg-[var(--background)]/80'
                                 }`}
                         >
                             <Linkedin className="w-4 h-4" />
@@ -319,8 +329,8 @@ export default function LibraryPage() {
                                     <div className="flex items-start gap-4">
                                         {/* Platform Icon */}
                                         <div className={`p-2 rounded-lg ${post.platform === 'x'
-                                                ? 'bg-black text-white'
-                                                : 'bg-[#0077b5] text-white'
+                                            ? 'bg-black text-white'
+                                            : 'bg-[#0077b5] text-white'
                                             }`}>
                                             {getPlatformIcon(post.platform)}
                                         </div>

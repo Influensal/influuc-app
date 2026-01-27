@@ -122,15 +122,12 @@ export default function XCalendarPage() {
                     </p>
                 </div>
 
-                <button className="btn btn-primary">
-                    <Plus className="w-4 h-4" />
-                    New Post
-                </button>
+                <div></div>
             </div>
 
             {/* Posts List */}
             <div className="space-y-4">
-                {posts.map((post) => {
+                {posts.filter(p => p.status !== 'posted').map((post) => {
                     const scheduledDate = parseISO(post.scheduled_date);
                     const isPosted = post.status === 'posted';
 
@@ -219,33 +216,22 @@ export default function XCalendarPage() {
                             </div>
 
                             {/* Modal Footer */}
-                            <div className="p-6 border-t border-[var(--border)] flex items-center gap-3">
+                            <div className="p-6 border-t border-[var(--border)]">
                                 <button
                                     onClick={() => handleCopy(selectedPost.content)}
-                                    className="flex-1 btn btn-primary py-3"
+                                    className="w-full py-4 rounded-xl font-semibold text-lg bg-white text-black hover:bg-gray-200 transition-all flex items-center justify-center gap-2 shadow-lg"
                                 >
                                     {copied ? (
                                         <>
-                                            <Check className="w-4 h-4" />
-                                            Copied!
+                                            <Check className="w-5 h-5" />
+                                            Copied to Clipboard
                                         </>
                                     ) : (
                                         <>
-                                            <Copy className="w-4 h-4" />
+                                            <Copy className="w-5 h-5" />
                                             Copy Post
                                         </>
                                     )}
-                                </button>
-                                <button
-                                    onClick={() => handleMarkPosted(selectedPost.id)}
-                                    disabled={selectedPost.status === 'posted'}
-                                    className={`flex-1 btn py-3 ${selectedPost.status === 'posted'
-                                            ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 cursor-not-allowed'
-                                            : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                                        }`}
-                                >
-                                    <CheckCircle2 className="w-4 h-4" />
-                                    {selectedPost.status === 'posted' ? 'Posted' : 'Mark as Posted'}
                                 </button>
                             </div>
                         </motion.div>
