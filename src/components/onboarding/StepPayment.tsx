@@ -68,7 +68,11 @@ export default function StepPayment({ data, updateData, onNext }: StepPaymentPro
 
     const handleSelect = async (planId: string) => {
         setIsLoading(planId);
-        updateData({ subscriptionTier: planId });
+        const updatedData = { ...data, subscriptionTier: planId };
+        updateData(updatedData);
+
+        // Save to temp storage to persist across redirect
+        localStorage.setItem('onboarding_temp_data', JSON.stringify(updatedData));
 
         try {
             const response = await fetch('/api/stripe/checkout', {

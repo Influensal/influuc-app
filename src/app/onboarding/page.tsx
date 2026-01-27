@@ -186,7 +186,16 @@ export default function OnboardingPage() {
             const supabase = createClient();
             const { data: { user } } = await supabase.auth.getUser();
             const params = new URLSearchParams(window.location.search);
-            const isRedirect = params.get('connect') === 'success' || !!params.get('error');
+            const isRedirect = params.get('connect') === 'success' || !!params.get('error') || !!params.get('payment');
+
+            // DEBUG: Identify why redirect logic fails
+            if (window.location.search.includes('payment') || window.location.search.includes('connect')) {
+                alert(`DEBUG: Redirect Detected
+                Params: ${window.location.search}
+                isRedirect: ${isRedirect}
+                LocalStorage: ${localStorage.getItem('onboarding_temp_data') ? 'Found' : 'Missing'}
+                `);
+            }
 
             let loadedData = initialData; // Start clean
 
@@ -245,7 +254,16 @@ export default function OnboardingPage() {
 
             // Then Set Step (Delay slightly to ensure render if needed, but here sync is fine)
             if (isRedirect) {
-                setCurrentStep(8); // Force Step 8 (Connect) - shifted from 9
+                // Handle Payment Redirects
+                if (params.get('payment') === 'success') {
+                    setCurrentStep(11); // Move to Visual Setup
+                } else if (params.get('payment') === 'cancelled') {
+                    setCurrentStep(10); // Back to Payment to try again
+                    setError('Payment was cancelled.');
+                } else {
+                    // Auth Redirect
+                    setCurrentStep(8); // Force Step 8 (Connect)
+                }
             } else {
                 // Optional: Restore last step? For now start at 1 or keep logic simple.
                 // If data is filled, maybe jump? 
