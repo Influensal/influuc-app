@@ -79,15 +79,19 @@ export default function StepPayment({ data, updateData, onNext }: StepPaymentPro
 
             const result = await response.json();
 
+            if (!response.ok) {
+                throw new Error(result.error || 'Failed to create checkout session');
+            }
+
             if (result.url) {
                 window.location.href = result.url;
             } else {
-                console.error('No Checkout URL returned');
-                setIsLoading(null);
+                throw new Error('No checkout URL received');
             }
         } catch (error) {
             console.error('Checkout failed', error);
             setIsLoading(null);
+            alert(`Payment Error: ${(error as Error).message}. Please try again.`);
         }
     };
 

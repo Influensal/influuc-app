@@ -5,10 +5,11 @@ import { createClient } from '@/utils/supabase/server';
 
 // Map internal tier IDs to your actual Stripe Price IDs
 // YOU MUST REPLACE THESE WITH YOUR REAL STRIPE PRICE IDs FROM YOUR DASHBOARD
+// YOU MUST REPLACE THESE WITH YOUR REAL STRIPE PRICE IDs FROM YOUR DASHBOARD
 const PRICE_IDS = {
-    starter: process.env.STRIPE_PRICE_ID_STARTER || 'price_1Q...',
-    growth: process.env.STRIPE_PRICE_ID_GROWTH || 'price_1Q...',
-    authority: process.env.STRIPE_PRICE_ID_AUTHORITY || 'price_1Q...',
+    starter: process.env.STRIPE_PRICE_ID_STARTER,
+    growth: process.env.STRIPE_PRICE_ID_GROWTH,
+    authority: process.env.STRIPE_PRICE_ID_AUTHORITY,
 };
 
 export async function POST(req: NextRequest) {
@@ -16,8 +17,11 @@ export async function POST(req: NextRequest) {
         const { tier } = await req.json();
         const priceId = PRICE_IDS[tier as keyof typeof PRICE_IDS];
 
+        console.log(`[Checkout] Attempting to create session for Tier: ${tier}, PriceID: ${priceId}`);
+
         if (!priceId) {
-            return NextResponse.json({ error: 'Invalid tier or missing Price ID' }, { status: 400 });
+            console.error(`[Checkout] Missing Price ID for tier: ${tier}. Check .env.local variables.`);
+            return NextResponse.json({ error: 'Invalid tier or missing Price ID configuration' }, { status: 400 });
         }
 
         const supabase = await createClient();
