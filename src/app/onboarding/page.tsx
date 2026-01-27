@@ -204,15 +204,21 @@ export default function OnboardingPage() {
             // 2. If Normal load (Logged in), prioritize USER SAVED data.
 
             if (isRedirect) {
-                // Redirect Case: We just came back from X/LinkedIn. Data MUST be in temp.
+                // Redirect Case: We just came back from X/LinkedIn/Stripe.
+                // Priority 1: Temp Data (most recent in-memory state)
                 const tempData = localStorage.getItem('onboarding_temp_data');
+
+                // Priority 2: Saved Data (persisted user state)
+                const savedData = user ? localStorage.getItem(`onboarding_data_${user?.id}`) : null;
+
                 if (tempData) {
                     try {
                         loadedData = JSON.parse(tempData);
-                        console.log('[Onboarding] Restored TEMP data after redirect');
-                    } catch (e) {
-                        console.error('Failed to parse temp data', e);
-                    }
+                    } catch (e) { console.error('Failed to parse temp data', e); }
+                } else if (savedData) {
+                    try {
+                        loadedData = JSON.parse(savedData);
+                    } catch (e) { console.error('Failed to parse saved data', e); }
                 }
             } else if (user) {
                 // Normal Load Case: Check user saved data first
