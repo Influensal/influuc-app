@@ -178,6 +178,7 @@ export default function OnboardingPage() {
     const [currentStep, setCurrentStep] = useState(1);
     const [data, setData] = useState<OnboardingData>(initialData);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [isRestoringSession, setIsRestoringSession] = useState(true); // New loading state
     const [error, setError] = useState<string | null>(null);
 
     // Initial Load & URL Params Check
