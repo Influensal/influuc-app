@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -13,6 +13,8 @@ export default function LoginPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const returnUrl = searchParams.get('returnUrl') || '/dashboard';
     const supabase = createClient();
 
     const handleLogin = async (e: React.FormEvent) => {
@@ -31,7 +33,7 @@ export default function LoginPage() {
                 return;
             }
 
-            router.push('/dashboard');
+            router.push(returnUrl);
             router.refresh();
         } catch (err) {
             setError('An unexpected error occurred');
@@ -46,7 +48,8 @@ export default function LoginPage() {
             const { error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    redirectTo: `${window.location.origin}/auth/callback`,
+                    // Pass returnUrl as 'next' so auth callback knows where to redirect
+                    redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(returnUrl)}`,
                 },
             });
             if (error) throw error;
