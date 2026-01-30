@@ -448,13 +448,15 @@ export default function OnboardingPage() {
     // KEYBOARD NAVIGATION
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Enter') {
-                // Ignore if in textarea (needs new lines)
-                if (document.activeElement?.tagName === 'TEXTAREA') return;
+            if (e.key === 'Enter' && !e.shiftKey) {
                 // Ignore if in <a> or <button> (native behavior handles click)
                 if (document.activeElement?.tagName === 'BUTTON' || document.activeElement?.tagName === 'A') return;
 
+                // Stop inputs/textareas from doing their default 'Enter' behavior if we are navigating
+                // But only if we can actually proceed (otherwise let them type)
                 if (canProceed() && currentStep < 10) {
+                    e.preventDefault(); // Stop newline in textarea
+
                     if (currentStep === 9 && data.subscriptionTier === 'starter') {
                         handleGenerate();
                         return;
