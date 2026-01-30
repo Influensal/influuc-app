@@ -182,64 +182,44 @@ export default function OnboardingPage() {
     const [error, setError] = useState<string | null>(null);
 
     // Initial Load & URL Params Check
+    // Initial Load & URL Params Check
     useEffect(() => {
         const init = async () => {
+            let loadedData = initialData;
+            const params = new URLSearchParams(window.location.search);
+
+            // 1. ROBUST AUTH CHECK (Don't let this crash the app)
+            let user = null;
             try {
                 const supabase = createClient();
-                const { data: { user } } = await supabase.auth.getUser();
-                const params = new URLSearchParams(window.location.search);
-                const isRedirect = params.get('connect') === 'success' || !!params.get('error') || !!params.get('payment');
+                const { data } = await supabase.auth.getUser();
+                user = data.user;
+            } catch (authErr) {
+                console.warn('[Onboarding] Auth check failed, proceeding as guest/redirect', authErr);
+            }
 
-                // DEBUG: Identify why redirect logic fails
-                if (window.location.search.includes('payment') || window.location.search.includes('connect')) {
-                    alert(`DEBUG: Redirect Detected
-                    Params: ${window.location.search}
-                    isRedirect: ${isRedirect}
-                    LocalStorage: ${localStorage.getItem('onboarding_temp_data') ? 'Found' : 'Missing'}
-                    User: ${user ? 'Logged In' : 'NOT LOGGED IN'}
-                    `);
-                }
+            const isRedirect = params.get('connect') === 'success' || !!params.get('error') || !!params.get('payment');
 
-                let loadedData = initialData; // Start clean
-
-                // STRATEGY: 
-                // 1. If Redirecting back (Auth flow), prioritize TEMP data (most recent).
-                // 2. If Normal load (Logged in), prioritize USER SAVED data.
-
+            // 2. ROBUST DATA LOADING (Swallow all errors, fallback to initialData)
+            try {
                 if (isRedirect) {
-                    // Redirect Case: We just came back from X/LinkedIn/Stripe.
-                    // Priority 1: Temp Data (most recent in-memory state)
                     const tempData = localStorage.getItem('onboarding_temp_data');
-
-                    // Priority 2: Saved Data (persisted user state)
                     const savedData = user ? localStorage.getItem(`onboarding_data_${user?.id}`) : null;
 
                     if (tempData) {
-                        try {
-                            loadedData = JSON.parse(tempData);
-                        } catch (e) { console.error('Failed to parse temp data', e); }
+                        try { loadedData = JSON.parse(tempData); } catch (e) { console.error('Parsed temp error', e); }
                     } else if (savedData) {
-                        try {
-                            loadedData = JSON.parse(savedData);
-                        } catch (e) { console.error('Failed to parse saved data', e); }
+                        try { loadedData = JSON.parse(savedData); } catch (e) { console.error('Parsed saved error', e); }
                     }
                 } else if (user) {
-                    // Normal Load Case: Check user saved data first
                     const savedData = localStorage.getItem(`onboarding_data_${user.id}`);
                     if (savedData) {
-                        try {
-                            loadedData = JSON.parse(savedData);
-                            console.log('[Onboarding] Restored USER Saved data');
-                        } catch (e) {
-                            console.error('Failed to parse user data', e);
-                        }
+                        try { loadedData = JSON.parse(savedData); } catch (e) { }
                     } else {
-                        // Fallback to temp if no user data found (e.g. reload before save)
+                        // Try temp as fallback
                         const tempData = localStorage.getItem('onboarding_temp_data');
                         if (tempData) {
-                            try {
-                                loadedData = JSON.parse(tempData);
-                            } catch (e) { }
+                            try { loadedData = JSON.parse(tempData); } catch (e) { }
                         }
                     }
                 }
@@ -257,52 +237,57 @@ export default function OnboardingPage() {
                         };
                     }
                 }
-
-                // Set Data First
-                setData(loadedData);
-
-                // Then Set Step
-                if (isRedirect) {
-                    // Handle Payment Redirects
-                    if (params.get('payment') === 'success') {
-                        setCurrentStep(11); // Move to Visual Setup
-                    } else if (params.get('payment') === 'cancelled') {
-                        setCurrentStep(10); // Back to Payment to try again
-                        setError('Payment was cancelled.');
-                    } else {
-                        // Auth Redirect
-                        setCurrentStep(8); // Force Step 8 (Connect)
-                    }
-                } else if (params.get('test_mode') === 'true') {
-                    // FAST TRACK FOR TESTING
-                    console.log('⚡ FAST TRACK ACTIVE');
-                    setData({
-                        ...initialData,
-                        name: "Test User",
-                        role: "Founder",
-                        companyName: "Test Co",
-                        companyWebsite: "https://example.com",
-                        platforms: { x: true, linkedin: true },
-                        connections: { x: true, linkedin: true },
-                        industry: "SaaS",
-                        targetAudience: "Founders",
-                        aboutYou: "Building cool stuff",
-                        contentGoal: "Growth",
-                        topics: ["Tech", "Business"],
-                        archetype: "builder",
-                        tone: initialData.tone
-                    });
-                    setCurrentStep(10); // Jump to Payment
-                }
-            } catch (err) {
-                console.error('[Onboarding] Init error:', err);
-                setError('Failed to load session. Please refresh.');
-            } finally {
-                // ALWAYS enable UI, even on error
-                setIsRestoringSession(false);
+            } catch (dataErr) {
+                console.error('[Onboarding] Critical data load error', dataErr);
+                // Keep loadedData as initialData
             }
+
+            // 3. FAST TRACK MOCK DATA (If data needed for testing)
+            if (params.get('test_mode') === 'true') {
+                console.log('⚡ FAST TRACK ACTIVE');
+                loadedData = {
+                    ...initialData,
+                    name: "Test User",
+                    role: "Founder",
+                    companyName: "Test Co",
+                    companyWebsite: "https://example.com",
+                    platforms: { x: true, linkedin: true },
+                    connections: { x: true, linkedin: true },
+                    industry: "SaaS",
+                    targetAudience: "Founders",
+                    aboutYou: "Building cool stuff",
+                    contentGoal: "Growth",
+                    topics: ["Tech", "Business"],
+                    archetype: "builder",
+                    tone: initialData.tone
+                };
+            }
+
+            // 4. SET DATA
+            setData(loadedData);
+
+            // 5. SET STEP - THE CRITICAL PART
+            // We do this LAST to ensure data is ready, but OUTSIDE any try/catch blocks that might fail.
+            if (params.get('payment') === 'success') {
+                console.log('💰 Payment Success Detected -> Forcing Step 11');
+                setCurrentStep(11);
+            } else if (params.get('payment') === 'cancelled') {
+                setCurrentStep(10);
+                setError('Payment was cancelled.');
+            } else if (params.get('test_mode') === 'true') {
+                setCurrentStep(10);
+            } else if (isRedirect && !params.get('payment')) {
+                // Auth/Connect redirect
+                setCurrentStep(8);
+            } else {
+                // Default normal load
+                // Optional: Restore logic here if we want to remember last step
+            }
+
+            setIsRestoringSession(false);
         };
 
+        // Run immediately
         init();
     }, []);
 
