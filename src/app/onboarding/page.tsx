@@ -283,14 +283,6 @@ export default function OnboardingPage() {
         init();
     }, []);
 
-    if (isRestoringSession) {
-        return (
-            <div className="flex h-screen items-center justify-center bg-[var(--background)] text-white">
-                <Loader2 className="w-10 h-10 animate-spin text-[var(--primary)]" />
-            </div>
-        );
-    }
-
     // Persistence on Change
     useEffect(() => {
         const save = async () => {
@@ -309,6 +301,15 @@ export default function OnboardingPage() {
         };
         save();
     }, [data]);
+
+    // Loading UI - MUST be after all hooks to follow Rules of Hooks
+    if (isRestoringSession) {
+        return (
+            <div className="flex h-screen items-center justify-center bg-[var(--background)] text-white">
+                <Loader2 className="w-10 h-10 animate-spin text-[var(--primary)]" />
+            </div>
+        );
+    }
 
     const handleSignOut = async () => {
         try {
