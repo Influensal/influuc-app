@@ -184,100 +184,103 @@ export default function OnboardingPage() {
     // Initial Load & URL Params Check
     useEffect(() => {
         const init = async () => {
-            const supabase = createClient();
-            const { data: { user } } = await supabase.auth.getUser();
-            const params = new URLSearchParams(window.location.search);
-            const isRedirect = params.get('connect') === 'success' || !!params.get('error') || !!params.get('payment');
+            try {
+                const supabase = createClient();
+                const { data: { user } } = await supabase.auth.getUser();
+                const params = new URLSearchParams(window.location.search);
+                const isRedirect = params.get('connect') === 'success' || !!params.get('error') || !!params.get('payment');
 
-            // DEBUG: Identify why redirect logic fails
-            if (window.location.search.includes('payment') || window.location.search.includes('connect')) {
-                alert(`DEBUG: Redirect Detected
-                Params: ${window.location.search}
-                isRedirect: ${isRedirect}
-                LocalStorage: ${localStorage.getItem('onboarding_temp_data') ? 'Found' : 'Missing'}
-                `);
-            }
-
-            let loadedData = initialData; // Start clean
-
-            // STRATEGY: 
-            // 1. If Redirecting back (Auth flow), prioritize TEMP data (most recent).
-            // 2. If Normal load (Logged in), prioritize USER SAVED data.
-
-            if (isRedirect) {
-                // Redirect Case: We just came back from X/LinkedIn/Stripe.
-                // Priority 1: Temp Data (most recent in-memory state)
-                const tempData = localStorage.getItem('onboarding_temp_data');
-
-                // Priority 2: Saved Data (persisted user state)
-                const savedData = user ? localStorage.getItem(`onboarding_data_${user?.id}`) : null;
-
-                if (tempData) {
-                    try {
-                        loadedData = JSON.parse(tempData);
-                    } catch (e) { console.error('Failed to parse temp data', e); }
-                } else if (savedData) {
-                    try {
-                        loadedData = JSON.parse(savedData);
-                    } catch (e) { console.error('Failed to parse saved data', e); }
+                // DEBUG: Identify why redirect logic fails
+                if (window.location.search.includes('payment') || window.location.search.includes('connect')) {
+                    alert(`DEBUG: Redirect Detected
+                    Params: ${window.location.search}
+                    isRedirect: ${isRedirect}
+                    LocalStorage: ${localStorage.getItem('onboarding_temp_data') ? 'Found' : 'Missing'}
+                    User: ${user ? 'Logged In' : 'NOT LOGGED IN'}
+                    `);
                 }
-            } else if (user) {
-                // Normal Load Case: Check user saved data first
-                const savedData = localStorage.getItem(`onboarding_data_${user.id}`);
-                if (savedData) {
-                    try {
-                        loadedData = JSON.parse(savedData);
-                        console.log('[Onboarding] Restored USER Saved data');
-                    } catch (e) {
-                        console.error('Failed to parse user data', e);
-                    }
-                } else {
-                    // Fallback to temp if no user data found (e.g. reload before save)
+
+                let loadedData = initialData; // Start clean
+
+                // STRATEGY: 
+                // 1. If Redirecting back (Auth flow), prioritize TEMP data (most recent).
+                // 2. If Normal load (Logged in), prioritize USER SAVED data.
+
+                if (isRedirect) {
+                    // Redirect Case: We just came back from X/LinkedIn/Stripe.
+                    // Priority 1: Temp Data (most recent in-memory state)
                     const tempData = localStorage.getItem('onboarding_temp_data');
+
+                    // Priority 2: Saved Data (persisted user state)
+                    const savedData = user ? localStorage.getItem(`onboarding_data_${user?.id}`) : null;
+
                     if (tempData) {
                         try {
                             loadedData = JSON.parse(tempData);
-                        } catch (e) { }
+                        } catch (e) { console.error('Failed to parse temp data', e); }
+                    } else if (savedData) {
+                        try {
+                            loadedData = JSON.parse(savedData);
+                        } catch (e) { console.error('Failed to parse saved data', e); }
+                    }
+                } else if (user) {
+                    // Normal Load Case: Check user saved data first
+                    const savedData = localStorage.getItem(`onboarding_data_${user.id}`);
+                    if (savedData) {
+                        try {
+                            loadedData = JSON.parse(savedData);
+                            console.log('[Onboarding] Restored USER Saved data');
+                        } catch (e) {
+                            console.error('Failed to parse user data', e);
+                        }
+                    } else {
+                        // Fallback to temp if no user data found (e.g. reload before save)
+                        const tempData = localStorage.getItem('onboarding_temp_data');
+                        if (tempData) {
+                            try {
+                                loadedData = JSON.parse(tempData);
+                            } catch (e) { }
+                        }
                     }
                 }
-            }
 
-            // Apply platform connection success state to data
-            if (params.get('connect') === 'success') {
-                const platform = params.get('platform');
-                if (platform === 'x' || platform === 'linkedin') {
-                    loadedData = {
-                        ...loadedData,
-                        connections: {
-                            ...loadedData.connections,
-                            [platform]: true
-                        }
-                    };
+                // Apply platform connection success state to data
+                if (params.get('connect') === 'success') {
+                    const platform = params.get('platform');
+                    if (platform === 'x' || platform === 'linkedin') {
+                        loadedData = {
+                            ...loadedData,
+                            connections: {
+                                ...loadedData.connections,
+                                [platform]: true
+                            }
+                        };
+                    }
                 }
-            }
 
-            // Set Data First
-            setData(loadedData);
+                // Set Data First
+                setData(loadedData);
 
-            // Then Set Step (Delay slightly to ensure render if needed, but here sync is fine)
-            if (isRedirect) {
-                // Handle Payment Redirects
-                if (params.get('payment') === 'success') {
-                    setCurrentStep(11); // Move to Visual Setup
-                } else if (params.get('payment') === 'cancelled') {
-                    setCurrentStep(10); // Back to Payment to try again
-                    setError('Payment was cancelled.');
-                } else {
-                    // Auth Redirect
-                    setCurrentStep(8); // Force Step 8 (Connect)
+                // Then Set Step
+                if (isRedirect) {
+                    // Handle Payment Redirects
+                    if (params.get('payment') === 'success') {
+                        setCurrentStep(11); // Move to Visual Setup
+                    } else if (params.get('payment') === 'cancelled') {
+                        setCurrentStep(10); // Back to Payment to try again
+                        setError('Payment was cancelled.');
+                    } else {
+                        // Auth Redirect
+                        setCurrentStep(8); // Force Step 8 (Connect)
+                    }
                 }
-            } else {
-                // Optional: Restore last step? For now start at 1 or keep logic simple.
-                // If data is filled, maybe jump? 
-                // Let's stick to 1 unless redirected for predictability.
+            } catch (err) {
+                console.error('[Onboarding] Init error:', err);
+                setError('Failed to load session. Please refresh.');
+            } finally {
+                // ALWAYS enable UI, even on error
+                setIsRestoringSession(false);
             }
-
-            setIsRestoringSession(false); // Enable UI only now
         };
 
         init();
