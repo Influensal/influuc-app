@@ -326,6 +326,9 @@ export default function OnboardingPage() {
         save();
     }, [data]);
 
+
+
+
     // Loading UI - MUST be after all hooks to follow Rules of Hooks
     if (isRestoringSession) {
         return (
@@ -441,6 +444,31 @@ export default function OnboardingPage() {
             setIsGenerating(false);
         }
     };
+
+    // KEYBOARD NAVIGATION
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Enter') {
+                // Ignore if in textarea (needs new lines)
+                if (document.activeElement?.tagName === 'TEXTAREA') return;
+                // Ignore if in <a> or <button> (native behavior handles click)
+                if (document.activeElement?.tagName === 'BUTTON' || document.activeElement?.tagName === 'A') return;
+
+                if (canProceed() && currentStep < 10) {
+                    if (currentStep === 9 && data.subscriptionTier === 'starter') {
+                        handleGenerate();
+                        return;
+                    }
+                    if (currentStep === 10) return; // Payment/Visuals handle their own
+
+                    nextStep();
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [currentStep, data]); // removed functions from dep array to avoid complexity, they satisfy closure via re-render binding
 
 
 
