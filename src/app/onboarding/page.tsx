@@ -146,9 +146,8 @@ const steps = [
     { id: 6, title: 'Topics', subtitle: 'Content pillars', icon: Lightbulb }, // Was Step 7
     { id: 7, title: 'Voice', subtitle: 'Writing style', icon: FileText }, // Was Step 8
     { id: 8, title: 'Connect', subtitle: 'Link accounts', icon: Link }, // Was Step 9
-    { id: 9, title: 'Launch', subtitle: 'Generate content', icon: Sparkles }, // Was Step 10
-    { id: 10, title: 'Plan', subtitle: 'Choose Tier', icon: Check },
-    { id: 11, title: 'Style', subtitle: 'Visual Setup', icon: Palette },
+    { id: 9, title: 'Plan', subtitle: 'Choose Tier', icon: Check },
+    { id: 10, title: 'Style', subtitle: 'Visual Setup', icon: Palette },
 ];
 
 // Animation variants
@@ -285,13 +284,13 @@ export default function OnboardingPage() {
             // 5. SET STEP - THE CRITICAL PART
             // We do this LAST to ensure data is ready, but OUTSIDE any try/catch blocks that might fail.
             if (params.get('payment') === 'success') {
-                console.log('💰 Payment Success Detected -> Forcing Step 11');
-                setCurrentStep(11);
-            } else if (params.get('payment') === 'cancelled') {
+                console.log('💰 Payment Success Detected -> Forcing Step 10');
                 setCurrentStep(10);
+            } else if (params.get('payment') === 'cancelled') {
+                setCurrentStep(9);
                 setError('Payment was cancelled.');
             } else if (params.get('test_mode') === 'true') {
-                setCurrentStep(10);
+                setCurrentStep(9);
             } else if (isRedirect && !params.get('payment')) {
                 // Auth/Connect redirect
                 setCurrentStep(8);
@@ -374,7 +373,7 @@ export default function OnboardingPage() {
 
     const nextStep = () => {
         // Validation handled in render or canProceed
-        if (currentStep < 11) {
+        if (currentStep < 10) {
             setCurrentStep(prev => prev + 1);
         }
     };
@@ -403,11 +402,9 @@ export default function OnboardingPage() {
                 return true;
             case 8: // Connect
                 return true;
-            case 9: // Connect
-                return true;
-            case 10: // Payment
+            case 9: // Payment
                 return !!data.subscriptionTier; // Block until tier selected
-            case 11: // Visuals
+            case 10: // Visuals
                 return true; // handled internally
             default:
                 return false;
@@ -550,7 +547,7 @@ export default function OnboardingPage() {
 
                 {/* Content area */}
                 <div className="flex-1 flex items-center justify-center p-4 lg:p-8 overflow-y-auto">
-                    <div className={`w-full transition-all duration-500 ${currentStep === 10 ? 'max-w-6xl' : currentStep === 11 ? 'max-w-4xl' : 'max-w-xl'}`}>
+                    <div className={`w-full transition-all duration-500 ${currentStep === 9 ? 'max-w-6xl' : currentStep === 10 ? 'max-w-4xl' : 'max-w-xl'}`}>
                         <AnimatePresence mode="wait">
                             {currentStep === 1 && (
                                 <Step1Basics
@@ -609,13 +606,6 @@ export default function OnboardingPage() {
                                 />
                             )}
                             {currentStep === 9 && (
-                                <Step9Connect
-                                    key="step9"
-                                    data={data}
-                                    updateData={updateData}
-                                />
-                            )}
-                            {currentStep === 10 && (
                                 <StepPayment
                                     key="step10_pay"
                                     data={data}
@@ -630,7 +620,7 @@ export default function OnboardingPage() {
                                     }}
                                 />
                             )}
-                            {currentStep === 11 && (
+                            {currentStep === 10 && (
                                 <StepVisualFork
                                     key="step11_visual"
                                     data={data}
@@ -662,7 +652,8 @@ export default function OnboardingPage() {
                         {/* Show Continue button for steps 1-9 (Launch is now handled differently? No, Step 9 is Connect. Step 10 is Payment.) */}
                         {/* Actually, Step 9 (Connect) needs 'Continue' to go to Paywall. */}
                         {/* Step 10 (Payment) has internal selection buttons, but maybe hide main continue? */}
-                        {currentStep < 10 ? (
+                        {/* Show Continue button for steps 1-8. Step 9 (Payment) and 10 (Visuals) have their own buttons. */}
+                        {currentStep < 9 ? (
                             <button
                                 onClick={nextStep}
                                 disabled={!canProceed()}
