@@ -273,6 +273,26 @@ export default function OnboardingPage() {
                         // Auth Redirect
                         setCurrentStep(8); // Force Step 8 (Connect)
                     }
+                } else if (params.get('test_mode') === 'true') {
+                    // FAST TRACK FOR TESTING
+                    console.log('⚡ FAST TRACK ACTIVE');
+                    setData({
+                        ...initialData,
+                        name: "Test User",
+                        role: "Founder",
+                        companyName: "Test Co",
+                        companyWebsite: "https://example.com",
+                        platforms: { x: true, linkedin: true },
+                        connections: { x: true, linkedin: true },
+                        industry: "SaaS",
+                        targetAudience: "Founders",
+                        aboutYou: "Building cool stuff",
+                        contentGoal: "Growth",
+                        topics: ["Tech", "Business"],
+                        archetype: "builder",
+                        tone: initialData.tone
+                    });
+                    setCurrentStep(10); // Jump to Payment
                 }
             } catch (err) {
                 console.error('[Onboarding] Init error:', err);
