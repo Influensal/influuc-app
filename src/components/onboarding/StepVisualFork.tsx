@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Camera, Image as ImageIcon, LayoutTemplate, ArrowRight } from 'lucide-react';
 
@@ -56,7 +56,29 @@ export default function StepVisualFork({ data, updateData, onComplete }: StepVis
         }
     };
 
-    if (!currentType) return null;
+    // AUTO-COMPLETE if flow is empty (Starter tier)
+    useEffect(() => {
+        if (flow.length === 0) {
+            console.log('[StepVisualFork] Empty flow (Starter tier), auto-completing...');
+            // add small delay to allow UI to render 'Finalizing' state
+            const timer = setTimeout(() => {
+                onComplete();
+            }, 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [flow.length, onComplete]); // depend on length to avoid deep object dep issues
+
+    if (!currentType) {
+        // If we are here, it means flow mock-up is empty OR we finished (but normally finished calls onComplete)
+        // Show a loading UI for the auto-complete case
+        return (
+            <div className="flex flex-col items-center justify-center p-12 text-center h-full min-h-[400px]">
+                <div className="w-12 h-12 border-4 border-[var(--primary)] border-t-transparent rounded-full animate-spin mb-4"></div>
+                <h2 className="text-xl font-bold">Finalizing your workspace...</h2>
+                <p className="text-[var(--foreground-muted)]">Almost there!</p>
+            </div>
+        );
+    }
 
     return (
         <motion.div
