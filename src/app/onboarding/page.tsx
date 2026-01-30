@@ -182,20 +182,36 @@ export default function OnboardingPage() {
     const [error, setError] = useState<string | null>(null);
 
     // Initial Load & URL Params Check
-    // Initial Load & URL Params Check
     useEffect(() => {
+        // GLOBAL FAILSAFE: Force UI to render after 4 seconds no matter what
+        const failSafeTimer = setTimeout(() => {
+            console.warn('[Onboarding] Failsafe triggered: Force-hiding loader');
+            setIsRestoringSession(false);
+        }, 4000);
+
         const init = async () => {
             let loadedData = initialData;
             const params = new URLSearchParams(window.location.search);
 
-            // 1. ROBUST AUTH CHECK (Don't let this crash the app)
+            // 1. ROBUST AUTH CHECK WITH TIMEOUT
+            // Don't let a slow network request block the entire UI
             let user = null;
             try {
                 const supabase = createClient();
-                const { data } = await supabase.auth.getUser();
+                const timeoutDetails = { timedOut: false };
+                const authPromise = supabase.auth.getUser();
+                const timeoutPromise = new Promise<{ data: { user: null } }>((resolve) => {
+                    setTimeout(() => {
+                        timeoutDetails.timedOut = true;
+                        resolve({ data: { user: null } });
+                    }, 2000); // 2s max for auth
+                });
+
+                const { data } = await Promise.race([authPromise, timeoutPromise]);
                 user = data.user;
+                if (timeoutDetails.timedOut) console.warn('[Onboarding] Auth check timed out');
             } catch (authErr) {
-                console.warn('[Onboarding] Auth check failed, proceeding as guest/redirect', authErr);
+                console.warn('[Onboarding] Auth check failed/skipped', authErr);
             }
 
             const isRedirect = params.get('connect') === 'success' || !!params.get('error') || !!params.get('payment');
@@ -285,6 +301,7 @@ export default function OnboardingPage() {
             }
 
             setIsRestoringSession(false);
+            clearTimeout(failSafeTimer); // Clear failsafe if we finish normally
         };
 
         // Run immediately
