@@ -274,12 +274,22 @@ export default function OnboardingPage() {
             } else {
                 // Optional: Restore last step? For now start at 1 or keep logic simple.
                 // If data is filled, maybe jump? 
-                // Let's stick to 1 unless redirected for predictability, OR check if "Launch" was ready.
+                // Let's stick to 1 unless redirected for predictability.
             }
+
+            setIsRestoringSession(false); // Enable UI only now
         };
 
         init();
     }, []);
+
+    if (isRestoringSession) {
+        return (
+            <div className="flex h-screen items-center justify-center bg-[var(--background)] text-white">
+                <Loader2 className="w-10 h-10 animate-spin text-[var(--primary)]" />
+            </div>
+        );
+    }
 
     // Persistence on Change
     useEffect(() => {
