@@ -11,7 +11,11 @@ import { logger, startTimer } from '@/lib/logger';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-export async function POST(request: NextRequest) {
+export async function POST(
+    request: NextRequest,
+    props: { params: Promise<{ id: string }> }
+) {
+    const params = await props.params;
     const timer = startTimer();
     const supabase = await createClient();
 
@@ -22,7 +26,7 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-        const { postId } = await request.json();
+        const postId = params.id; // Get from URL param
 
         if (!postId) {
             return NextResponse.json({ error: 'postId required' }, { status: 400 });

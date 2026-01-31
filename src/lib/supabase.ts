@@ -45,6 +45,7 @@ export interface FounderProfile {
         approach: 'story-driven' | 'data-driven';
     };
     voice_model_id: string | null;
+    next_generation_date: string | null;
     created_at: string;
 }
 

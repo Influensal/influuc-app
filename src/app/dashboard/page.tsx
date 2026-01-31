@@ -110,8 +110,22 @@ export default function DashboardPage() {
     // Get user's name from profile or default
     const userName = profile?.name || 'there';
 
-    const nextMondayDate = nextMonday(new Date());
-    const daysUntilStrategy = differenceInDays(nextMondayDate, new Date());
+    // Strategy Countdown Logic
+    let daysUntilStrategy = 0;
+    if (profile?.nextGenerationDate) {
+        // Use the saved date from DB
+        const today = startOfDay(new Date());
+        // nextGenerationDate is parsed as Date object by PostContext
+        // We need to compare it to today
+        daysUntilStrategy = differenceInDays(profile.nextGenerationDate, today);
+    } else {
+        // Fallback to next Monday logic if not set
+        const nextMondayDate = nextMonday(new Date());
+        daysUntilStrategy = differenceInDays(nextMondayDate, new Date());
+    }
+    // Ensure it's not negative
+    if (daysUntilStrategy < 0) daysUntilStrategy = 0;
+
 
     // Get upcoming posts (next 2 days)
     const upcomingPosts = posts
@@ -174,6 +188,13 @@ export default function DashboardPage() {
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
+                    <button
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-[var(--primary)] text-white hover:opacity-90 rounded-lg transition-all shadow-lg shadow-[var(--primary)]/20"
+                        onClick={() => alert("Quick Post Helper coming in next update!")}
+                    >
+                        <Plus className="w-4 h-4" />
+                        Write Post
+                    </button>
                     <button
                         onClick={async () => {
                             setIsRefreshing(true);

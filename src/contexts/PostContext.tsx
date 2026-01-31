@@ -37,6 +37,7 @@ interface UserProfile {
     industry?: string;
     contentGoal?: string;
     autoPublish?: boolean;
+    nextGenerationDate?: Date;
     contextData?: {
         aboutYou: string;
         personalContext: Array<{ id: string; type: string; label: string; value: string }>;
@@ -128,6 +129,7 @@ export function PostProvider({ children }: { children: ReactNode }) {
                         },
                         connections: dbProfile.connections || { x: false, linkedin: false },
                         autoPublish: dbProfile.auto_publish || false,
+                        nextGenerationDate: dbProfile.next_generation_date ? parseISO(dbProfile.next_generation_date) : undefined,
                         contextData: dbProfile.context_data || { aboutYou: '', personalContext: [], productContext: [] }
                     });
                 }
@@ -175,26 +177,23 @@ export function PostProvider({ children }: { children: ReactNode }) {
         if (profile?.platforms?.linkedin) enabledPlatforms.push('LinkedIn');
         if (profile?.platforms?.x) enabledPlatforms.push('X');
 
-        // Get current week boundaries (Monday to Sunday)
-        const now = new Date();
-        const weekStart = startOfWeek(now, { weekStartsOn: 1 }); // Monday
-        const weekEnd = endOfWeek(now, { weekStartsOn: 1 }); // Sunday
-
-        // Filter posts to only show enabled platforms AND this week
-        const thisWeekPosts = posts.filter(p =>
+        // FIXED: Count ALL upcoming scheduled posts regardless of date
+        const scheduledPosts = posts.filter(p =>
             enabledPlatforms.includes(p.platform) &&
-            isWithinInterval(p.scheduledTime, { start: weekStart, end: weekEnd })
+            p.status === 'scheduled'
         );
 
-        const uniquePlatforms = new Set(thisWeekPosts.map(p => p.platform));
-        const platformBreakdown = thisWeekPosts.reduce((acc, post) => {
+        const platformBreakdown = scheduledPosts.reduce((acc, post) => {
             acc[post.platform] = (acc[post.platform] || 0) + 1;
             return acc;
         }, {} as Record<Platform, number>);
 
+        // FIXED: Active Channels based on profile connection, not just posts
+        const activeCount = (profile?.platforms?.x ? 1 : 0) + (profile?.platforms?.linkedin ? 1 : 0);
+
         return {
-            totalScheduled: thisWeekPosts.length, // Now shows THIS WEEK only
-            activeChannels: uniquePlatforms.size,
+            totalScheduled: scheduledPosts.length,
+            activeChannels: activeCount,
             platformBreakdown: {
                 LinkedIn: platformBreakdown['LinkedIn'] || 0,
                 X: platformBreakdown['X'] || 0,
