@@ -30,7 +30,7 @@ import { createClient } from '@/utils/supabase/client';
 import { extractTextFromPdf } from '@/utils/pdf';
 import { BillingSection } from '@/components/dashboard/settings/BillingSection';
 
-type TabId = 'general' | 'context' | 'integrations' | 'preferences' | 'billing';
+type TabId = 'general' | 'context' | 'integrations' | 'billing';
 
 // --- Context Item Component (From Onboarding) ---
 function ContextItem({
@@ -142,7 +142,7 @@ export default function SettingsPage() {
 
     // UI State
     const tabParam = searchParams.get('tab') as TabId | null;
-    const [activeTab, setActiveTab] = useState<TabId>(tabParam && ['general', 'context', 'integrations', 'preferences', 'billing'].includes(tabParam) ? tabParam : 'general');
+    const [activeTab, setActiveTab] = useState<TabId>(tabParam && ['general', 'context', 'integrations', 'billing'].includes(tabParam) ? tabParam : 'general');
     const [isSaving, setIsSaving] = useState(false);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -292,7 +292,6 @@ export default function SettingsPage() {
         { id: 'general', label: 'General', icon: User },
         { id: 'context', label: 'Context', icon: Building2 },
         { id: 'integrations', label: 'Integrations', icon: Globe },
-        { id: 'preferences', label: 'Preferences', icon: SettingsIcon },
         { id: 'billing', label: 'Billing', icon: CreditCard },
     ];
 
@@ -541,35 +540,7 @@ export default function SettingsPage() {
                         </motion.div>
                     )}
 
-                    {/* Preferences Tab */}
-                    {activeTab === 'preferences' && (
-                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-                            <section className="card p-6 border border-[var(--border)] bg-[var(--card)] rounded-2xl space-y-6">
-                                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                                    <SettingsIcon className="w-5 h-5 text-gray-500" />
-                                    Automation Settings
-                                </h2>
 
-                                <div className="flex items-center justify-between p-4 rounded-xl border border-[var(--border)] bg-[var(--background)]">
-                                    <div className="space-y-1">
-                                        <div className="font-semibold text-lg">Auto-Publish Posts</div>
-                                        <p className="text-sm text-[var(--foreground-muted)]">
-                                            Automatically publish scheduled posts without manual confirmation.
-                                        </p>
-                                    </div>
-                                    <label className="relative inline-flex items-center cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            checked={formData.autoPublish}
-                                            onChange={(e) => setFormData({ ...formData, autoPublish: e.target.checked })}
-                                            className="sr-only peer"
-                                        />
-                                        <div className="w-14 h-7 bg-gray-200 peer-focus:outline-none dark:bg-gray-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-[var(--primary)]"></div>
-                                    </label>
-                                </div>
-                            </section>
-                        </motion.div>
-                    )}
 
                     {/* Integrations Tab */}
                     {activeTab === 'integrations' && (
