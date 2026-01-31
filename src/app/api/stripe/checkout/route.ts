@@ -14,7 +14,7 @@ const PRICE_IDS = {
 
 export async function POST(req: NextRequest) {
     try {
-        const { tier } = await req.json();
+        const { tier, successUrl, cancelUrl } = await req.json();
         const priceId = PRICE_IDS[tier as keyof typeof PRICE_IDS];
 
         console.log(`[Checkout] Attempting to create session for Tier: ${tier}, PriceID: ${priceId}`);
@@ -52,8 +52,8 @@ export async function POST(req: NextRequest) {
                     tier: tier,
                 },
             },
-            success_url: `${origin}/onboarding?session_id={CHECKOUT_SESSION_ID}&payment=success`,
-            cancel_url: `${origin}/onboarding?payment=cancelled`,
+            success_url: successUrl || `${origin}/onboarding?session_id={CHECKOUT_SESSION_ID}&payment=success`,
+            cancel_url: cancelUrl || `${origin}/onboarding?payment=cancelled`,
         });
 
         return NextResponse.json({ sessionId: session.id, url: session.url });

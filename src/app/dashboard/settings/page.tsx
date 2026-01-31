@@ -28,6 +28,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@/utils/supabase/client';
 import { extractTextFromPdf } from '@/utils/pdf';
+import { BillingSection } from '@/components/dashboard/settings/BillingSection';
 
 type TabId = 'general' | 'context' | 'integrations' | 'preferences' | 'billing';
 
@@ -140,7 +141,8 @@ export default function SettingsPage() {
     const searchParams = useSearchParams();
 
     // UI State
-    const [activeTab, setActiveTab] = useState<TabId>('general');
+    const tabParam = searchParams.get('tab') as TabId | null;
+    const [activeTab, setActiveTab] = useState<TabId>(tabParam && ['general', 'context', 'integrations', 'preferences', 'billing'].includes(tabParam) ? tabParam : 'general');
     const [isSaving, setIsSaving] = useState(false);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -178,15 +180,21 @@ export default function SettingsPage() {
         }
     }, [profile]);
 
-    // Handle connection success params
+    // Handle connection/payment success params
     useEffect(() => {
         if (searchParams.get('connect') === 'success') {
             const platform = searchParams.get('platform');
             setSuccessMessage(`Successfully connected to ${platform === 'x' ? 'X (Twitter)' : 'LinkedIn'}`);
             refreshPosts();
-            window.history.replaceState(null, '', '/dashboard/settings');
+            window.history.replaceState(null, '', '/dashboard/settings?tab=integrations');
             setTimeout(() => setSuccessMessage(null), 3000);
             setActiveTab('integrations');
+        } else if (searchParams.get('payment') === 'success') {
+            setSuccessMessage('Subscription upgraded successfully! Welcome to your new plan.');
+            refreshPosts(); // Refresh profile context to get new limits logic
+            window.history.replaceState(null, '', '/dashboard/settings?tab=billing');
+            setTimeout(() => setSuccessMessage(null), 5000);
+            setActiveTab('billing');
         }
     }, [searchParams, refreshPosts]);
 
@@ -652,17 +660,9 @@ export default function SettingsPage() {
                         </motion.div>
                     )}
 
-                    {/* Billing Tab (Placeholder) */}
+                    {/* Billing Tab */}
                     {activeTab === 'billing' && (
-                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-                            <div className="p-12 text-center rounded-2xl border border-dashed border-[var(--border)] bg-[var(--card)]">
-                                <CreditCard className="w-12 h-12 text-[var(--foreground-muted)] mx-auto mb-4" />
-                                <h3 className="text-lg font-bold mb-2">Billing & Plans</h3>
-                                <p className="text-[var(--foreground-muted)]">
-                                    Billing management coming soon. You are currently on the Early Access plan.
-                                </p>
-                            </div>
-                        </motion.div>
+                        <BillingSection />
                     )}
                 </div>
             </div>
