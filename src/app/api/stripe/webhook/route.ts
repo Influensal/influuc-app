@@ -10,8 +10,9 @@ export const runtime = 'nodejs';
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 
 // Helper to get logic-tier from metadata or price
-const getTierFromSubscription = (subscription: Stripe.Subscription): string => {
-    return subscription.metadata.tier || 'starter';
+const getTierFromSubscription = (subscription: Stripe.Subscription | Stripe.Response<Stripe.Subscription>): string => {
+    // Access with 'any' to handle Response wrappers safely
+    return (subscription as any).metadata?.tier || 'starter';
 };
 
 export async function POST(req: NextRequest) {
@@ -38,8 +39,6 @@ export async function POST(req: NextRequest) {
         process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // Idempotency check could go here (optional for MVP)
-
     try {
         console.log(`[Webhook] Processing event: ${event.type}`);
 
@@ -57,19 +56,18 @@ export async function POST(req: NextRequest) {
                 console.log(`[Webhook] Checkout Completed. User: ${userId}, Tier: ${tier}`);
 
                 // Update Accounts Table
+                // Fix: Cast subscription to any to bypass Response<T> type limitations on some properties
                 await adminClient.from('accounts').update({
-                    plan_tier: tier, // Assuming DB accepts 'starter','growth','authority' or text
+                    plan_tier: tier,
                     subscription_status: 'active',
                     stripe_subscription_id: subscriptionId,
                     stripe_customer_id: session.customer as string,
-                    current_period_end: subscription.current_period_end
+                    current_period_end: (subscription as any).current_period_end
                 }).eq('id', userId);
 
                 // Update Founder Profile (Legacy/Sync)
-                // Note: founder_profiles usually links via account_id
                 await adminClient.from('founder_profiles').update({
-                    // subscription_tier: tier, // Remove if column doesn't exist, strictly speaking
-                    // But keeping it if code assumes it elsewhere.
+                    // subscription_tier: tier, 
                 }).eq('account_id', userId);
 
                 break;
@@ -113,7 +111,7 @@ export async function POST(req: NextRequest) {
                     await adminClient.from('accounts').update({
                         plan_tier: 'starter',
                         subscription_status: 'canceled',
-                        current_period_end: null // or keep it to show when it expired
+                        current_period_end: null
                     }).eq('id', userId);
                 }
                 break;
