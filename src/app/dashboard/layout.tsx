@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { Sidebar } from '@/components/layout/Sidebar';
+import DashboardClientWrapper from '@/components/dashboard/DashboardClientWrapper';
 
 export default async function DashboardLayout({
     children,
@@ -28,16 +29,17 @@ export default async function DashboardLayout({
         redirect('/onboarding');
     }
 
-
-
     return (
         <div className="flex h-screen bg-[var(--background)]">
             <Sidebar />
             <main className="flex-1 overflow-y-auto ml-[320px]">
                 <div className="p-8 md:p-12 max-w-[1600px] mx-auto">
-                    {children}
+                    <DashboardClientWrapper>
+                        {children}
+                    </DashboardClientWrapper>
                 </div>
             </main>
         </div>
     );
 }
+

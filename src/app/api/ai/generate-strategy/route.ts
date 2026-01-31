@@ -3,14 +3,17 @@ import { getProvider } from '@/lib/ai/providers';
 
 export const runtime = 'nodejs';
 
+// Fixed 12 posts per week (6 per platform)
+const POSTS_PER_WEEK = 12;
+
 interface GenerateStrategyRequest {
     platforms: ('x' | 'linkedin')[];
-    cadence: 'light' | 'moderate' | 'active';
     userContext?: {
         industry?: string;
         targetAudience?: string;
         contentGoal?: string;
         topics?: string[];
+        archetype?: 'builder' | 'teacher' | 'contrarian' | 'executive' | 'custom';
         tone?: {
             formality?: string;
             boldness?: string;
@@ -34,18 +37,11 @@ interface WeeklyStrategy {
     notes: string;
 }
 
-const CADENCE_CONFIG: Record<string, { postsPerWeek: number; description: string }> = {
-    light: { postsPerWeek: 3, description: '3 posts per week across platforms' },
-    moderate: { postsPerWeek: 5, description: '5 posts per week across platforms' },
-    active: { postsPerWeek: 7, description: 'Daily posting across platforms' },
-};
-
 export async function POST(request: NextRequest) {
     try {
         const body: GenerateStrategyRequest = await request.json();
 
         const platforms = body.platforms?.length > 0 ? body.platforms : ['linkedin', 'x'];
-        const cadence = body.cadence || 'moderate';
         const provider = await getProvider();
 
         if (!provider.isConfigured()) {
@@ -55,9 +51,8 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const cadenceConfig = CADENCE_CONFIG[cadence];
-        const systemPrompt = buildSystemPrompt(platforms, cadenceConfig, body.userContext);
-        const userPrompt = buildUserPrompt(platforms, cadenceConfig);
+        const systemPrompt = buildSystemPrompt(platforms, body.userContext);
+        const userPrompt = buildUserPrompt(platforms);
 
         const result = await provider.complete({
             messages: [
@@ -80,7 +75,7 @@ export async function POST(request: NextRequest) {
         } catch {
             // Fallback strategy if parsing fails
             strategy = {
-                posts: generateFallbackPosts(platforms, cadenceConfig.postsPerWeek),
+                posts: generateFallbackPosts(platforms),
                 themes: ['Industry Insights', 'Personal Journey', 'Lessons Learned'],
                 notes: 'Generated fallback strategy. AI response could not be parsed.',
             };
@@ -98,15 +93,13 @@ export async function POST(request: NextRequest) {
 
 function buildSystemPrompt(
     platforms: string[],
-    cadenceConfig: { postsPerWeek: number; description: string },
     userContext?: GenerateStrategyRequest['userContext']
 ): string {
     let prompt = `You are an expert content strategist for founders and entrepreneurs. You create weekly content calendars that build thought leadership and drive engagement.
 
 TASK: Generate a weekly content strategy.
 PLATFORMS: ${platforms.join(', ').toUpperCase()}
-CADENCE: ${cadenceConfig.description}
-NUMBER OF POSTS: ${cadenceConfig.postsPerWeek}
+NUMBER OF POSTS: ${POSTS_PER_WEEK} (6 per platform)
 
 STRATEGY PRINCIPLES:
 1. Mix content formats: threads, single posts, long-form, video scripts
@@ -144,21 +137,21 @@ OUTPUT FORMAT (JSON):
         if (userContext.topics && userContext.topics.length > 0) {
             prompt += `\nPREFERRED TOPICS: ${userContext.topics.join(', ')}`;
         }
+        if (userContext.archetype) {
+            prompt += `\nCONTENT ARCHETYPE: ${userContext.archetype.toUpperCase()}`;
+        }
     }
 
     return prompt;
 }
 
-function buildUserPrompt(
-    platforms: string[],
-    cadenceConfig: { postsPerWeek: number; description: string }
-): string {
-    return `Generate a weekly content strategy for ${platforms.join(' and ')} with ${cadenceConfig.postsPerWeek} posts.
+function buildUserPrompt(platforms: string[]): string {
+    return `Generate a weekly content strategy for ${platforms.join(' and ')} with ${POSTS_PER_WEEK} posts total.
 
 Create a diverse mix of formats and topics. Output ONLY the JSON object, no other text.`;
 }
 
-function generateFallbackPosts(platforms: string[], count: number): ScheduledPost[] {
+function generateFallbackPosts(platforms: string[]): ScheduledPost[] {
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     const formats: ('single' | 'thread' | 'long_form')[] = ['single', 'thread', 'long_form'];
     const topics = [
@@ -167,10 +160,11 @@ function generateFallbackPosts(platforms: string[], count: number): ScheduledPos
         'Hot take on common practice',
         'Behind-the-scenes look',
         'Advice for early-stage founders',
+        'Tool or resource recommendation',
     ];
 
     const posts: ScheduledPost[] = [];
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < POSTS_PER_WEEK; i++) {
         posts.push({
             day: days[i % days.length],
             platform: platforms[i % platforms.length] as 'x' | 'linkedin',

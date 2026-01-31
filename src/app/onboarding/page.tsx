@@ -295,8 +295,31 @@ export default function OnboardingPage() {
                 // Auth/Connect redirect
                 setCurrentStep(8);
             } else {
-                // Default normal load
-                // Optional: Restore logic here if we want to remember last step
+                // Default normal load - Restore step from database if available
+                if (user) {
+                    try {
+                        const supabase = createClient();
+                        const { data: profile } = await supabase
+                            .from('founder_profiles')
+                            .select('onboarding_step, onboarding_status')
+                            .eq('account_id', user.id)
+                            .single();
+
+                        if (profile?.onboarding_step && profile.onboarding_step > 0) {
+                            console.log(`[Onboarding] Restoring step ${profile.onboarding_step} from DB`);
+                            setCurrentStep(profile.onboarding_step);
+                        }
+
+                        // If already completed, redirect to dashboard
+                        if (profile?.onboarding_status === 'complete') {
+                            console.log('[Onboarding] User already completed onboarding, redirecting...');
+                            router.push('/dashboard');
+                            return;
+                        }
+                    } catch (e) {
+                        console.warn('[Onboarding] Could not restore step from DB:', e);
+                    }
+                }
             }
 
             setIsRestoringSession(false);
@@ -326,17 +349,39 @@ export default function OnboardingPage() {
         save();
     }, [data]);
 
+    // Save current step to database for persistence across refreshes/redirects
+    useEffect(() => {
+        const saveStep = async () => {
+            // Don't save if still initializing or on step 1 (default)
+            if (isRestoringSession || currentStep <= 1) return;
+
+            try {
+                const supabase = createClient();
+                const { data: { user } } = await supabase.auth.getUser();
+
+                if (user) {
+                    await supabase
+                        .from('founder_profiles')
+                        .update({
+                            onboarding_step: currentStep,
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('account_id', user.id);
+
+                    console.log(`[Onboarding] Saved step ${currentStep} to DB`);
+                }
+            } catch (e) {
+                console.warn('[Onboarding] Could not save step to DB:', e);
+            }
+        };
+
+        saveStep();
+    }, [currentStep, isRestoringSession]);
 
 
 
-    // Loading UI - MUST be after all hooks to follow Rules of Hooks
-    if (isRestoringSession) {
-        return (
-            <div className="flex h-screen items-center justify-center bg-[var(--background)] text-white">
-                <Loader2 className="w-10 h-10 animate-spin text-[var(--primary)]" />
-            </div>
-        );
-    }
+
+
 
     const handleSignOut = async () => {
         try {
@@ -471,6 +516,8 @@ export default function OnboardingPage() {
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [currentStep, data]); // removed functions from dep array to avoid complexity, they satisfy closure via re-render binding
+
+
 
 
 

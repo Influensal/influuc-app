@@ -3,12 +3,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { createClient } from '@/utils/supabase/server';
 import Stripe from 'stripe';
+import { logger, startTimer } from '@/lib/logger';
 
 // This secret comes from the Stripe Dashboard > Developers > Webhooks
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 
 export async function POST(req: NextRequest) {
+    const timer = startTimer();
+
     if (!WEBHOOK_SECRET) {
+        logger.error('Missing STRIPE_WEBHOOK_SECRET');
         return NextResponse.json({ error: 'Missing STRIPE_WEBHOOK_SECRET' }, { status: 500 });
     }
 
@@ -20,7 +24,7 @@ export async function POST(req: NextRequest) {
     try {
         event = stripe.webhooks.constructEvent(body, sig!, WEBHOOK_SECRET);
     } catch (err: any) {
-        console.error(`Webhook signature verification failed: ${err.message}`);
+        logger.warn('Webhook signature verification failed', { error: err.message });
         return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 });
     }
 
@@ -45,6 +49,29 @@ export async function POST(req: NextRequest) {
         );
     });
 
+    // ============================================
+    // IDEMPOTENCY CHECK - Prevent duplicate processing
+    // Stripe can deliver the same webhook multiple times
+    // ============================================
+    const eventId = event.id;
+    const { data: existingEvent } = await adminClient
+        .from('stripe_events')
+        .select('id')
+        .eq('event_id', eventId)
+        .single();
+
+    if (existingEvent) {
+        console.log(`[Stripe Webhook] Event ${eventId} already processed, skipping`);
+        return NextResponse.json({ received: true, skipped: true });
+    }
+
+    // Record that we're processing this event (before doing work)
+    await adminClient.from('stripe_events').insert({
+        event_id: eventId,
+        event_type: event.type,
+        payload: event.data.object
+    });
+
     try {
         switch (event.type) {
             case 'checkout.session.completed': {
@@ -62,12 +89,20 @@ export async function POST(req: NextRequest) {
                 const tier = subscription.metadata.tier || 'starter'; // Fallback
 
                 if (userId) {
+                    // Update founder_profiles - use account_id (FK to auth.users), not id
                     await adminClient.from('founder_profiles').update({
                         subscription_tier: tier,
-                        // stripe_subscription_id: subscriptionId, // If we had this column
-                        // stripe_customer_id: session.customer as string
+                        onboarding_status: 'complete', // Payment successful = onboarding complete
+                    }).eq('account_id', userId);
+
+                    // Also update accounts table with Stripe info
+                    await adminClient.from('accounts').update({
+                        subscription_status: 'active',
+                        stripe_subscription_id: subscriptionId,
+                        stripe_customer_id: session.customer as string,
                     }).eq('id', userId);
-                    console.log(`[Stripe Webhook] Updated user ${userId} to tier ${tier}`);
+
+                    logger.info('Stripe subscription activated', { userId, tier, subscriptionId, duration_ms: timer() });
                 }
                 break;
             }
@@ -85,9 +120,10 @@ export async function POST(req: NextRequest) {
             }
         }
     } catch (err: any) {
-        console.error('Error processing webhook event:', err);
+        logger.exception('Webhook processing failed', err, { eventType: event.type, duration_ms: timer() });
         return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 });
     }
 
+    logger.info('Webhook processed', { eventType: event.type, duration_ms: timer() });
     return NextResponse.json({ received: true });
 }

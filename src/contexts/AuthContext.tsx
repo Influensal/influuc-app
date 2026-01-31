@@ -75,15 +75,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     };
 
-    // Sign out
+    // Sign out - must clear ALL state and hard redirect
     const signOut = async () => {
-        await supabase.auth.signOut();
+        // 1. Clear local storage to prevent stale state
+        localStorage.removeItem('influuc-active-profile');
+        localStorage.removeItem('influuc-theme');
+        localStorage.removeItem('onboarding_temp_data');
+        // Clear any user-specific onboarding data
+        Object.keys(localStorage).forEach(key => {
+            if (key.startsWith('onboarding_data_')) {
+                localStorage.removeItem(key);
+            }
+        });
+
+        // 2. Clear React state
         setUser(null);
         setAccount(null);
         setProfiles([]);
         setActiveProfileState(null);
-        router.push('/login');
-        router.refresh();
+
+        // 3. Sign out from Supabase (invalidates session cookies)
+        await supabase.auth.signOut();
+
+        // 4. Hard redirect to clear all state (DO NOT use router.push)
+        window.location.href = '/login';
     };
 
     // Set active profile

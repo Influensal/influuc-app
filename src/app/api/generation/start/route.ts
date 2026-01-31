@@ -7,6 +7,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { generateWeeklyContent, getUserWeekNumber, UserProfile } from '@/lib/generation';
 import { sendWeekReadyEmail } from '@/lib/email/resend';
+import { checkRateLimit, rateLimitKey, RATE_LIMITS } from '@/lib/rate-limit';
+import { logger, startTimer } from '@/lib/logger';
 
 export const runtime = 'nodejs';
 export const maxDuration = 120; // 2 minutes - generation can take time
@@ -19,14 +21,36 @@ interface GenerateRequest {
 const validGoals = ['recruiting', 'fundraising', 'sales', 'credibility', 'growth', 'balanced'];
 
 export async function POST(request: NextRequest) {
+    const timer = startTimer();
     const supabase = await createClient();
 
     // Get authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
+        logger.warn('Unauthorized generation attempt', { route: '/api/generation/start' });
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    // Rate limiting - max 2 generation requests per minute
+    const rateLimit = checkRateLimit(
+        rateLimitKey(user.id, 'generation'),
+        RATE_LIMITS.generation
+    );
+
+    if (!rateLimit.allowed) {
+        logger.warn('Rate limit exceeded', {
+            userId: user.id,
+            route: '/api/generation/start',
+            resetIn: rateLimit.resetIn
+        });
+        return NextResponse.json({
+            error: 'Too many requests. Please wait before generating again.',
+            retryAfter: Math.ceil(rateLimit.resetIn / 1000)
+        }, { status: 429 });
+    }
+
+    logger.info('Generation started', { userId: user.id, remaining: rateLimit.remaining });
 
     // Parse request body
     let body: GenerateRequest;
@@ -56,6 +80,39 @@ export async function POST(request: NextRequest) {
 
         if (profileError || !profile) {
             return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
+        }
+
+        // ============================================
+        // IDEMPOTENCY CHECK - Prevent duplicate generation
+        // User double-clicking "Generate" shouldn't create duplicate content
+        // ============================================
+        const { data: inProgressGeneration } = await supabase
+            .from('content_generations')
+            .select('id, status, created_at')
+            .eq('account_id', user.id)
+            .eq('status', 'generating')
+            .single();
+
+        if (inProgressGeneration) {
+            // Check if it's been stuck for more than 10 minutes (stale)
+            const createdAt = new Date(inProgressGeneration.created_at);
+            const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+
+            if (createdAt > tenMinutesAgo) {
+                // Generation is still in progress - reject duplicate
+                return NextResponse.json({
+                    error: 'Generation already in progress',
+                    generationId: inProgressGeneration.id,
+                    message: 'Please wait for the current generation to complete'
+                }, { status: 409 });
+            } else {
+                // Mark stale generation as failed so user can retry
+                await supabase
+                    .from('content_generations')
+                    .update({ status: 'failed', error_message: 'Timed out after 10 minutes' })
+                    .eq('id', inProgressGeneration.id);
+                console.log(`[Generate] Marked stale generation ${inProgressGeneration.id} as failed`);
+            }
         }
 
         // Check subscription for Week 2+
@@ -137,6 +194,15 @@ export async function POST(request: NextRequest) {
                 action_url: '/dashboard'
             });
 
+        logger.info('Generation completed', {
+            userId: user.id,
+            weekNumber,
+            goal,
+            xPosts: result.xPostsCount,
+            linkedinPosts: result.linkedinPostsCount,
+            duration_ms: timer()
+        });
+
         return NextResponse.json({
             success: true,
             weekNumber,
@@ -149,7 +215,11 @@ export async function POST(request: NextRequest) {
         });
 
     } catch (error) {
-        console.error('[Generate] Error:', error);
+        logger.exception('Generation failed', error, {
+            userId: user.id,
+            route: '/api/generation/start',
+            duration_ms: timer()
+        });
         return NextResponse.json({
             error: error instanceof Error ? error.message : 'Generation failed'
         }, { status: 500 });

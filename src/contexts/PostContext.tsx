@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { isToday, parseISO } from 'date-fns';
+import { isToday, parseISO, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 
 // --- Types ---
 export type Platform = 'LinkedIn' | 'X';
@@ -175,17 +175,25 @@ export function PostProvider({ children }: { children: ReactNode }) {
         if (profile?.platforms?.linkedin) enabledPlatforms.push('LinkedIn');
         if (profile?.platforms?.x) enabledPlatforms.push('X');
 
-        // Filter posts to only show enabled platforms
-        const filteredPosts = posts.filter(p => enabledPlatforms.includes(p.platform));
+        // Get current week boundaries (Monday to Sunday)
+        const now = new Date();
+        const weekStart = startOfWeek(now, { weekStartsOn: 1 }); // Monday
+        const weekEnd = endOfWeek(now, { weekStartsOn: 1 }); // Sunday
 
-        const uniquePlatforms = new Set(filteredPosts.map(p => p.platform));
-        const platformBreakdown = filteredPosts.reduce((acc, post) => {
+        // Filter posts to only show enabled platforms AND this week
+        const thisWeekPosts = posts.filter(p =>
+            enabledPlatforms.includes(p.platform) &&
+            isWithinInterval(p.scheduledTime, { start: weekStart, end: weekEnd })
+        );
+
+        const uniquePlatforms = new Set(thisWeekPosts.map(p => p.platform));
+        const platformBreakdown = thisWeekPosts.reduce((acc, post) => {
             acc[post.platform] = (acc[post.platform] || 0) + 1;
             return acc;
         }, {} as Record<Platform, number>);
 
         return {
-            totalScheduled: filteredPosts.length,
+            totalScheduled: thisWeekPosts.length, // Now shows THIS WEEK only
             activeChannels: uniquePlatforms.size,
             platformBreakdown: {
                 LinkedIn: platformBreakdown['LinkedIn'] || 0,
