@@ -52,8 +52,10 @@ export async function POST(req: NextRequest) {
                     tier: tier,
                 },
             },
-            success_url: successUrl || `${origin}/onboarding?session_id={CHECKOUT_SESSION_ID}&payment=success`,
-            cancel_url: cancelUrl || `${origin}/onboarding?payment=cancelled`,
+            // Force strict URL format to ensure redirect lands on Billing tab with session_id
+            // This prevents client-side URL construction errors
+            success_url: `${origin}/dashboard/settings?tab=billing&payment=success&session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${origin}/dashboard/settings?tab=billing&payment=cancelled`,
         });
 
         return NextResponse.json({ sessionId: session.id, url: session.url });
