@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
                     await adminClient.from('accounts').update({
                         plan_tier: tier,
                         subscription_status: subscription.status,
-                        current_period_end: subscription.current_period_end
+                        current_period_end: (subscription as any).current_period_end
                     }).eq('id', userId);
                 }
                 break;
