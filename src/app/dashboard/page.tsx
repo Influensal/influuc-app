@@ -253,23 +253,33 @@ export default function DashboardPage() {
                     {/* Card 3: Channel Breakdown */}
                     <motion.div variants={itemVariants} className="card p-6 flex flex-col justify-center min-h-[160px]">
                         <h3 className="text-sm font-medium text-[var(--foreground-secondary)] mb-4">Channel Breakdown</h3>
-                        <div className="space-y-3">
+                        <div className="space-y-4">
                             {profile?.platforms?.linkedin && (
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                                        <span className="text-sm font-medium text-[var(--foreground)]">LinkedIn</span>
+                                <div className="flex items-center justify-between group">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-2.5 h-2.5 rounded-full ${profile?.connections?.linkedin ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : 'bg-red-500 animate-pulse'}`} />
+                                        <div className="flex flex-col">
+                                            <span className="text-sm font-medium text-[var(--foreground)]">LinkedIn</span>
+                                            <span className="text-[10px] text-[var(--foreground-muted)]">
+                                                {profile?.connections?.linkedin ? 'Connected' : 'Reconnect Required'}
+                                            </span>
+                                        </div>
                                     </div>
-                                    <span className="text-sm font-bold text-[var(--foreground)]">{metrics.platformBreakdown.LinkedIn}</span>
+                                    <span className="text-lg font-bold text-[var(--foreground)]">{metrics.platformBreakdown.LinkedIn}</span>
                                 </div>
                             )}
                             {profile?.platforms?.x && (
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-2 h-2 rounded-full bg-black dark:bg-white"></div>
-                                        <span className="text-sm font-medium text-[var(--foreground)]">X (Twitter)</span>
+                                <div className="flex items-center justify-between group">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-2.5 h-2.5 rounded-full ${profile?.connections?.x ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : 'bg-red-500 animate-pulse'}`} />
+                                        <div className="flex flex-col">
+                                            <span className="text-sm font-medium text-[var(--foreground)]">X (Twitter)</span>
+                                            <span className="text-[10px] text-[var(--foreground-muted)]">
+                                                {profile?.connections?.x ? 'Connected' : 'Reconnect Required'}
+                                            </span>
+                                        </div>
                                     </div>
-                                    <span className="text-sm font-bold text-[var(--foreground)]">{metrics.platformBreakdown.X}</span>
+                                    <span className="text-lg font-bold text-[var(--foreground)]">{metrics.platformBreakdown.X}</span>
                                 </div>
                             )}
                             {!profile?.platforms?.linkedin && !profile?.platforms?.x && (
