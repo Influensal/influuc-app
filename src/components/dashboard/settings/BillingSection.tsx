@@ -42,8 +42,10 @@ export function BillingSection({ className }: BillingSectionProps) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     tier,
-                    successUrl: window.location.href + '?payment=success',
-                    cancelUrl: window.location.href + '?payment=cancelled'
+                    // Fix: Use explicit string template to ensure correct formatting and inclusion of Stripe template variable
+                    // This ensures: 1) Correct '?' vs '&' logic 2) Inclusion of {CHECKOUT_SESSION_ID} 3) Tab persistence
+                    successUrl: `${window.location.origin}${window.location.pathname}?tab=billing&payment=success&session_id={CHECKOUT_SESSION_ID}`,
+                    cancelUrl: `${window.location.origin}${window.location.pathname}?tab=billing&payment=cancelled`
                 })
             });
             const data = await res.json();
