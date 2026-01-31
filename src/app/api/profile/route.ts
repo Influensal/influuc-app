@@ -1,3 +1,4 @@
+
 import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 
@@ -57,7 +58,16 @@ export async function GET(req: Request) {
     }
 }
 
+// Support both PUT (replace/update) and PATCH (partial update)
 export async function PUT(req: Request) {
+    return handleUpdate(req);
+}
+
+export async function PATCH(req: Request) {
+    return handleUpdate(req);
+}
+
+async function handleUpdate(req: Request) {
     try {
         const supabase = await createClient();
         const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -69,6 +79,7 @@ export async function PUT(req: Request) {
         const body = await req.json();
 
         // Fields allowed to be updated
+        // now includes visual preferences for Tier Upgrade Flow
         const updates = {
             name: body.name,
             role: body.role,
@@ -78,13 +89,25 @@ export async function PUT(req: Request) {
             industry: body.industry,
             target_audience: body.targetAudience,
             context_data: body.contextData,
-            auto_publish: body.autoPublish
+            auto_publish: body.autoPublish,
+
+            // Visual / Tier preferences
+            subscription_tier: body.subscriptionTier,
+            visual_mode: body.visualMode,
+            style_faceless: body.style_faceless,
+            style_carousel: body.style_carousel,
+            style_face: body.style_face,
+            avatar_urls: body.avatar_urls
         };
 
         // Filter out undefined
         const cleanUpdates = Object.fromEntries(
             Object.entries(updates).filter(([_, v]) => v !== undefined)
         );
+
+        if (Object.keys(cleanUpdates).length === 0) {
+            return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
+        }
 
         const { data, error } = await supabase
             .from('founder_profiles')
@@ -100,7 +123,7 @@ export async function PUT(req: Request) {
     } catch (error) {
         console.error('Error updating profile:', error);
         return NextResponse.json(
-            { error: 'Failed to update profile' },
+            { error: error instanceof Error ? error.message : 'Failed to update profile' },
             { status: 500 }
         );
     }

@@ -1,7 +1,8 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { Suspense, ReactNode } from 'react';
 import ConnectionStatusBanner from './ConnectionStatusBanner';
+import TierUpgradeModal from './TierUpgradeModal';
 
 interface DashboardClientWrapperProps {
     children: ReactNode;
@@ -11,6 +12,9 @@ export default function DashboardClientWrapper({ children }: DashboardClientWrap
     return (
         <>
             <ConnectionStatusBanner />
+            <Suspense fallback={null}>
+                <TierUpgradeModal />
+            </Suspense>
             {children}
         </>
     );
