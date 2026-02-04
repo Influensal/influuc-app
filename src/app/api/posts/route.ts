@@ -41,11 +41,76 @@ export async function GET(request: NextRequest) {
             duration_ms: timer()
         });
 
+
         return NextResponse.json({ posts: posts || [] });
     } catch (error) {
         logger.exception('Posts API error', error);
         return NextResponse.json(
             { error: error instanceof Error ? error.message : 'Failed to fetch posts' },
+            { status: 500 }
+        );
+    }
+}
+
+export async function POST(request: NextRequest) {
+    try {
+        const supabase = await createClient();
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+        if (authError || !user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const body = await request.json();
+        const { platform, content, scheduledDate, status, format, topic } = body;
+
+        // Get profile id
+        const { data: profile } = await supabase
+            .from('founder_profiles')
+            .select('id')
+            .eq('account_id', user.id)
+            .single();
+
+        if (!profile) {
+            throw new Error('Profile not found');
+        }
+
+        let finalContent = content;
+
+        // If Carousel, ensure topic is saved in content JSON
+        if (format === 'carousel' && topic) {
+            try {
+                const parsed = JSON.parse(content);
+                parsed.topic = topic;
+                finalContent = JSON.stringify(parsed);
+            } catch (e) {
+                // If content is not valid JSON, just leave it (or wrap it?)
+                // For now assuming it is valid as it comes from our app
+            }
+        }
+
+        const { data: post, error } = await supabase
+            .from('posts')
+            .insert({
+                profile_id: profile.id,
+                platform,
+                content: finalContent,
+                scheduled_date: scheduledDate,
+                status: status || 'scheduled',
+                format: format || 'single'
+            })
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        return NextResponse.json({ post });
+
+    } catch (error: any) {
+        logger.exception('Create Post Error', error);
+        console.error('Full Create Post Error:', JSON.stringify(error, null, 2));
+        return NextResponse.json(
+            { error: error.message || JSON.stringify(error) || 'Failed to create post' },
             { status: 500 }
         );
     }

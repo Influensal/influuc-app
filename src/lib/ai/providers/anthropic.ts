@@ -7,7 +7,7 @@ import { AIProviderInterface, AICompletionOptions, AICompletionResult } from './
 
 // Claude Sonnet 4.5 - best for writing and reasoning
 // Claude 3.5 Sonnet
-const CLAUDE_MODEL = 'claude-sonnet-4-5';
+const CLAUDE_MODEL = 'claude-sonnet-4-5-20250929';
 
 export class AnthropicProvider implements AIProviderInterface {
     name = 'anthropic' as const;
@@ -32,7 +32,7 @@ export class AnthropicProvider implements AIProviderInterface {
 
         const requestBody: Record<string, unknown> = {
             model: CLAUDE_MODEL,
-            max_tokens: options.maxTokens ?? 4096,
+            max_tokens: options.maxTokens ?? 8192,
             messages: otherMessages.map(m => ({
                 role: m.role === 'assistant' ? 'assistant' : 'user',
                 content: m.content,

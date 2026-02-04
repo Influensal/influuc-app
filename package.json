@@ -16,8 +16,11 @@
     "@types/cheerio": "^0.22.35",
     "@vercel/og": "^0.8.6",
     "cheerio": "^1.1.2",
+    "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "framer-motion": "^12.27.4",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.0.0",
     "lucide-react": "^0.562.0",
     "next": "16.1.4",
     "pdf-lib": "^1.17.1",
@@ -28,6 +31,7 @@
     "resend": "^6.8.0",
     "satori": "^0.19.1",
     "stripe": "^20.2.0",
+    "tailwind-merge": "^3.4.0",
     "twitter-api-v2": "^1.29.0"
   },
   "devDependencies": {

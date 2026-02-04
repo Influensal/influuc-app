@@ -29,7 +29,7 @@ export class OpenAIProvider implements AIProviderInterface {
                 'Authorization': `Bearer ${this.apiKey}`,
             },
             body: JSON.stringify({
-                model: 'gpt-4-turbo-preview',
+                model: 'gpt-4o',
                 messages: options.messages.map(m => ({
                     role: m.role,
                     content: m.content,

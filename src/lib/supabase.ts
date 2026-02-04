@@ -66,7 +66,7 @@ export interface Post {
     hooks: string[];
     selected_hook: string;
     cta: string | null;
-    format: 'single' | 'thread' | 'long_form' | 'video_script';
+    format: 'single' | 'thread' | 'long_form' | 'video_script' | 'carousel';
     status: 'scheduled' | 'posted' | 'skipped';
     created_at: string;
 }

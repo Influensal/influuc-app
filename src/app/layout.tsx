@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Outfit } from "next/font/google";
+import { Outfit, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
 
@@ -7,6 +7,12 @@ const outfit = Outfit({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-outfit",
+});
+
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-playfair",
 });
 
 export const metadata: Metadata = {
@@ -22,7 +28,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${outfit.variable} font-sans antialiased`} suppressHydrationWarning>
+      <body className={`${outfit.variable} ${playfair.variable} font-sans antialiased`} suppressHydrationWarning>
         <Providers>
           {children}
         </Providers>

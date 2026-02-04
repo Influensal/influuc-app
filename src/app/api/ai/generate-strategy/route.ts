@@ -8,6 +8,7 @@ const POSTS_PER_WEEK = 12;
 
 interface GenerateStrategyRequest {
     platforms: ('x' | 'linkedin')[];
+    tier?: 'starter' | 'growth' | 'authority';
     userContext?: {
         industry?: string;
         targetAudience?: string;
@@ -26,7 +27,7 @@ interface GenerateStrategyRequest {
 interface ScheduledPost {
     day: string;
     platform: 'x' | 'linkedin';
-    format: 'single' | 'thread' | 'long_form' | 'video_script';
+    format: 'single' | 'thread' | 'long_form' | 'video_script' | 'carousel';
     topic: string;
     time: string;
 }
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const systemPrompt = buildSystemPrompt(platforms, body.userContext);
+        const systemPrompt = buildSystemPrompt(platforms, body.tier, body.userContext);
         const userPrompt = buildUserPrompt(platforms);
 
         const result = await provider.complete({
@@ -93,6 +94,7 @@ export async function POST(request: NextRequest) {
 
 function buildSystemPrompt(
     platforms: string[],
+    tier?: 'starter' | 'growth' | 'authority',
     userContext?: GenerateStrategyRequest['userContext']
 ): string {
     let prompt = `You are an expert content strategist for founders and entrepreneurs. You create weekly content calendars that build thought leadership and drive engagement.
@@ -108,13 +110,18 @@ STRATEGY PRINCIPLES:
 4. Consider platform-specific best practices (LinkedIn loves long-form; X loves threads and hot takes)
 5. Each post should have a clear angle or hook
 
+TIER REQUIREMENTS:
+${(tier === 'growth' || tier === 'authority')
+            ? '- THIS USER IS ON A PREMIUM PLAN. YOU MUST SCHEDULE EXACTLY 2 CAROUSEL POSTS ON LINKEDIN PER WEEK.'
+            : '- Stick to standard text formats.'}
+
 OUTPUT FORMAT (JSON):
 {
     "posts": [
         {
             "day": "Monday",
             "platform": "linkedin",
-            "format": "long_form",
+            "format": "long_form" | "carousel" | "single",
             "topic": "Specific topic/angle for this post",
             "time": "10:00 AM"
         }

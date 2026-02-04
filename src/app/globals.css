@@ -99,6 +99,7 @@
   --color-secondary: var(--secondary);
   --color-border: var(--border);
   --font-sans: var(--font-outfit), system-ui, sans-serif;
+  --font-serif: var(--font-playfair), serif;
   /* Setup in layout.tsx */
 }
 
