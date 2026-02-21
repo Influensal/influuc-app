@@ -8,7 +8,7 @@ import { createClient } from '@/utils/supabase/server';
 // YOU MUST REPLACE THESE WITH YOUR REAL STRIPE PRICE IDs FROM YOUR DASHBOARD
 const PRICE_IDS = {
     starter: process.env.STRIPE_PRICE_ID_STARTER,
-    growth: process.env.STRIPE_PRICE_ID_GROWTH,
+    creator: process.env.STRIPE_PRICE_ID_GROWTH, // Keeping the env var name as GROWTH to avoid breaking existing setups
     authority: process.env.STRIPE_PRICE_ID_AUTHORITY,
 };
 
@@ -54,8 +54,8 @@ export async function POST(req: NextRequest) {
             },
             // Force strict URL format to ensure redirect lands on Billing tab with session_id
             // This prevents client-side URL construction errors
-            success_url: `${origin}/dashboard/settings?tab=billing&payment=success&session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: `${origin}/dashboard/settings?tab=billing&payment=cancelled`,
+            success_url: `${origin}/onboarding?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${origin}/onboarding?payment=cancelled`,
         });
 
         return NextResponse.json({ sessionId: session.id, url: session.url });

@@ -1,0 +1,21 @@
+{
+  "status": "commited",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:3000",
+  "loginUser": "testspriteuser@gmail.com",
+  "loginPassword": "Abhi2009#",
+  "executionArgs": {
+    "projectName": "influuc-app",
+    "projectPath": "c:\\Users\\Lenovo\\Documents\\Influuc\\influuc-app",
+    "testIds": [
+      "TC001"
+    ],
+    "additionalInstruction": "Run ONLY TC001 for debugging.",
+    "envs": {
+      "API_KEY": "sk-user-8AoEqdiO_h8UBriIdUhcdqrpssviGrPUf6QeA0wMrWM13rs5_56SDp9XrHSePp4JG5bPMzm0LgBj6lTAGQVprFn9DQCz4TZ4m_KmZNEIaemjEP63rBwpOztJwUP-WQZEgQ4"
+    }
+  },
+  "serverPort": 50337,
+  "proxy": "http://bac4a695-1a3f-4ed4-8c0a-4385bdeb38aa:Y5aJt2AkzdgqXv2T4Dk5sotKfY9ijza4@tun.testsprite.com:8080"
+}

@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getProvider } from '@/lib/ai/providers';
+import dJSON from 'dirty-json';
 
 export const runtime = 'nodejs';
 
-// Fixed 12 posts per week (6 per platform)
-const POSTS_PER_WEEK = 12;
+// 7 posts per platform per week
+const POSTS_PER_WEEK = 14;
 
 interface GenerateStrategyRequest {
     platforms: ('x' | 'linkedin')[];
-    tier?: 'starter' | 'growth' | 'authority';
+    tier?: 'starter' | 'creator' | 'authority';
     userContext?: {
         industry?: string;
         targetAudience?: string;
@@ -69,7 +70,10 @@ export async function POST(request: NextRequest) {
         try {
             const jsonMatch = result.content.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
-                strategy = JSON.parse(jsonMatch[0]);
+                let cleaned = jsonMatch[0]
+                    .replace(/[\u201C\u201D]/g, '"')
+                    .replace(/[\u2018\u2019]/g, "'");
+                strategy = dJSON.parse(cleaned);
             } else {
                 throw new Error('Could not parse strategy response');
             }
@@ -94,14 +98,14 @@ export async function POST(request: NextRequest) {
 
 function buildSystemPrompt(
     platforms: string[],
-    tier?: 'starter' | 'growth' | 'authority',
+    tier?: 'starter' | 'creator' | 'authority',
     userContext?: GenerateStrategyRequest['userContext']
 ): string {
     let prompt = `You are an expert content strategist for founders and entrepreneurs. You create weekly content calendars that build thought leadership and drive engagement.
 
 TASK: Generate a weekly content strategy.
 PLATFORMS: ${platforms.join(', ').toUpperCase()}
-NUMBER OF POSTS: ${POSTS_PER_WEEK} (6 per platform)
+NUMBER OF POSTS: 7 per platform (${platforms.length > 1 ? POSTS_PER_WEEK + ' total' : '7 total'})
 
 STRATEGY PRINCIPLES:
 1. Mix content formats: threads, single posts, long-form, video scripts
@@ -111,9 +115,11 @@ STRATEGY PRINCIPLES:
 5. Each post should have a clear angle or hook
 
 TIER REQUIREMENTS:
-${(tier === 'growth' || tier === 'authority')
-            ? '- THIS USER IS ON A PREMIUM PLAN. YOU MUST SCHEDULE EXACTLY 2 CAROUSEL POSTS ON LINKEDIN PER WEEK.'
-            : '- Stick to standard text formats.'}
+${(tier === 'creator' || tier === 'authority')
+            ? `- THIS USER IS ON A PREMIUM PLAN. YOU MUST SCHEDULE EXACTLY 2 CAROUSEL POSTS ON LINKEDIN PER WEEK.
+- LinkedIn format mix: 3 "long_form", 2 "single", 2 "carousel"
+- ⚠️ This is NON-NEGOTIABLE. Carousel format MUST appear exactly 2 times on LinkedIn.`
+            : '- Stick to standard text formats (long_form, single). No carousels for starter tier.'}
 
 OUTPUT FORMAT (JSON):
 {

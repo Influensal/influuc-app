@@ -1,7 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
-import { createClient } from '@supabase/supabase-js';
+import { TIER_DB_FEATURES, createAdminSupabaseClient } from '@/lib/subscription';
 import Stripe from 'stripe';
 
 export const runtime = 'nodejs';
@@ -33,30 +33,39 @@ export async function GET(req: NextRequest) {
             tier = (subscription as any).metadata?.tier || 'starter';
 
             // --- LAZY SYNC ---
-            // Force update accounts table to ensure UI reflects payment immediately
+            // Force update database to ensure UI reflects payment immediately
             // This acts as a backup even if webhook fails (e.g. localhost)
             const userId = session.client_reference_id;
             if (userId && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-                const adminClient = createClient(
-                    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                    process.env.SUPABASE_SERVICE_ROLE_KEY!
-                );
+                const adminClient = createAdminSupabaseClient();
+                const features = TIER_DB_FEATURES[tier as keyof typeof TIER_DB_FEATURES] || TIER_DB_FEATURES.starter;
 
-                // Idempotent update (safe to run multiple times)
-                await adminClient.from('accounts').update({
-                    plan_tier: tier,
-                    subscription_status: 'active',
-                    stripe_subscription_id: session.subscription as string,
+                // 1. Upsert into subscriptions table
+                const { error: subError } = await adminClient.from('subscriptions').upsert({
+                    account_id: userId,
                     stripe_customer_id: session.customer as string,
-                    current_period_end: (subscription as any).current_period_end
-                }).eq('id', userId);
+                    stripe_subscription_id: session.subscription as string,
+                    plan: tier,
+                    status: 'active',
+                    current_period_start: new Date((subscription as any).current_period_start * 1000).toISOString(),
+                    current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
+                }, { onConflict: 'account_id' });
 
-                // Also sync founder profile
-                await adminClient.from('founder_profiles').update({
-                    subscription_tier: tier
+                if (subError) {
+                    console.error('[Lazy Sync] Failed to upsert subscription:', subError);
+                }
+
+                // 2. Update founder_profiles with tier + features
+                const { error: profileError } = await adminClient.from('founder_profiles').update({
+                    subscription_tier: tier,
+                    ...features,
                 }).eq('account_id', userId);
 
-                console.log(`[Lazy Sync] Synced subscription for ${userId} to ${tier}`);
+                if (profileError) {
+                    console.error('[Lazy Sync] Failed to update profile:', profileError);
+                }
+
+                console.log(`[Lazy Sync] Synced subscription for ${userId} to tier=${tier}`);
             }
         }
 

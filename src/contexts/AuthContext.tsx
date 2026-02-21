@@ -76,29 +76,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     // Sign out - must clear ALL state and hard redirect
+    // Sign out - must clear ALL state and hard redirect
+    // Sign out - must clear ALL state and hard redirect
     const signOut = async () => {
-        // 1. Clear local storage to prevent stale state
-        localStorage.removeItem('influuc-active-profile');
-        localStorage.removeItem('influuc-theme');
-        localStorage.removeItem('onboarding_temp_data');
-        // Clear any user-specific onboarding data
-        Object.keys(localStorage).forEach(key => {
-            if (key.startsWith('onboarding_data_')) {
-                localStorage.removeItem(key);
-            }
-        });
+        try {
+            console.log('Signing out...'); // Debug log
 
-        // 2. Clear React state
-        setUser(null);
-        setAccount(null);
-        setProfiles([]);
-        setActiveProfileState(null);
+            // 1. Clear local storage
+            localStorage.removeItem('influuc-active-profile');
+            localStorage.removeItem('influuc-theme');
+            localStorage.removeItem('onboarding_temp_data');
+            Object.keys(localStorage).forEach(key => {
+                if (key.startsWith('onboarding_data_')) {
+                    localStorage.removeItem(key);
+                }
+            });
 
-        // 3. Sign out from Supabase (invalidates session cookies)
-        await supabase.auth.signOut();
+            // 2. Clear React state
+            setUser(null);
+            setAccount(null);
+            setProfiles([]);
+            setActiveProfileState(null);
 
-        // 4. Hard redirect to clear all state (DO NOT use router.push)
-        window.location.href = '/login';
+            // 3. Sign out from Supabase with fail-safe timeout
+            // If the network is flaky or API hangs, force redirect after 2s
+            await Promise.race([
+                supabase.auth.signOut(),
+                new Promise(resolve => setTimeout(resolve, 2000))
+            ]);
+
+        } catch (error) {
+            console.error('Error signing out:', error);
+        } finally {
+            // 4. Hard redirect to clear all state (DO NOT use router.push)
+            // Redirect to root or login
+            window.location.href = '/login';
+        }
     };
 
     // Set active profile

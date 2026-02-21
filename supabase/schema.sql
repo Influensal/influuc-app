@@ -44,8 +44,10 @@ CREATE TABLE IF NOT EXISTS posts (
     hooks TEXT[] DEFAULT '{}',
     selected_hook TEXT,
     cta TEXT,
-    format TEXT CHECK (format IN ('single', 'thread', 'long_form', 'video_script')) DEFAULT 'single',
+    format TEXT CHECK (format IN ('single', 'thread', 'long_form', 'video_script', 'carousel')) DEFAULT 'single',
     status TEXT CHECK (status IN ('scheduled', 'posted', 'skipped')) DEFAULT 'scheduled',
+    carousel_slides JSONB,
+    carousel_style TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );

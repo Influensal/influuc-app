@@ -97,7 +97,10 @@ async function handleUpdate(req: Request) {
             style_faceless: body.style_faceless,
             style_carousel: body.style_carousel,
             style_face: body.style_face,
-            avatar_urls: body.avatar_urls
+            avatar_urls: body.avatar_urls,
+
+            // Strategy
+            weekly_goal: body.contentGoal
         };
 
         // Filter out undefined

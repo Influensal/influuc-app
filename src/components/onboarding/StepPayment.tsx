@@ -15,7 +15,7 @@ export default function StepPayment({ data, updateData, onNext }: StepPaymentPro
     const plans = [
         {
             id: 'starter',
-            name: 'The Writer',
+            name: 'Starter',
             price: 19,
             description: "For founders just starting to build a habit.",
             features: [
@@ -30,8 +30,8 @@ export default function StepPayment({ data, updateData, onNext }: StepPaymentPro
             icon: User,
         },
         {
-            id: 'growth',
-            name: 'The Creator',
+            id: 'creator',
+            name: 'Creator',
             price: 39,
             popular: true,
             description: "Scale your presence with visual dominance.",
@@ -48,7 +48,7 @@ export default function StepPayment({ data, updateData, onNext }: StepPaymentPro
         },
         {
             id: 'authority',
-            name: 'The Authority',
+            name: 'Authority',
             price: 49,
             description: "Dominate your niche with a digital twin.",
             features: [
@@ -111,13 +111,13 @@ export default function StepPayment({ data, updateData, onNext }: StepPaymentPro
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.2 }}
-                    className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-sm font-medium text-[var(--foreground-secondary)] backdrop-blur-md"
+                    className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[var(--foreground)]/5 border border-[var(--foreground)]/10 text-sm font-medium text-[var(--foreground-secondary)] backdrop-blur-md"
                 >
                     <ShieldCheck className="w-4 h-4 text-green-400" />
                     <span>7-Day Free Trial. Cancel Anytime.</span>
                 </motion.div>
 
-                <h1 className="text-5xl md:text-6xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-white via-white/90 to-white/50 pb-2">
+                <h1 className="text-5xl md:text-6xl font-bold tracking-tight text-[var(--foreground)] pb-2">
                     Choose your unfair advantage.
                 </h1>
                 <p className="text-xl text-[var(--foreground-muted)] max-w-2xl mx-auto font-light leading-relaxed">
@@ -139,8 +139,8 @@ export default function StepPayment({ data, updateData, onNext }: StepPaymentPro
                         className={`
                             relative flex flex-col p-8 rounded-3xl backdrop-blur-xl border transition-all duration-500 group
                             ${plan.popular
-                                ? 'bg-gradient-to-b from-white/[0.08] to-transparent border-white/10 ring-1 ring-white/10 shadow-2xl shadow-blue-500/10'
-                                : 'bg-white/[0.02] hover:bg-white/[0.04] border-white/5 hover:border-white/10'}
+                                ? 'bg-[var(--background-secondary)] border-[var(--primary)]/20 shadow-2xl shadow-blue-500/10'
+                                : 'bg-[var(--card)] hover:bg-[var(--background-secondary)]/50 border-[var(--border)] hover:border-[var(--primary)]/20'}
                         `}
                     >
                         {plan.popular && (
@@ -158,7 +158,7 @@ export default function StepPayment({ data, updateData, onNext }: StepPaymentPro
                         {/* Title & Price */}
                         <div className="mb-8">
                             <div className="flex items-center gap-3 mb-4">
-                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-white/5 border border-white/10 text-white group-hover:scale-110 transition-transform duration-300`}>
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-[var(--foreground)]/5 border border-[var(--foreground)]/10 text-[var(--foreground)] group-hover:scale-110 transition-transform duration-300`}>
                                     <plan.icon className="w-5 h-5" />
                                 </div>
                                 <h3 className="text-xl font-bold">{plan.name}</h3>
@@ -194,8 +194,8 @@ export default function StepPayment({ data, updateData, onNext }: StepPaymentPro
                             className={`
                                 w-full py-4 rounded-xl font-bold text-sm tracking-wide transition-all duration-300 relative overflow-hidden
                                 ${plan.popular
-                                    ? 'bg-white text-black hover:bg-gray-100 shadow-lg shadow-white/10'
-                                    : 'bg-white/5 text-white border border-white/10 hover:bg-white/10 hover:border-white/20'}
+                                    ? 'bg-[var(--foreground)] text-[var(--background)] hover:opacity-90 shadow-lg shadow-white/10'
+                                    : 'bg-[var(--foreground)]/5 text-[var(--foreground)] border border-[var(--foreground)]/10 hover:bg-[var(--foreground)]/10 hover:border-[var(--foreground)]/20'}
                                 ${isLoading && isLoading !== plan.id ? 'opacity-50 cursor-not-allowed' : ''}
                             `}
                         >

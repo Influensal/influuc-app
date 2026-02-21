@@ -43,6 +43,7 @@ interface UserProfile {
         personalContext: Array<{ id: string; type: string; label: string; value: string }>;
         productContext: Array<{ id: string; type: string; label: string; value: string }>;
     };
+    awaitingGoalInput?: boolean;
 }
 
 interface PostContextType {
@@ -58,6 +59,7 @@ interface PostContextType {
     addPost: (post: Omit<Post, 'id'>) => void;
     deletePost: (id: string) => void;
     refreshPosts: () => Promise<void>;
+    updateProfile: (data: Partial<UserProfile>) => Promise<void>;
 }
 
 // Helper to convert DB format to Post format
@@ -130,7 +132,8 @@ export function PostProvider({ children }: { children: ReactNode }) {
                         connections: dbProfile.connections || { x: false, linkedin: false },
                         autoPublish: dbProfile.auto_publish || false,
                         nextGenerationDate: dbProfile.next_generation_date ? parseISO(dbProfile.next_generation_date) : undefined,
-                        contextData: dbProfile.context_data || { aboutYou: '', personalContext: [], productContext: [] }
+                        contextData: dbProfile.context_data || { aboutYou: '', personalContext: [], productContext: [] },
+                        awaitingGoalInput: dbProfile.awaiting_goal_input || false,
                     });
                 }
             }
@@ -146,6 +149,29 @@ export function PostProvider({ children }: { children: ReactNode }) {
             console.error('Failed to fetch posts:', err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const updateProfile = async (data: Partial<UserProfile>) => {
+        try {
+            const res = await fetch('/api/profile', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            });
+
+            if (!res.ok) throw new Error('Failed to update profile');
+
+            const result = await res.json();
+
+            // Optimistically update local state or use returned data
+            setProfile(prev => prev ? { ...prev, ...data } : null);
+
+            // Refresh to ensure sync
+            await refreshPosts();
+        } catch (err) {
+            console.error('Failed to update profile:', err);
+            throw err;
         }
     };
 
@@ -210,7 +236,8 @@ export function PostProvider({ children }: { children: ReactNode }) {
             getMetricCounts,
             addPost,
             deletePost,
-            refreshPosts
+            refreshPosts,
+            updateProfile
         }}>
             {children}
         </PostContext.Provider>

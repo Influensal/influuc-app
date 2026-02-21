@@ -5,7 +5,7 @@ import { loadStripe } from '@stripe/stripe-js';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
 
-type Tier = 'starter' | 'growth' | 'authority';
+type Tier = 'starter' | 'creator' | 'authority';
 
 interface BillingSectionProps {
     className?: string;
@@ -85,16 +85,16 @@ export function BillingSection({ className }: BillingSectionProps) {
         {
             id: 'starter',
             name: 'Starter',
-            price: 'Free',
+            price: '$19/mo',
             description: 'Essential tools for content creation',
             features: ['30 Ideas / Month', 'Basic Text Posts', 'Manual Scheduling', 'No AI Visuals'],
             icon: Zap,
             highlight: false
         },
         {
-            id: 'growth',
+            id: 'creator',
             name: 'Creator',
-            price: '$29/mo',
+            price: '$39/mo',
             description: 'Power up your personal brand',
             features: ['Unlimited Ideas', '2 Carousels / Week', 'Faceless AI Visuals', 'Priority Support'],
             icon: Sparkles,
@@ -120,7 +120,7 @@ export function BillingSection({ className }: BillingSectionProps) {
             {/* Current Plan Card */}
             <div className="card p-8 border border-[var(--border)] bg-[var(--card)] rounded-2xl mb-8 flex items-center justify-between">
                 <div>
-                    <h2 className="text-2xl font-bold mb-2">Current Plan: {currentTier === 'growth' ? 'Creator' : currentTier.charAt(0).toUpperCase() + currentTier.slice(1)}</h2>
+                    <h2 className="text-2xl font-bold mb-2">Current Plan: {currentTier.charAt(0).toUpperCase() + currentTier.slice(1)}</h2>
                     <p className="text-[var(--foreground-muted)]">
                         Status: <span className="capitalize font-medium text-[var(--foreground)]">{subscription?.status || 'Active'}</span>
                         {subscription?.currentPeriodEnd && ` • Renews: ${new Date(subscription.currentPeriodEnd * 1000).toLocaleDateString()}`}

@@ -16,15 +16,25 @@ import {
     Pause,
     Sparkles,
     Calendar as CalendarIcon,
-    Loader2,
     RefreshCw,
-    Target
+    Target,
+    AlertTriangle,
+    Copy,
+    Flame,
+    PenTool,
+    Lightbulb,
+    Loader2,
+    Calendar,
+    ArrowRight,
+    TrendingUp,
+    Zap,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePosts } from '@/contexts';
-import { format, addDays, isAfter, isBefore, startOfDay, endOfDay, nextMonday, differenceInDays } from 'date-fns';
+import { format, addDays, isAfter, isBefore, startOfDay, endOfDay, nextMonday, differenceInDays, startOfWeek, endOfWeek, isWithinInterval, isToday } from 'date-fns';
 import { NotificationBanner } from '@/components/dashboard/NotificationBanner';
 import { WeeklyGoalModal } from '@/components/dashboard/WeeklyGoalModal';
+import { QuickPostModal } from '@/components/dashboard/QuickPostModal';
 
 export default function DashboardPage() {
     const containerVariants = {
@@ -47,6 +57,7 @@ export default function DashboardPage() {
     const [isPublishing, setIsPublishing] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [showGoalModal, setShowGoalModal] = useState(false);
+    const [showQuickPostModal, setShowQuickPostModal] = useState(false);
     const [weekNumber, setWeekNumber] = useState(1);
 
     // Get today's posts only
@@ -55,8 +66,7 @@ export default function DashboardPage() {
 
     // Check if user needs to set their weekly goal
     useEffect(() => {
-        // @ts-ignore - awaiting_goal_input is a new field
-        if ((profile as any)?.awaiting_goal_input) {
+        if (profile?.awaitingGoalInput) {
             setShowGoalModal(true);
         }
     }, [profile]);
@@ -127,15 +137,63 @@ export default function DashboardPage() {
     if (daysUntilStrategy < 0) daysUntilStrategy = 0;
 
 
+
+
     // Get upcoming posts (next 2 days)
     const upcomingPosts = posts
         .filter(post => {
             const today = startOfDay(new Date());
             const twoDaysFromNow = endOfDay(addDays(today, 2));
             const postDate = post.scheduledTime;
-            return isAfter(postDate, endOfDay(today)) && isBefore(postDate, twoDaysFromNow) && post.status !== 'posted';
+            // Includes today's future posts too, but limited to 2 days
+            return (isAfter(postDate, new Date()) || isToday(postDate))
+                && isBefore(postDate, twoDaysFromNow)
+                && post.status !== 'posted';
         })
         .sort((a, b) => a.scheduledTime.getTime() - b.scheduledTime.getTime());
+
+    // --- NEW METRICS CALCULATION ---
+
+    // 1. Streak Logic
+    const streak = (() => {
+        const postsByWeek = new Set<string>();
+        posts.forEach(p => {
+            if (p.status === 'posted' || p.status === 'scheduled') {
+                const weekStr = startOfWeek(p.scheduledTime, { weekStartsOn: 1 }).toISOString();
+                postsByWeek.add(weekStr);
+            }
+        });
+
+        let currentStreak = 0;
+        let checkDate = startOfWeek(new Date(), { weekStartsOn: 1 });
+
+        // Check current week (if they have posted/scheduled this week, it adds to streak)
+        if (postsByWeek.has(checkDate.toISOString())) {
+            currentStreak++;
+        }
+
+        // Count backwards
+        checkDate = addDays(checkDate, -7);
+        while (postsByWeek.has(checkDate.toISOString())) {
+            currentStreak++;
+            checkDate = addDays(checkDate, -7);
+        }
+
+        return currentStreak;
+    })();
+
+    // 2. Content Runway
+    const lastScheduledPost = [...posts]
+        .filter(p => p.status === 'scheduled')
+        .sort((a, b) => b.scheduledTime.getTime() - a.scheduledTime.getTime())[0];
+
+    const runwayDays = lastScheduledPost
+        ? Math.max(0, differenceInDays(lastScheduledPost.scheduledTime, new Date()))
+        : 0;
+
+    // 3. Strategy / Goal Data
+    const currentGoal = profile?.contentGoal || "General consistency";
+
 
     const handlePublish = async () => {
         if (!previewPost) return;
@@ -190,11 +248,18 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-2">
                     <button
                         className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-[var(--primary)] text-white hover:opacity-90 rounded-lg transition-all shadow-lg shadow-[var(--primary)]/20"
-                        onClick={() => alert("Quick Post Helper coming in next update!")}
+                        onClick={() => setShowQuickPostModal(true)}
                     >
                         <Plus className="w-4 h-4" />
                         Write Post
                     </button>
+                    <QuickPostModal
+                        isOpen={showQuickPostModal}
+                        onClose={() => setShowQuickPostModal(false)}
+                        onSuccess={() => {
+                            refreshPosts();
+                        }}
+                    />
                     <button
                         onClick={async () => {
                             setIsRefreshing(true);
@@ -218,73 +283,121 @@ export default function DashboardPage() {
                 className="space-y-8"
             >
                 {/* --- ROW 1: 3 Key Metrics --- */}
+                {/* --- ROW 1: Actionable Metrics (Final Redesign) --- */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {/* Card 1: Active Channels */}
-                    <motion.div variants={itemVariants} className="card p-6 flex flex-col justify-between min-h-[160px] relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <Layout className="w-24 h-24 text-[var(--foreground)]" />
-                        </div>
-                        <div className="w-10 h-10 rounded-xl bg-black dark:bg-white text-white dark:text-black flex items-center justify-center mb-4 shadow-lg shadow-black/10 dark:shadow-white/10 z-10">
-                            <Layout className="w-5 h-5" />
-                        </div>
-                        <div className="z-10">
-                            <div className="text-4xl font-semibold mb-1 tracking-tight text-[var(--foreground)]">{metrics.activeChannels}</div>
-                            <div className="text-sm text-[var(--foreground-secondary)] font-medium">Active Channels</div>
-                        </div>
-                    </motion.div>
 
-                    {/* Card 2: Total Posts Scheduled */}
-                    <motion.div variants={itemVariants} className="card p-6 flex flex-col justify-between min-h-[160px] relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <CheckCircle className="w-24 h-24 text-[var(--primary)]" />
+                    {/* Card 1: Strategy Pulse (Focus) */}
+                    <motion.div variants={itemVariants} className="card p-6 flex flex-col justify-between min-h-[180px] relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
+                            <Target className="w-32 h-32 text-[var(--primary)]" />
                         </div>
-                        <div className="w-10 h-10 rounded-xl bg-[var(--primary)] text-white flex items-center justify-center mb-4 shadow-lg shadow-[var(--primary)]/30 z-10">
-                            <Clock className="w-5 h-5" />
-                        </div>
-                        <div className="z-10">
-                            <div className="flex items-baseline gap-2 mb-1">
-                                <span className="text-4xl font-semibold tracking-tight text-[var(--foreground)]">{metrics.totalScheduled}</span>
-                                <span className="text-sm font-medium text-[var(--foreground-muted)]">posts</span>
+
+                        <div className="z-10 h-full flex flex-col justify-between">
+                            <div>
+                                <div className="flex items-center gap-2 mb-3">
+                                    <div className="p-2 rounded-xl bg-[var(--primary)]/10 text-[var(--primary)]">
+                                        <Zap className="w-5 h-5" />
+                                    </div>
+                                    <span className="text-xs font-bold uppercase tracking-wider text-[var(--foreground-muted)]">Strategy Pulse</span>
+                                </div>
+
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-5xl font-bold tracking-tighter text-[var(--foreground)]">
+                                        {daysUntilStrategy}
+                                    </span>
+                                    <span className="text-xl font-medium text-[var(--foreground-muted)]">days</span>
+                                </div>
+                                <p className="text-sm text-[var(--foreground-muted)] mt-1">
+                                    until next strategy cycle
+                                </p>
                             </div>
-                            <div className="text-sm text-[var(--foreground-secondary)] font-medium">Scheduled Total</div>
+
+                            <div className="mt-4 pt-4 border-t border-[var(--border)]">
+                                <div className="flex justify-between items-center text-xs">
+                                    <span className="font-semibold text-[var(--foreground-secondary)] uppercase tracking-wide">Current Focus</span>
+                                </div>
+                                <div className="mt-1 font-medium text-[var(--foreground)] truncate" title={currentGoal}>
+                                    "{currentGoal}"
+                                </div>
+                            </div>
                         </div>
                     </motion.div>
 
-                    {/* Card 3: Channel Breakdown */}
-                    <motion.div variants={itemVariants} className="card p-6 flex flex-col justify-center min-h-[160px]">
-                        <h3 className="text-sm font-medium text-[var(--foreground-secondary)] mb-4">Channel Breakdown</h3>
-                        <div className="space-y-4">
-                            {profile?.platforms?.linkedin && (
-                                <div className="flex items-center justify-between group">
-                                    <div className="flex items-center gap-3">
-                                        <div className={`w-2.5 h-2.5 rounded-full ${profile?.connections?.linkedin ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : 'bg-red-500 animate-pulse'}`} />
-                                        <div className="flex flex-col">
-                                            <span className="text-sm font-medium text-[var(--foreground)]">LinkedIn</span>
-                                            <span className="text-[10px] text-[var(--foreground-muted)]">
-                                                {profile?.connections?.linkedin ? 'Connected' : 'Reconnect Required'}
-                                            </span>
-                                        </div>
+                    {/* Card 2: Consistency Streak (Gamification) */}
+                    <motion.div variants={itemVariants} className="card p-6 flex flex-col justify-between min-h-[180px] relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
+                            <Flame className="w-32 h-32 text-orange-500" />
+                        </div>
+
+                        <div className="z-10 h-full flex flex-col justify-between">
+                            <div>
+                                <div className="flex items-center gap-2 mb-3">
+                                    <div className="p-2 rounded-xl bg-orange-500/10 text-orange-600 dark:text-orange-400">
+                                        <Flame className="w-5 h-5" />
                                     </div>
-                                    <span className="text-lg font-bold text-[var(--foreground)]">{metrics.platformBreakdown.LinkedIn}</span>
+                                    <span className="text-xs font-bold uppercase tracking-wider text-[var(--foreground-muted)]">Posting Streak</span>
                                 </div>
-                            )}
-                            {profile?.platforms?.x && (
-                                <div className="flex items-center justify-between group">
-                                    <div className="flex items-center gap-3">
-                                        <div className={`w-2.5 h-2.5 rounded-full ${profile?.connections?.x ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : 'bg-red-500 animate-pulse'}`} />
-                                        <div className="flex flex-col">
-                                            <span className="text-sm font-medium text-[var(--foreground)]">X (Twitter)</span>
-                                            <span className="text-[10px] text-[var(--foreground-muted)]">
-                                                {profile?.connections?.x ? 'Connected' : 'Reconnect Required'}
-                                            </span>
-                                        </div>
+
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-5xl font-bold tracking-tighter text-[var(--foreground)] decoration-orange-500/20 underline decoration-4 underline-offset-4">
+                                        {streak}
+                                    </span>
+                                    <span className="text-xl font-medium text-[var(--foreground-muted)]">weeks</span>
+                                </div>
+                            </div>
+
+                            <div className="mt-4">
+                                <p className="text-sm text-[var(--foreground)] font-medium">
+                                    {streak > 0
+                                        ? "You're on fire! 🔥 Keep it up."
+                                        : "Start your streak this week!"}
+                                </p>
+                                <div className="flex gap-1.5 mt-2">
+                                    {[...Array(5)].map((_, i) => (
+                                        <div
+                                            key={i}
+                                            className={`h-1.5 flex-1 rounded-full transition-all ${i < Math.min(streak, 5)
+                                                ? 'bg-orange-500 shadow-sm shadow-orange-500/50'
+                                                : 'bg-[var(--background-secondary)]'
+                                                }`}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </motion.div>
+
+                    {/* Card 3: Content Runway (Peace of Mind) */}
+                    <motion.div variants={itemVariants} className="card p-6 flex flex-col justify-between min-h-[180px] relative overflow-hidden group">
+                        <div className="absolute -bottom-4 -right-4 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
+                            <CalendarIcon className="w-32 h-32 text-[var(--foreground)]" />
+                        </div>
+
+                        <div className="z-10 h-full flex flex-col justify-between">
+                            <div>
+                                <div className="flex items-center gap-2 mb-3">
+                                    <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                                        <TrendingUp className="w-5 h-5" />
                                     </div>
-                                    <span className="text-lg font-bold text-[var(--foreground)]">{metrics.platformBreakdown.X}</span>
+                                    <span className="text-xs font-bold uppercase tracking-wider text-[var(--foreground-muted)]">Content Runway</span>
                                 </div>
-                            )}
-                            {!profile?.platforms?.linkedin && !profile?.platforms?.x && (
-                                <p className="text-sm text-[var(--foreground-muted)]">No platforms selected</p>
-                            )}
+
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-5xl font-bold tracking-tighter text-[var(--foreground)]">
+                                        {runwayDays}
+                                    </span>
+                                    <span className="text-xl font-medium text-[var(--foreground-muted)]">days</span>
+                                </div>
+                            </div>
+
+                            <div className="mt-4 inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--background-secondary)] border border-[var(--border)] w-full relative z-20">
+                                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${runwayDays > 3 ? 'bg-emerald-500' : 'bg-red-500 animate-pulse'}`} />
+                                <span className="text-xs font-medium text-[var(--foreground-secondary)] truncate">
+                                    {lastScheduledPost
+                                        ? `Buffered until ${format(lastScheduledPost.scheduledTime, 'MMM d')}`
+                                        : 'No future posts'}
+                                </span>
+                            </div>
                         </div>
                     </motion.div>
                 </div>
@@ -350,15 +463,29 @@ export default function DashboardPage() {
                                             </td>
                                             <td className="py-4 px-6 text-right">
                                                 <div className="flex items-center justify-end gap-2">
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            setPreviewPost(post);
-                                                        }}
-                                                        className="px-3 py-1.5 text-xs font-bold text-white bg-[var(--primary)] rounded-lg hover:bg-[var(--primary-hover)] transition-colors shadow-sm"
-                                                    >
-                                                        Post Now
-                                                    </button>
+                                                    {post.platform === 'X' ? (
+                                                        // X doesn't support direct posting via API yet, so we disable or clarify
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                // For now, X relies on manual copy/paste or future integration
+                                                                alert("Auto-posting to X is currently unavailable. Please copy/paste manually.");
+                                                            }}
+                                                            className="px-3 py-1.5 text-xs font-bold text-[var(--foreground-muted)] bg-[var(--background-secondary)] rounded-lg hover:bg-[var(--background-secondary)]/80 transition-colors shadow-sm cursor-help"
+                                                        >
+                                                            Manual Post
+                                                        </button>
+                                                    ) : (
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setPreviewPost(post);
+                                                            }}
+                                                            className="px-3 py-1.5 text-xs font-bold text-white bg-[var(--primary)] rounded-lg hover:bg-[var(--primary-hover)] transition-colors shadow-sm"
+                                                        >
+                                                            Post Now
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>
@@ -479,34 +606,71 @@ export default function DashboardPage() {
                                     <div className="text-xs text-[var(--foreground-secondary)]">Posting to {previewPost.platform === 'X' ? 'X (Twitter)' : 'LinkedIn'}</div>
                                 </div>
                             </div>
-                            <div className="whitespace-pre-wrap text-sm leading-relaxed text-[var(--foreground)] p-4 bg-[var(--background-secondary)]/30 rounded-xl border border-[var(--border)]">
+                            <div className="whitespace-pre-wrap text-sm leading-relaxed text-[var(--foreground)] p-4 bg-[var(--background-secondary)]/30 rounded-xl border border-[var(--border)] relative group">
                                 {previewPost.content}
+                                <button
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(previewPost.content);
+                                        // Simple visual feedback could be added here
+                                    }}
+                                    className="absolute top-2 right-2 p-1.5 rounded-lg bg-[var(--background)]/50 hover:bg-[var(--background)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] opacity-0 group-hover:opacity-100 transition-all border border-[var(--border)]"
+                                    title="Copy content"
+                                >
+                                    <Copy className="w-3.5 h-3.5" />
+                                </button>
                             </div>
+
+                            {previewPost.platform === 'X' && (
+                                <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl flex gap-3 text-sm text-yellow-700 dark:text-yellow-400">
+                                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="font-bold mb-0.5">Auto-posting Unavailable</p>
+                                        <p className="opacity-90 text-xs">
+                                            The X (Twitter) API does not currently support auto-posting content. Please copy the text above and post manually.
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                         <div className="p-6 border-t border-[var(--border)] flex justify-end gap-3 bg-[var(--background-secondary)]/10">
                             <button
                                 onClick={() => setPreviewPost(null)}
                                 className="px-4 py-2 rounded-xl font-medium text-[var(--foreground-secondary)] hover:bg-[var(--background-secondary)] transition-colors"
                             >
-                                Cancel
+                                {previewPost.platform === 'X' ? 'Close' : 'Cancel'}
                             </button>
-                            <button
-                                onClick={handlePublish}
-                                disabled={isPublishing}
-                                className="px-6 py-2 rounded-xl font-medium text-white bg-[var(--primary)] hover:bg-[var(--primary-hover)] transition-colors disabled:opacity-50 flex items-center gap-2"
-                            >
-                                {isPublishing ? (
-                                    <>
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                        Publishing...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Sparkles className="w-4 h-4" />
-                                        Confirm & Post
-                                    </>
-                                )}
-                            </button>
+
+                            {previewPost.platform === 'X' ? (
+                                <button
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(previewPost.content);
+                                        setPreviewPost(null);
+                                        // Could trigger a toast here if we had a toast system expose
+                                    }}
+                                    className="px-6 py-2 rounded-xl font-medium text-white bg-black hover:bg-black/80 dark:bg-white dark:text-black hover:dark:bg-white/90 transition-colors flex items-center gap-2"
+                                >
+                                    <Copy className="w-4 h-4" />
+                                    Copy & Close
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={handlePublish}
+                                    disabled={isPublishing}
+                                    className="px-6 py-2 rounded-xl font-medium text-white bg-[var(--primary)] hover:bg-[var(--primary-hover)] transition-colors disabled:opacity-50 flex items-center gap-2"
+                                >
+                                    {isPublishing ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            Publishing...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Sparkles className="w-4 h-4" />
+                                            Confirm & Post
+                                        </>
+                                    )}
+                                </button>
+                            )}
                         </div>
                     </motion.div>
                 </div>

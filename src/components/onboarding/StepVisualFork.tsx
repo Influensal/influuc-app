@@ -11,6 +11,9 @@ interface StepVisualForkProps {
 }
 
 // Style options
+import { CAROUSEL_STYLES } from '@/lib/ai/carousel-styles';
+
+// --- Mini Slide Preview Component ---
 const facelessStyles = [
     { id: 'abstract', title: 'Abstract' },
     { id: 'neon', title: 'Neon' },
@@ -25,12 +28,50 @@ const faceStyles = [
     { id: 'studio', title: 'Studio' },
 ];
 
-const carouselStyles = [
-    { id: 'modern', title: 'Modern' },
-    { id: 'editorial', title: 'Editorial' },
-    { id: 'bold', title: 'Bold' },
-    { id: 'type', title: 'Typography' },
-];
+const MiniSlide = ({ styleId }: { styleId: string }) => {
+    switch (styleId) {
+        case 'minimal-stone':
+            return (
+                <div className="w-full h-full bg-stone-100 flex flex-col items-center justify-center p-3 text-center">
+                    <div className="w-8 h-8 rounded-full bg-emerald-600 mb-2"></div>
+                    <div className="h-2 w-16 bg-stone-800 rounded-full mb-1"></div>
+                    <div className="h-1 w-10 bg-stone-400 rounded-full"></div>
+                </div>
+            );
+        case 'neon-dark':
+            return (
+                <div className="w-full h-full bg-gray-950 flex flex-col items-center justify-center p-3 text-center overflow-hidden relative">
+                    <div className="absolute top-0 right-0 w-12 h-12 bg-fuchsia-500/20 blur-xl"></div>
+                    <div className="absolute bottom-0 left-0 w-12 h-12 bg-cyan-500/20 blur-xl"></div>
+                    <div className="text-2xl font-bold text-cyan-400 drop-shadow-[0_0_5px_rgba(34,211,238,0.8)]">NEON</div>
+                    <div className="h-1 w-12 bg-gradient-to-r from-cyan-400 to-fuchsia-500 mt-2 rounded-full"></div>
+                </div>
+            );
+        case 'luxe-gold':
+            return (
+                <div className="w-full h-full bg-black border border-stone-800 flex flex-col items-center justify-center p-3 text-center">
+                    <div className="text-xl font-serif text-amber-500 italic">Luxe</div>
+                    <div className="h-[1px] w-8 bg-amber-500 my-2"></div>
+                    <div className="text-[8px] text-stone-400 uppercase tracking-widest">Premium</div>
+                </div>
+            );
+        case 'bold-editorial':
+            return (
+                <div className="w-full h-full bg-white border-4 border-black flex flex-col items-center justify-center p-2 text-center">
+                    <div className="bg-black text-white px-2 py-0.5 text-[8px] font-bold uppercase mb-1 -rotate-2">Warning</div>
+                    <div className="text-lg font-black text-black uppercase leading-none">
+                        BOLD<br /><span className="text-red-600">AF</span>
+                    </div>
+                </div>
+            );
+        default:
+            return (
+                <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                    <LayoutTemplate className="w-8 h-8 text-gray-400" />
+                </div>
+            );
+    }
+};
 
 export default function StepVisualFork({ data, updateData, onComplete }: StepVisualForkProps) {
     const tier = data.subscriptionTier || 'starter';
@@ -40,7 +81,7 @@ export default function StepVisualFork({ data, updateData, onComplete }: StepVis
     const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
 
     // Define flow based on tier
-    const flow = tier === 'growth'
+    const flow = tier === 'creator'
         ? ['faceless', 'carousel']
         : tier === 'authority'
             ? ['faceless', 'face', 'photos', 'carousel']
@@ -128,6 +169,20 @@ export default function StepVisualFork({ data, updateData, onComplete }: StepVis
     const photoCount = (data.avatar_urls?.length || 0);
     const canProceedFromPhotos = photoCount >= 3;
 
+    // Helper to get options for current type
+    const getOptions = (): { id: string; title: string }[] => {
+        switch (currentType) {
+            case 'faceless': return facelessStyles;
+            case 'face': return faceStyles;
+            case 'carousel':
+                // Map global carousel styles to format expected by UI
+                return CAROUSEL_STYLES.map(s => ({ id: s.id, title: s.name }));
+            default: return [];
+        }
+    };
+
+    const options = getOptions();
+
     return (
         <motion.div
             key={currentType}
@@ -157,7 +212,7 @@ export default function StepVisualFork({ data, updateData, onComplete }: StepVis
             {/* STYLE SELECTION UI */}
             {(currentType === 'faceless' || currentType === 'face' || currentType === 'carousel') && (
                 <div className="grid grid-cols-2 gap-4">
-                    {(currentType === 'faceless' ? facelessStyles : currentType === 'face' ? faceStyles : carouselStyles).map(opt => (
+                    {options.map(opt => (
                         <div
                             key={opt.id}
                             onClick={() => updateData({ [`style_${currentType}`]: opt.id })}
@@ -166,8 +221,12 @@ export default function StepVisualFork({ data, updateData, onComplete }: StepVis
                                 ${data[`style_${currentType}`] === opt.id ? 'border-[var(--primary)] ring-2 ring-[var(--primary)]/20' : 'border-transparent hover:border-[var(--border)]'}
                             `}
                         >
-                            <div className="aspect-square bg-[var(--background-secondary)] flex items-center justify-center text-[var(--foreground-muted)]">
-                                {currentType === 'carousel' ? <LayoutTemplate className="w-8 h-8" /> : <ImageIcon className="w-8 h-8" />}
+                            <div className="aspect-square bg-[var(--background-secondary)] flex items-center justify-center text-[var(--foreground-muted)] overflow-hidden">
+                                {currentType === 'carousel' ? (
+                                    <MiniSlide styleId={opt.id} />
+                                ) : (
+                                    <ImageIcon className="w-8 h-8" />
+                                )}
                             </div>
                             <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/80 to-transparent text-white font-medium">
                                 {opt.title}

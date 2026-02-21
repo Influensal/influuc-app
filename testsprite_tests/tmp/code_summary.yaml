@@ -1,0 +1,56 @@
+version: "2"
+type: frontend
+tech_stack:
+  - typescript
+  - nextjs
+  - react
+  - tailwindcss
+  - supabase
+  - stripe
+routes:
+  - path: /onboarding
+    file: src/app/onboarding/page.tsx
+    auth_required: true
+    description: User onboarding flow to collect profile data and select subscription plan
+  - path: /dashboard/settings
+    file: src/app/dashboard/settings/page.tsx
+    auth_required: true
+    description: User settings page including profile management and billing/subscription details
+features:
+  - name: Onboarding Flow
+    description: Multi-step process to set up user profile and select subscription
+    files:
+      - src/app/onboarding/page.tsx
+      - src/components/onboarding/StepPayment.tsx
+    entry_route: /onboarding
+    user_interactions:
+      - Navigate through onboarding steps (Basics, Industry, Context, etc.)
+      - Input user details (Name, Role, Company)
+      - Select functionality options (Platforms, Goals, Archetype)
+      - Select Subscription Plan (Writer/Starter, Creator/Growth, Authority/Authority)
+      - Click "Choose [Plan]" button
+      - Complete onboarding
+    api_calls:
+      - method: POST
+        endpoint: /api/stripe/checkout
+      - method: POST
+        endpoint: /api/onboarding/complete
+    auth_required: true
+  - name: Settings & Billing
+    description: View and manage user settings and subscription plan
+    files:
+      - src/app/dashboard/settings/page.tsx
+      - src/components/dashboard/settings/BillingSection.tsx
+    entry_route: /dashboard/settings
+    user_interactions:
+      - Navigate to Settings page
+      - Switch to Billing tab
+      - View Current Plan details
+      - Click "Manage Subscription" or "Upgrade"
+    api_calls:
+      - method: GET
+        endpoint: /api/subscription
+      - method: PUT
+        endpoint: /api/profile
+    auth_required: true
+known_limitations: []

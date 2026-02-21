@@ -18,13 +18,24 @@ const LOGS = [
     "Initializing neural pathways...",
     "Scanning industry verticals...",
     "Analyzing competitor signals...",
+    "Mapping content pillars...",
     "Detected high-signal topic clusters...",
     "Synthesizing unique value proposition...",
     "Drafting hook variations (n=50)...",
+    "Scoring hook effectiveness...",
+    "Selecting optimal angles...",
+    "Building weekly calendar structure...",
+    "Assigning platform-specific formats...",
+    "Generating carousel slide decks...",
     "Optimizing for readability...",
     "Injecting personality vector...",
     "Calibrating tone: 'Visionary'...",
-    "Final polish pass..."
+    "Running engagement prediction model...",
+    "Cross-referencing trending topics...",
+    "Polishing CTA placement...",
+    "Validating format distribution...",
+    "Final quality assurance pass...",
+    "Packaging content for delivery...",
 ];
 
 export default function MindBlowingLoader() {
@@ -43,34 +54,38 @@ export default function MindBlowingLoader() {
         return () => window.removeEventListener('mousemove', handleMouseMove);
     }, []);
 
-    // Progress Simulation
+    // Progress Simulation - tuned for ~90-120 second generation
     useEffect(() => {
         const interval = setInterval(() => {
             setProgress(prev => {
-                if (prev >= 100) return 100;
-                // Non-linear progress for realism
-                const increment = Math.random() * (prev > 80 ? 0.5 : 2.5);
-                return Math.min(prev + increment, 100);
+                if (prev >= 97) return 97; // Never hit 100% — wait for actual completion
+                // Deliberately slow, non-linear progress
+                let increment;
+                if (prev < 20) increment = Math.random() * 0.8 + 0.2;       // 0-20%: moderate start
+                else if (prev < 50) increment = Math.random() * 0.5 + 0.15; // 20-50%: slow
+                else if (prev < 75) increment = Math.random() * 0.3 + 0.1;  // 50-75%: slower
+                else increment = Math.random() * 0.15 + 0.05;               // 75-97%: crawl
+                return Math.min(prev + increment, 97);
             });
-        }, 100);
+        }, 400);
         return () => clearInterval(interval);
     }, []);
 
     // Phase Switching
     useEffect(() => {
-        if (progress > 30 && phase === 0) setPhase(1);
-        if (progress > 70 && phase === 1) setPhase(2);
+        if (progress > 25 && phase === 0) setPhase(1);
+        if (progress > 60 && phase === 1) setPhase(2);
     }, [progress, phase]);
 
     // Tip Cycling
     useEffect(() => {
         const interval = setInterval(() => {
             setActiveTip(prev => (prev + 1) % TIPS.length);
-        }, 4000);
+        }, 6000);
         return () => clearInterval(interval);
     }, []);
 
-    // Log Streaming
+    // Log Streaming - slower to match longer generation
     useEffect(() => {
         let currentIndex = 0;
         const interval = setInterval(() => {
@@ -78,7 +93,7 @@ export default function MindBlowingLoader() {
                 setLogLines(prev => [...prev.slice(-4), LOGS[currentIndex]]);
                 currentIndex++;
             }
-        }, 800);
+        }, 4000 + Math.random() * 2000); // 4-6 seconds per log line
         return () => clearInterval(interval);
     }, []);
 

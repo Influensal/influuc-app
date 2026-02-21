@@ -26,7 +26,7 @@ export default function TierUpgradeModal() {
                     const res = await fetch(`/api/stripe/checkout-session?session_id=${sessionId}`);
                     const data = await res.json();
 
-                    if (data.tier && (data.tier === 'growth' || data.tier === 'authority')) {
+                    if (data.tier && (data.tier === 'creator' || data.tier === 'authority')) {
                         setTier(data.tier);
                         setUpgradeData({ subscriptionTier: data.tier });
                         setIsOpen(true);

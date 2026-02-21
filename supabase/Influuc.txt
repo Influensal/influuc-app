@@ -1,0 +1,41 @@
+Influuc
+Platforms
+Where do you want to post?
+Industry
+Tell us about your business
+Context
+Tell us about you & your business
+Goals
+What do you want to achieve?
+Topics
+What will you talk about?
+Cadence
+How often do you want to post?
+Tone
+How do you want to sound?
+Voice
+Help us learn your style
+Launch
+Ready to generate your first week
+Takes about 3 minutes
+Where do you want to post?
+Select the platforms where you want to build your presence
+[0] (570,407)<button class='
+            flex items-center gap-5 p-6 rounded-2xl border-2 transition-all duration-300 group
+            border-[var(--border)] hover:border-[var(--border-hover)] hover:bg-[var(--background-secondary)]
+          ' />
+	X (Twitter)
+	Short-form posts, threads, and quick takes
+[1] (570,513)<button class='
+            flex items-center gap-5 p-6 rounded-2xl border-2 transition-all duration-300 group
+            border-[var(--border)] hover:border-[var(--border-hover)] hover:bg-[var(--background-secondary)]
+          ' />
+	LinkedIn
+	Professional content, thought leadership, long-form
+[2] (570,619)<button class='
+            flex items-center gap-5 p-6 rounded-2xl border-2 transition-all duration-300 group
+            border-[var(--border)] hover:border-[var(--border-hover)] hover:bg-[var(--background-secondary)]
+          ' />
+	Instagram
+	Reels scripts, captions, and visual content
+Continue

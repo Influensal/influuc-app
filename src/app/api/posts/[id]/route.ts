@@ -9,6 +9,44 @@ import { logger, startTimer } from '@/lib/logger';
 
 export const runtime = 'nodejs';
 
+export async function GET(
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    const { id: postId } = await params;
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    try {
+        const { data: post, error } = await supabase
+            .from('posts')
+            .select('*, founder_profiles!inner(account_id)')
+            .eq('id', postId)
+            .single();
+
+        if (error || !post) {
+            return NextResponse.json({ error: 'Post not found' }, { status: 404 });
+        }
+
+        // @ts-ignore
+        const profile = Array.isArray(post.founder_profiles) ? post.founder_profiles[0] : post.founder_profiles;
+        if (!profile || profile.account_id !== user.id) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+        }
+
+        // Remove internal join data
+        const { founder_profiles: _, ...postData } = post;
+        return NextResponse.json({ post: postData });
+    } catch (error) {
+        logger.exception('Get post error', error, { postId });
+        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    }
+}
+
 export async function PATCH(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }

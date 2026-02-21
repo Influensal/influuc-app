@@ -12,6 +12,8 @@ import { Resend } from 'resend';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
+import { sendWeekReadyEmail } from '@/lib/email/resend';
+
 // Create admin client (bypasses RLS)
 function createAdminClient() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -35,35 +37,29 @@ export async function GET(request: NextRequest) {
 
     try {
         // Get profiles due for generation (next_generation_date <= today)
+        // Fetch FULL profile data needed for generation
         const { data: dueProfiles, error: queryError } = await supabase
             .from('founder_profiles')
-            .select(`
-                id,
-                account_id,
-                company_name,
-                auto_publish,
-                next_generation_date,
-                awaiting_goal_input
-            `)
-            .lte('next_generation_date', now.toISOString())
-            .eq('awaiting_goal_input', false); // Haven't been notified yet
+            .select('*')
+            .lte('next_generation_date', now.toISOString());
 
         if (queryError) {
-            console.error('[Weekly Reminder Cron] Query error:', queryError);
+            console.error('[Weekly Cron] Query error:', queryError);
             return NextResponse.json({ error: 'Database query failed' }, { status: 500 });
         }
 
         if (!dueProfiles || dueProfiles.length === 0) {
-            console.log('[Weekly Reminder Cron] No users due for reminders');
+            console.log('[Weekly Cron] No users due for generation/reminders');
             return NextResponse.json({
                 message: 'No users due',
                 date: today,
-                reminded: 0
+                processed: 0
             });
         }
 
-        console.log(`[Weekly Reminder Cron] Found ${dueProfiles.length} profiles to remind`);
+        console.log(`[Weekly Cron] Found ${dueProfiles.length} profiles to process`);
 
+        let generatedCount = 0;
         let remindedCount = 0;
         let failedCount = 0;
 
@@ -74,53 +70,78 @@ export async function GET(request: NextRequest) {
                 const userEmail = userData?.user?.email;
 
                 if (!userEmail) {
-                    console.warn(`[Weekly Reminder Cron] No email for user ${profile.account_id}`);
+                    console.warn(`[Weekly Cron] No email for user ${profile.account_id}`);
                     continue;
                 }
 
-                // Mark as awaiting goal input
-                await supabase
-                    .from('founder_profiles')
-                    .update({ awaiting_goal_input: true })
-                    .eq('id', profile.id);
+                // ============================================================
+                // NOTIFY USER (Weekly Review)
+                // ============================================================
 
-                // Send reminder email
-                await sendGoalReminderEmail(
-                    userEmail,
-                    profile.company_name || 'there'
-                );
+                // Always notify if due, regardless of goal status
+                if (!profile.awaiting_goal_input) {
+                    // Mark as notified
+                    await supabase
+                        .from('founder_profiles')
+                        .update({ awaiting_goal_input: true })
+                        .eq('id', profile.id);
 
-                // Create in-app notification
-                await supabase
-                    .from('notifications')
-                    .insert({
-                        account_id: profile.account_id,
-                        type: 'week_ready',
-                        title: "Time to plan this week's content! 🎯",
-                        message: 'What do you want to achieve? Set your goal to generate content.',
-                        action_url: '/dashboard'
-                    });
+                    // Send "Strategy Ready" email
+                    // Using the existing helper defined below
+                    await sendGoalReminderEmail(
+                        userEmail,
+                        profile.company_name || 'there'
+                    );
 
-                remindedCount++;
-                console.log(`[Weekly Reminder Cron] Reminded user ${profile.account_id}`);
+                    // Create in-app notification
+                    await supabase
+                        .from('notifications')
+                        .insert({
+                            account_id: profile.account_id,
+                            type: 'week_ready',
+                            title: "Your Weekly Strategy is Ready! 🚀",
+                            message: 'Review last week\'s performance and generate your new content plan.',
+                            action_url: '/dashboard'
+                        });
+
+                    remindedCount++;
+                    console.log(`[Weekly Cron] Notified user ${profile.account_id} for review`);
+                }
 
             } catch (err) {
-                console.error(`[Weekly Reminder Cron] Failed for profile ${profile.id}:`, err);
+                console.error(`[Weekly Cron] Failed for profile ${profile.id}:`, err);
                 failedCount++;
             }
         }
 
         return NextResponse.json({
-            message: 'Weekly reminder cron complete',
+            message: 'Weekly cron complete',
             date: today,
-            reminded: remindedCount,
-            failed: failedCount
+            stats: {
+                processed: dueProfiles.length,
+                generated: generatedCount,
+                reminded: remindedCount,
+                failed: failedCount
+            }
         });
 
     } catch (error) {
-        console.error('[Weekly Reminder Cron] Unexpected error:', error);
+        console.error('[Weekly Cron] Unexpected error:', error);
         return NextResponse.json({ error: 'Cron failed' }, { status: 500 });
     }
+}
+
+// Helper for labels
+function getGoalLabel(goal: string): string {
+    const labels: Record<string, string> = {
+        recruiting: 'Attracting Talent',
+        fundraising: 'Investor Attention',
+        sales: 'Lead Generation',
+        credibility: 'Building Authority',
+        growth: 'Audience Growth',
+        balanced: 'Balanced Mix'
+    };
+    return labels[goal] || goal;
 }
 
 /**

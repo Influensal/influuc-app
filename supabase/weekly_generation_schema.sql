@@ -48,7 +48,8 @@ ALTER TABLE founder_profiles
     ADD COLUMN IF NOT EXISTS next_generation_date TIMESTAMPTZ,
     ADD COLUMN IF NOT EXISTS generation_day_of_week INT DEFAULT 0,  -- 0=Sunday, 1=Monday, etc.
     ADD COLUMN IF NOT EXISTS timezone TEXT DEFAULT 'UTC',
-    ADD COLUMN IF NOT EXISTS generation_count INT DEFAULT 0;
+    ADD COLUMN IF NOT EXISTS generation_count INT DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS awaiting_goal_input BOOLEAN DEFAULT FALSE;
 
 -- ============================================
 -- 3. UPDATE POSTS TABLE

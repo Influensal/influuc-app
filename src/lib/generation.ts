@@ -1,10 +1,70 @@
 /**
  * Weekly Content Generation Service
  * Core logic for generating weekly posts for users
+ *
+ * Flow:
+ *   1. Strategy call (sync) — generates ideas for text posts + carousels
+ *   2. Batch call — submits all text post + carousel requests to Anthropic Batch API
+ *   3. Poll — waits for batch completion, then saves results to DB
  */
 
 import { getProvider } from '@/lib/ai/providers';
 import { createClient } from '@supabase/supabase-js';
+import { generateCarouselSlides } from '@/lib/ai/carousel-generator';
+import { getCarouselStyle, getDefaultStyle } from '@/lib/ai/carousel-styles';
+import dJSON from 'dirty-json';
+
+/**
+ * Robust JSON parser that tries native JSON.parse first,
+ * then dirty-json, then regex extraction as a last resort.
+ */
+function robustJsonParse(raw: string): any {
+    // Step 1: Clean up common AI artifacts
+    let cleaned = raw
+        .replace(/```json\n?|\n?```/g, '')
+        .replace(/[\u201C\u201D]/g, '"')
+        .replace(/[\u2018\u2019]/g, "'")
+        .trim();
+
+    // Step 2: Extract the JSON object
+    const firstBrace = cleaned.indexOf('{');
+    const lastBrace = cleaned.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+        cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+    }
+
+    // Step 3: Fix trailing commas
+    cleaned = cleaned.replace(/,\s*([\]}])/g, '$1');
+
+    // Step 4: Fix double-double-quote keys like ""posts":
+    cleaned = cleaned.replace(/""(posts|carousels|content|hooks|cta|index|slides)":/g, '"$1":');
+
+    // Step 5: Try native JSON.parse
+    try {
+        return JSON.parse(cleaned);
+    } catch (nativeErr) {
+        console.warn('[robustJsonParse] Native JSON.parse failed, trying dirty-json...');
+    }
+
+    // Step 6: Try dirty-json
+    try {
+        return dJSON.parse(cleaned);
+    } catch (dirtyErr) {
+        console.warn('[robustJsonParse] dirty-json failed, trying newline escape repair...');
+    }
+
+    // Step 7: Try fixing unescaped newlines inside string values
+    try {
+        const repaired = cleaned.replace(
+            /"(?:[^"\\]|\\.)*"/g,
+            (match) => match.replace(/\n/g, '\\n').replace(/\t/g, '\\t')
+        );
+        return JSON.parse(repaired);
+    } catch (repairErr) {
+        console.error('[robustJsonParse] All parse attempts failed.');
+        throw repairErr;
+    }
+}
 
 // ============================================
 // TYPES
@@ -36,9 +96,14 @@ export interface UserProfile {
 export interface ScheduledPost {
     day: string;
     platform: 'x' | 'linkedin';
-    format: 'single' | 'long_form' | 'video_script';
+    format: 'single' | 'long_form' | 'video_script' | 'carousel';
     topic: string;
     time: string;
+}
+
+export interface CarouselIdea {
+    day: string;
+    topic: string;
 }
 
 export interface GeneratedPost {
@@ -114,6 +179,7 @@ export async function generateWeeklyContent(
 
     if (genError || !generation) {
         console.error('[Generation] Failed to create generation record:', genError);
+
         return {
             success: false,
             generationId: '',
@@ -129,25 +195,39 @@ export async function generateWeeklyContent(
         // Step 1: Archive old posts
         await archiveOldPosts(supabase, profile.id);
 
-        // Step 2: Generate strategy (schedule)
+        // Step 2: Generate strategy (schedule) — includes text + carousel ideas
         const strategy = await generateStrategy(platforms, profile);
+        console.log(`[Generation] Strategy returned: ${strategy.posts?.length || 0} posts, ${strategy.carousels?.length || 0} carousels`);
+        console.log(`[Generation] Carousel ideas:`, JSON.stringify(strategy.carousels || []));
 
-        // Step 3: Generate actual post content IN PARALLEL (Massive Speedup)
-        // This fires all request simultaneously to fit in Vercel timeout
-        const posts = await generatePostsParallel(strategy.posts, profile);
+        // Step 3: Generate all content (text + carousels) with 2 parallel API calls
+        const carouselIdeas = strategy.carousels || [];
+        const { textPosts, carouselPosts } = await generateAllContentBatch(
+            strategy.posts,
+            carouselIdeas,
+            profile
+        );
 
-        // Step 4: Save posts to database
-        const savedPosts = await savePostsToDatabase(
+        // Step 4: Save all posts to database
+        const savedTextPosts = await savePostsToDatabase(
             supabase,
             profile.id,
             generation.id,
-            posts,
+            textPosts,
+            weekStartDate
+        );
+
+        const savedCarouselPosts = await saveCarouselsToDatabase(
+            supabase,
+            profile.id,
+            generation.id,
+            carouselPosts,
             weekStartDate
         );
 
         // Count by platform
-        const xPostsCount = savedPosts.filter(p => p.platform === 'x').length;
-        const linkedinPostsCount = savedPosts.filter(p => p.platform === 'linkedin').length;
+        const xPostsCount = savedTextPosts.filter(p => p.platform === 'x').length;
+        const linkedinPostsCount = savedTextPosts.filter(p => p.platform === 'linkedin').length + savedCarouselPosts.length;
 
         // Step 5: Update generation record as completed
         await supabase
@@ -229,74 +309,254 @@ async function archiveOldPosts(supabase: any, profileId: string): Promise<number
 }
 
 // ============================================
-// PARALLEL GENERATION
+// BATCH GENERATION — TEXT + CAROUSELS
 // ============================================
 
-async function generatePostsParallel(
-    schedule: ScheduledPost[],
+interface GeneratedCarouselPost {
+    day: string;
+    topic: string;
+    slides: string[];
+    styleId: string;
+}
+
+/**
+ * Generates ALL content with just 2 parallel API calls:
+ *   Request 1 → all text posts (12) in a single prompt
+ *   Request 2 → both carousels (2) in a single prompt
+ *
+ * Fired simultaneously via Promise.all for maximum speed.
+ */
+async function generateAllContentBatch(
+    textSchedule: ScheduledPost[],
+    carouselIdeas: CarouselIdea[],
     profile: UserProfile
-): Promise<Array<ScheduledPost & GeneratedPost>> {
+): Promise<{
+    textPosts: Array<ScheduledPost & GeneratedPost>;
+    carouselPosts: GeneratedCarouselPost[];
+}> {
     const provider = await getProvider();
 
-    // We create a promise for each post to generate them all at once
-    const promises = schedule.map(async (post) => {
-        const systemPrompt = `You are an elite ghostwriter for top founders.
-        
-You are writing a SINGLE post for ${post.platform === 'linkedin' ? 'LinkedIn' : 'X (Twitter)'}.
+    // ── REQUEST 1: All text posts in one call ──
+    const generateAllTextPosts = async (): Promise<Array<ScheduledPost & GeneratedPost>> => {
+        const postsSpec = textSchedule.map((post, i) => ({
+            index: i,
+            platform: post.platform,
+            format: post.format,
+            topic: post.topic,
+            day: post.day,
+        }));
 
-CONTEXT:
-- Topic: ${post.topic}
-- Format: ${post.format}
+        const systemPrompt = `You are an elite ghostwriter for top founders.
+
+You will generate ALL ${textSchedule.length} posts in a SINGLE response.
+
+USER CONTEXT:
 - Role: ${profile.role}
 - Company: ${profile.company_name}
 - Business: ${profile.business_description}
 - Expertise: ${profile.expertise}
 - Tone: ${profile.tone?.boldness || 'bold'} / ${profile.tone?.style || 'educational'}
 
-CONSTRAINTS:
-${post.platform === 'x' ? '- Max 280 chars\n- No Hashtags' : '- Professional formatting\n- 800-1200 chars'}
-- Start with a strong hook
-- Be concise and authoritative
+POSTS TO GENERATE:
+${postsSpec.map(p => `[${p.index}] ${p.platform} / ${p.format} — "${p.topic}"`).join('\n')}
 
-Return ONLY a JSON object:
+PLATFORM CONSTRAINTS:
+- X (Twitter): Max 280 chars, no hashtags, punchy and sharp
+- LinkedIn: Professional formatting, 800-1200 chars, structured thinking
+
+RULES:
+- Each post must start with a strong hook
+- Be concise and authoritative
+- Every post should feel distinct — vary openings, structures, and angles
+- Write for intelligent peers, not beginners
+
+Return ONLY a valid JSON object with this exact structure:
 {
-    "content": "The post text",
-    "hooks": ["Alternative hook 1", "Alternative hook 2"],
-    "cta": "Call to action"
-}`;
+    "posts": [
+        {
+            "index": 0,
+            "content": "The full post text",
+            "hooks": ["Alternative hook 1", "Alternative hook 2"],
+            "cta": "Call to action or null"
+        }
+    ]
+}
+
+The "posts" array must have exactly ${textSchedule.length} items, one per post, in the same order as the input.`;
 
         try {
+            console.log(`[Generation] Generating ${textSchedule.length} text posts in a single request...`);
             const result = await provider.complete({
                 messages: [
                     { role: 'system', content: systemPrompt },
-                    { role: 'user', content: `Write a ${post.platform} post about: ${post.topic}` }
+                    { role: 'user', content: `Generate all ${textSchedule.length} posts now.` }
                 ],
                 temperature: 0.7,
                 responseFormat: { type: 'json_object' },
             });
 
-            const cleanContent = result.content.replace(/```json\n?|\n?```/g, '').trim();
-            const parsed = JSON.parse(cleanContent);
+            // Parse the bulk response with robust parsing
+            let parsed: any;
+            try {
+                parsed = robustJsonParse(result.content);
+            } catch (parseErr) {
+                console.warn('[Generation] All JSON parse methods failed, extracting posts with regex...');
+                // Last resort: extract individual post objects via regex
+                const cleanContent = result.content;
+                const postRegex = /\{[^{}]*?"index"\s*:\s*(\d+)[^{}]*?"content"\s*:\s*"((?:[^"\\]|\\.)*)"/g;
+                const extractedPosts: Array<{ index: number; content: string; hooks: string[]; cta: string | null }> = [];
+                let match;
+                while ((match = postRegex.exec(cleanContent)) !== null) {
+                    extractedPosts.push({
+                        index: parseInt(match[1]),
+                        content: match[2].replace(/\\n/g, '\n').replace(/\\"/g, '"'),
+                        hooks: [],
+                        cta: null,
+                    });
+                }
+                if (extractedPosts.length > 0) {
+                    console.log(`[Generation] Recovered ${extractedPosts.length} posts via regex`);
+                    parsed = { posts: extractedPosts };
+                } else {
+                    throw parseErr;
+                }
+            }
 
-            return {
-                ...post,
-                content: parsed.content || 'Failed to generate',
-                hooks: parsed.hooks || [],
-                cta: parsed.cta || null
-            };
+            const generatedPosts: Array<{ index: number; content: string; hooks: string[]; cta: string | null }> = parsed.posts || [];
+
+            // Map results back to schedule
+            return textSchedule.map((post, i) => {
+                const generated = generatedPosts.find(g => g.index === i) || generatedPosts[i];
+                return {
+                    ...post,
+                    content: generated?.content || 'Generation failed. Please edit.',
+                    hooks: generated?.hooks || [],
+                    cta: generated?.cta || null,
+                };
+            });
         } catch (e) {
-            console.error(`Failed to generate post for ${post.topic}:`, e);
-            return {
+            console.error('[Generation] Bulk text post generation failed:', e);
+            // Return fallbacks for all posts
+            return textSchedule.map(post => ({
                 ...post,
                 content: 'Generation failed. Please edit.',
                 hooks: [],
-                cta: null
-            };
+                cta: null,
+            }));
         }
-    });
+    };
 
-    // Wait for all posts to generate
-    return Promise.all(promises);
+    // ── REQUEST 2: Both carousels in one call ──
+    const generateAllCarousels = async (): Promise<GeneratedCarouselPost[]> => {
+        console.log(`[Generation] generateAllCarousels called with ${carouselIdeas.length} ideas:`, JSON.stringify(carouselIdeas));
+        if (carouselIdeas.length === 0) {
+            console.warn('[Generation] WARNING: No carousel ideas provided — skipping carousel generation!');
+            return [];
+        }
+
+        const carouselStyleId = (profile as any).style_carousel || 'minimal-stone';
+        const style = carouselStyleId ? getCarouselStyle(carouselStyleId) : getDefaultStyle();
+
+        if (!style || !style.prompt) {
+            console.warn('[Generation] No carousel style found, skipping carousels');
+            return [];
+        }
+
+        // Build a combined prompt for ALL carousels
+        const carouselSpecs = carouselIdeas.map((c, i) => {
+            const numberMatch = c.topic.match(
+                /\b(top\s*)?(\d+)\s*(things?|tips?|ways?|habits?|books?|tools?|ideas?|steps?|reasons?|secrets?|hacks?|strategies?|mistakes?|rules?|principles?|lessons?|facts?|myths?)?/i
+            );
+            let slideCount = 6;
+            if (numberMatch && numberMatch[2]) {
+                const num = parseInt(numberMatch[2]);
+                if (num >= 3 && num <= 15) {
+                    slideCount = num + 2;
+                }
+            }
+            return { index: i, topic: c.topic, slideCount };
+        });
+
+        let systemPrompt = style.prompt;
+
+        // Add multi-carousel instructions
+        systemPrompt += `
+
+MULTI-CAROUSEL INSTRUCTIONS:
+You must generate ${carouselIdeas.length} separate carousels in one response.
+
+USER CONTEXT:`;
+        if (profile.industry) systemPrompt += `\n- Industry: ${profile.industry}`;
+        if (profile.role) systemPrompt += `\n- Role: ${profile.role}`;
+        if (profile.company_name) systemPrompt += `\n- Company: ${profile.company_name}`;
+        if (profile.target_audience) systemPrompt += `\n- Audience: ${profile.target_audience}`;
+
+        systemPrompt += `
+
+Return ONLY a valid JSON object:
+{
+    "carousels": [
+        {
+            "index": 0,
+            "slides": ["<div>...</div>", "<div>...</div>"]
+        }
+    ]
+}
+
+Each carousel must have exactly the specified number of slides.`;
+
+        const userMessage = carouselSpecs.map(c =>
+            `Carousel ${c.index}: "${c.topic}" — ${c.slideCount} slides`
+        ).join('\n');
+
+        try {
+            console.log(`[Generation] Generating ${carouselIdeas.length} carousels in a single request...`);
+            const result = await provider.complete({
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: `Create these carousels:\n${userMessage}` }
+                ],
+                temperature: 0.7,
+                responseFormat: { type: 'json_object' },
+            });
+
+            // Parse response with robust parser
+            const data = robustJsonParse(result.content);
+
+            const carouselResults: GeneratedCarouselPost[] = [];
+            const generatedCarousels: Array<{ index: number; slides: string[] }> = data.carousels || [];
+
+            for (let i = 0; i < carouselIdeas.length; i++) {
+                const generated = generatedCarousels.find(c => c.index === i) || generatedCarousels[i];
+                if (generated?.slides && generated.slides.length > 0) {
+                    carouselResults.push({
+                        day: carouselIdeas[i].day,
+                        topic: carouselIdeas[i].topic,
+                        slides: generated.slides,
+                        styleId: carouselStyleId,
+                    });
+                    console.log(`[Generation] Carousel ${i} parsed: ${generated.slides.length} slides`);
+                } else {
+                    console.error(`[Generation] Carousel ${i} returned no slides`);
+                }
+            }
+
+            return carouselResults;
+        } catch (e) {
+            console.error('[Generation] Bulk carousel generation failed:', e);
+            return [];
+        }
+    };
+
+    // ── Fire both requests in parallel ──
+    console.log(`[Generation] Firing 2 parallel requests (${textSchedule.length} text posts + ${carouselIdeas.length} carousels)...`);
+    const [textPosts, carouselPosts] = await Promise.all([
+        generateAllTextPosts(),
+        generateAllCarousels(),
+    ]);
+
+    console.log(`[Generation] Done: ${textPosts.length} text posts, ${carouselPosts.length} carousels`);
+    return { textPosts, carouselPosts };
 }
 
 // ============================================
@@ -306,7 +566,7 @@ Return ONLY a JSON object:
 async function generateStrategy(
     platforms: Array<'x' | 'linkedin'>,
     profile: UserProfile
-): Promise<{ posts: ScheduledPost[] }> {
+): Promise<{ posts: ScheduledPost[]; carousels: CarouselIdea[] }> {
     const provider = await getProvider();
 
     const systemPrompt = `You are an elite content strategist for founders with deep experience in audience psychology, platform mechanics, and leverage-based content systems.
@@ -375,10 +635,11 @@ If Platform is X (Twitter):
 - Format Mix: 3 "long_form" (approx 2400 chars), 4 "single" (short, max 280 chars).
 
 If Platform is LinkedIn:
-- Schedule exactly 5 posts (e.g. Mon-Fri).
+- Schedule exactly 5 TEXT posts.
 - Format Mix: 3 "long_form", 2 "single" (short).
+- ALSO provide 2 carousel topic ideas (these will be generated separately as visual carousels).
 
-If BOTH platforms are selected, generate SEPARATE schedules for each according to the rules above (Total 12 posts).
+If BOTH platforms are selected, generate SEPARATE schedules for each (Total 12 text posts + 2 carousel ideas).
 
 OPTIMAL POSTING TIMES (AI-SUGGESTED):
 Based on the user's goal of "${profile.content_goal}" and industry "${profile.industry}", suggest optimal posting times:
@@ -398,12 +659,28 @@ Return ONLY a valid JSON object with this structure:
       "topic": "Brief but specific topic description",
       "time": "9:00 AM"
     }
+  ],
+  "carousels": [
+    {
+      "day": "Wednesday",
+      "topic": "5 frameworks every founder should know about [specific area]"
+    },
+    {
+      "day": "Saturday",
+      "topic": "The complete guide to [specific topic] — step by step"
+    }
   ]
 }
 
+CARDINALITY RULES:
+- "posts" array: exactly 5 items for LinkedIn-only, exactly 7 for X-only, exactly 12 for both
+- "carousels" array: exactly 2 items (LinkedIn only). If LinkedIn is not selected, set to empty array [].
+
 RULES:
-- Allowed formats only: "single", "long_form", "video_script"
-- Allowed platforms only: "x" or "linkedin"
+- Allowed formats for posts: "single", "long_form", "video_script"
+- Allowed platforms for posts: "x" or "linkedin"
+- Carousel topics should be visual/educational — lists, frameworks, step-by-step guides
+- Carousel days must NOT overlap with busy LinkedIn post days
 - Ensure formats align with platform norms
   - LinkedIn → long_form preferred
   - X → single preferred
@@ -433,22 +710,19 @@ Output the JSON. Nothing else.`;
     });
 
     try {
-        const cleanContent = result.content.replace(/```json\n?|\n?```/g, '').trim();
-        return JSON.parse(cleanContent);
+        return robustJsonParse(result.content);
     } catch (e) {
         console.error('[Strategy] JSON Parse Error:', e);
-        console.log('[Strategy] Raw Content:', result.content);
-        throw new Error('Failed to parse strategy JSON');
+        console.log('[Strategy] Raw Content:', result.content.substring(0, 500));
+        throw new Error(`Failed to parse strategy JSON: ${e instanceof Error ? e.message : 'Unknown error'}`);
     }
 }
 
-// Note: generatePosts function below is no longer used by main flow but kept for reference or legacy tools
-// Deprecated generatePosts function removed. Use generatePostsParallel instead.
+// Note: Old generateCarouselBatch removed — carousels are now part of the batch API flow.
 
-// ... savePostsToDatabase ... hiding unchanged code ...
-// We need to modify savePostsToDatabase to return the SAVED posts with IDs
-// Wait, the original code returned `postsData.map(p => ({ platform: p.platform }))`.
-// We need identifiers.
+// ============================================
+// SAVE TEXT POSTS TO DATABASE
+// ============================================
 
 async function savePostsToDatabase(
     supabase: any,
@@ -462,7 +736,7 @@ async function savePostsToDatabase(
         'Thursday': 4, 'Friday': 5, 'Saturday': 6,
     };
 
-    const validFormats = ['single', 'thread', 'long_form', 'video_script'];
+    const validFormats = ['single', 'thread', 'long_form', 'video_script', 'carousel'];
     const validPlatforms = ['x', 'linkedin'];
 
     const postsData = posts.map(post => {
@@ -497,11 +771,13 @@ async function savePostsToDatabase(
             platform,
             scheduled_date: scheduledDate.toISOString(),
             content: post.content || '', // Empty for pending
+            topic: post.topic,
             hooks: [],
             selected_hook: '',
             cta: null,
             format,
-            status: 'draft', // Start as draft/pending
+            status: 'scheduled',
+            ...(format === 'carousel' ? { carousel_slides: null, carousel_style: null } : {}),
         };
     });
 
@@ -520,6 +796,66 @@ async function savePostsToDatabase(
     }
 
     return [];
+}
+
+// ============================================
+// SAVE CAROUSEL POSTS TO DATABASE
+// ============================================
+
+async function saveCarouselsToDatabase(
+    supabase: any,
+    profileId: string,
+    generationId: string,
+    carousels: GeneratedCarouselPost[],
+    weekStartDate: Date
+): Promise<Array<{ id: string; platform: string }>> {
+    if (carousels.length === 0) return [];
+
+    const dayMapping: Record<string, number> = {
+        'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3,
+        'Thursday': 4, 'Friday': 5, 'Saturday': 6,
+    };
+
+    const carouselData = carousels.map(carousel => {
+        const targetDay = dayMapping[carousel.day] ?? 3;
+        const startDay = weekStartDate.getDay();
+        let daysUntil = (targetDay - startDay + 7) % 7;
+        if (daysUntil === 0) daysUntil = 7;
+
+        const scheduledDate = new Date(weekStartDate);
+        scheduledDate.setDate(weekStartDate.getDate() + daysUntil);
+        scheduledDate.setHours(20, 30, 0, 0);
+
+        return {
+            profile_id: profileId,
+            generation_id: generationId,
+            platform: 'linkedin',
+            scheduled_date: scheduledDate.toISOString(),
+            content: `📊 Carousel: ${carousel.topic} (${carousel.slides.length} slides)`,
+            topic: carousel.topic,
+            hooks: [],
+            selected_hook: '',
+            cta: null,
+            format: 'carousel',
+            status: 'scheduled',
+            carousel_slides: carousel.slides,
+            carousel_style: carousel.styleId,
+        };
+    });
+
+    console.log(`[Generation] Inserting ${carouselData.length} carousel posts to Supabase...`);
+    const { data: inserted, error } = await supabase
+        .from('posts')
+        .insert(carouselData)
+        .select('id, platform');
+
+    if (error) {
+        console.error('[Generation] Failed to save carousel posts:', error);
+        // Non-fatal — don't throw, just return empty
+        return [];
+    }
+
+    return inserted || [];
 }
 
 // ============================================
@@ -624,7 +960,10 @@ export async function generateSinglePost(postId: string): Promise<{ success: boo
                 company_name,
                 business_description,
                 expertise,
-                tone
+                tone,
+                industry,
+                target_audience,
+                style_carousel
             )
         `)
         .eq('id', postId)
@@ -635,8 +974,43 @@ export async function generateSinglePost(postId: string): Promise<{ success: boo
         return { success: false, error: 'Post not found' };
     }
 
-    // 2. Prepare Prompt
     const profile = post.founder_profiles;
+
+    // ── CAROUSEL BRANCH ──
+    if (post.format === 'carousel') {
+        try {
+            console.log(`[SingleGen] Generating CAROUSEL for post ${postId}`);
+            const { slides, styleId } = await generateCarouselSlides({
+                topic: post.topic || 'Industry insight',
+                styleId: profile.style_carousel || 'minimal-stone', // Use user's preferred style
+                userContext: {
+                    industry: profile.industry,
+                    targetAudience: profile.target_audience,
+                    role: profile.role,
+                    companyName: profile.company_name,
+                },
+            });
+
+            // Update post with carousel data
+            await supabase
+                .from('posts')
+                .update({
+                    content: `📊 Carousel: ${post.topic || 'Industry Insight'} (${slides.length} slides)`,
+                    carousel_slides: slides,
+                    carousel_style: styleId,
+                    status: 'scheduled',
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('id', postId);
+
+            return { success: true, content: `Carousel generated with ${slides.length} slides` };
+        } catch (error) {
+            console.error('[SingleGen] Carousel generation error:', error);
+            return { success: false, error: error instanceof Error ? error.message : 'Carousel generation failed' };
+        }
+    }
+
+    // ── TEXT POST BRANCH ──
     // @ts-ignore
     const tone = profile.tone || { boldness: 'bold', style: 'educational' };
 
@@ -665,7 +1039,7 @@ Return ONLY a JSON object:
     "cta": "Call to action"
 }`;
 
-    // 3. Call AI
+    // Call AI
     try {
         const provider = await getProvider();
         const result = await provider.complete({
@@ -677,18 +1051,17 @@ Return ONLY a JSON object:
             responseFormat: { type: 'json_object' },
         });
 
-        const cleanContent = result.content.replace(/```json\n?|\n?```/g, '').trim();
-        const parsed = JSON.parse(cleanContent);
+        const parsed = robustJsonParse(result.content);
         const finalContent = parsed.content || 'Failed to generate content';
 
-        // 4. Update Post
+        // Update Post
         await supabase
             .from('posts')
             .update({
                 content: finalContent,
                 hooks: parsed.hooks || [],
                 cta: parsed.cta || null,
-                status: 'scheduled', // Mark as ready
+                status: 'scheduled',
                 updated_at: new Date().toISOString()
             })
             .eq('id', postId);

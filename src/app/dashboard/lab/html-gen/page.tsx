@@ -93,15 +93,15 @@ export default function HTMLGeneratorLab() {
                 {/* NAVIGATION */}
                 {slides.length > 0 && (
                     <div className="absolute top-8 flex items-center gap-4 bg-white p-2 rounded-full shadow-lg z-10">
-                        <Button variant="outline" size="sm" onClick={prevSlide} disabled={currentIndex === 0}>
+                        <button className="px-3 py-1 text-sm border rounded-lg hover:bg-gray-50 disabled:opacity-50" onClick={prevSlide} disabled={currentIndex === 0}>
                             ←
-                        </Button>
+                        </button>
                         <span className="font-mono text-sm font-bold min-w-[3rem] text-center">
                             {currentIndex + 1} / {slides.length}
                         </span>
-                        <Button variant="outline" size="sm" onClick={nextSlide} disabled={currentIndex === slides.length - 1}>
+                        <button className="px-3 py-1 text-sm border rounded-lg hover:bg-gray-50 disabled:opacity-50" onClick={nextSlide} disabled={currentIndex === slides.length - 1}>
                             →
-                        </Button>
+                        </button>
                     </div>
                 )}
 

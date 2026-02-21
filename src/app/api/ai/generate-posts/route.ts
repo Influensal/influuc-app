@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getProvider } from '@/lib/ai/providers';
+import dJSON from 'dirty-json';
 
 export const runtime = 'nodejs';
 
 interface GeneratePostRequest {
     topic: string;
     platform: 'x' | 'linkedin';
-    format: 'single' | 'thread' | 'long_form' | 'video_script';
+    format: 'single' | 'thread' | 'long_form' | 'video_script' | 'carousel';
     userContext?: {
         industry?: string;
         targetAudience?: string;
@@ -33,6 +34,7 @@ const FORMAT_INSTRUCTIONS: Record<string, string> = {
     thread: 'Write a thread of 4-6 connected posts. Number each one. Each should be under 280 characters.',
     long_form: 'Write a long-form post with proper paragraphs, lists, and structure. Aim for 800-1500 characters.',
     video_script: 'Write a video script with: HOOK (first 3 seconds), TALKING POINTS (3-5 bullet points), CLOSING (call to action), and CAPTION.',
+    carousel: 'Write carousel content. This will be processed separately by the carousel generation pipeline.',
 };
 
 export async function POST(request: NextRequest) {
@@ -76,7 +78,11 @@ export async function POST(request: NextRequest) {
             // Try to extract JSON from the response
             const jsonMatch = result.content.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
-                parsedResponse = JSON.parse(jsonMatch[0]);
+                // Remove some common AI artifacts before parsing
+                let cleaned = jsonMatch[0]
+                    .replace(/[\u201C\u201D]/g, '"')
+                    .replace(/[\u2018\u2019]/g, "'");
+                parsedResponse = dJSON.parse(cleaned);
             } else {
                 // Fallback: treat the entire response as content
                 parsedResponse = {
@@ -86,7 +92,8 @@ export async function POST(request: NextRequest) {
                     format: FORMAT_INSTRUCTIONS[format] || format,
                 };
             }
-        } catch {
+        } catch (e) {
+            console.warn('[AI Generation] Failed to parse JSON, returning raw content', e);
             // If JSON parsing fails, treat as plain content
             parsedResponse = {
                 content: result.content.trim(),

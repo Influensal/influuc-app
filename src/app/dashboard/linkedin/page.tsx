@@ -7,7 +7,8 @@ import {
     Clock,
     Loader2,
     AlertCircle,
-    CheckCircle2
+    CheckCircle2,
+    Layers
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import EditPublishModal from '@/components/dashboard/EditPublishModal';
@@ -71,6 +72,7 @@ export default function LinkedInCalendarPage() {
             case 'single': return 'Short-form';
             case 'long_form': return 'Long-form';
             case 'thread': return 'Thread';
+            case 'carousel': return '📊 Carousel';
             default: return fmt;
         }
     };
@@ -158,9 +160,19 @@ export default function LinkedInCalendarPage() {
                                         </span>
                                     )}
                                 </div>
-                                <p className="text-sm text-[var(--foreground)] line-clamp-3 whitespace-pre-wrap">
-                                    {post.content.substring(0, 200)}...
-                                </p>
+                                {post.format === 'carousel' ? (
+                                    <div className="flex items-center gap-3 p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl">
+                                        <Layers className="w-5 h-5 text-emerald-600" />
+                                        <div>
+                                            <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Carousel Post</p>
+                                            <p className="text-xs text-[var(--foreground-muted)]">Click to view & edit slides</p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-[var(--foreground)] line-clamp-3 whitespace-pre-wrap">
+                                        {post.content.substring(0, 200)}...
+                                    </p>
+                                )}
                             </motion.div>
                         );
                     })}

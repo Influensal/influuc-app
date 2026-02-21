@@ -194,7 +194,7 @@ export default function LibraryPage() {
             </div>
 
             {/* Filters Bar */}
-            <div className="bg-white rounded-xl border p-4 mb-6 shadow-sm">
+            <div className="bg-[var(--card)] rounded-xl border border-[var(--border)] p-4 mb-6 shadow-sm">
                 <div className="flex flex-col md:flex-row gap-4">
                     {/* Search */}
                     <div className="relative flex-1">
@@ -204,7 +204,7 @@ export default function LibraryPage() {
                             placeholder="Search posts or topics..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 rounded-lg bg-gray-50 border text-sm focus:outline-none focus:ring-1 focus:ring-black"
+                            className="w-full pl-10 pr-4 py-2 rounded-lg bg-[var(--background-secondary)] border border-[var(--border)] text-sm focus:outline-none focus:ring-1 focus:ring-[var(--foreground)] text-[var(--foreground)]"
                         />
                     </div>
 
@@ -213,8 +213,8 @@ export default function LibraryPage() {
                         <button
                             onClick={() => setSelectedPlatform('all')}
                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${selectedPlatform === 'all'
-                                ? 'bg-black text-white'
-                                : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                                ? 'bg-[var(--foreground)] text-[var(--background)]'
+                                : 'bg-[var(--background-secondary)] text-[var(--foreground-muted)] hover:bg-[var(--background-secondary)]/80'
                                 }`}
                         >
                             All
@@ -223,7 +223,7 @@ export default function LibraryPage() {
                             onClick={() => setSelectedPlatform('linkedin')}
                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${selectedPlatform === 'linkedin'
                                 ? 'bg-[#0077b5] text-white'
-                                : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                                : 'bg-[var(--background-secondary)] text-[var(--foreground-muted)] hover:bg-[var(--background-secondary)]/80'
                                 }`}
                         >
                             <Linkedin className="w-4 h-4" />
@@ -236,7 +236,7 @@ export default function LibraryPage() {
                         <select
                             value={statusFilter}
                             onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-                            className="appearance-none px-4 py-2 pr-8 rounded-lg bg-gray-50 border text-sm cursor-pointer focus:outline-none focus:ring-1 focus:ring-black"
+                            className="appearance-none px-4 py-2 pr-8 rounded-lg bg-[var(--background-secondary)] border border-[var(--border)] text-sm cursor-pointer focus:outline-none focus:ring-1 focus:ring-[var(--foreground)] text-[var(--foreground)]"
                         >
                             <option value="all">All Status</option>
                             <option value="posted">Posted</option>
@@ -281,7 +281,7 @@ export default function LibraryPage() {
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: index * 0.03 }}
-                                    className="bg-white rounded-xl border overflow-hidden hover:border-black/30 transition-all shadow-sm hover:shadow-md"
+                                    className="bg-[var(--card)] rounded-xl border border-[var(--border)] overflow-hidden hover:border-[var(--foreground)]/30 transition-all shadow-sm hover:shadow-md"
                                 >
                                     <div
                                         className="p-4 cursor-pointer"
@@ -290,7 +290,7 @@ export default function LibraryPage() {
                                         <div className="flex items-start gap-4">
                                             {/* Platform Icon */}
                                             <div className={`p-2 rounded-lg shrink-0 ${post.platform === 'x'
-                                                ? 'bg-black text-white'
+                                                ? 'bg-[var(--foreground)] text-[var(--background)]'
                                                 : 'bg-[#0077b5] text-white'
                                                 }`}>
                                                 {isCarousel ? <Layout className="w-4 h-4" /> : getPlatformIcon(post.platform)}
@@ -299,7 +299,7 @@ export default function LibraryPage() {
                                             {/* Content */}
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2 mb-2">
-                                                    <span className="text-xs text-gray-500 font-mono">
+                                                    <span className="text-xs text-[var(--foreground-muted)] font-mono">
                                                         {formatDate(post.scheduled_date)}
                                                     </span>
                                                     {getStatusBadge(post.status)}
@@ -309,7 +309,7 @@ export default function LibraryPage() {
                                                         </span>
                                                     )}
                                                 </div>
-                                                <p className={`text-gray-900 font-medium ${expandedPostId === post.id ? '' : 'line-clamp-2'
+                                                <p className={`text-[var(--foreground)] font-medium ${expandedPostId === post.id ? '' : 'line-clamp-2'
                                                     }`}>
                                                     {isCarousel ? post.topic || "Carousel Post" : post.content}
                                                 </p>
@@ -334,13 +334,13 @@ export default function LibraryPage() {
                                                 initial={{ height: 0, opacity: 0 }}
                                                 animate={{ height: 'auto', opacity: 1 }}
                                                 exit={{ height: 0, opacity: 0 }}
-                                                className="border-t bg-gray-50"
+                                                className="border-t border-[var(--border)] bg-[var(--background-secondary)]/30"
                                             >
                                                 <div className="p-4">
-                                                    <div className="bg-white p-4 rounded-lg border font-mono text-xs text-gray-600 overflow-x-auto max-h-[300px]">
+                                                    <div className="bg-[var(--card)] p-4 rounded-lg border border-[var(--border)] font-mono text-xs text-[var(--foreground-secondary)] overflow-x-auto max-h-[300px]">
                                                         {post.content}
                                                     </div>
-                                                    <div className="mt-4 pt-4 border-t flex flex-wrap gap-4 text-xs text-gray-500">
+                                                    <div className="mt-4 pt-4 border-t border-[var(--border)] flex flex-wrap gap-4 text-xs text-[var(--foreground-muted)]">
                                                         <span>Format: <strong>{post.format}</strong></span>
                                                         <span>ID: {post.id}</span>
                                                     </div>

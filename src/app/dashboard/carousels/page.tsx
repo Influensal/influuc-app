@@ -97,7 +97,7 @@ export default function CarouselStudioPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-stone-50 via-stone-100 to-stone-200 relative overflow-hidden">
+        <div className="min-h-screen bg-[var(--background)] relative overflow-hidden">
             {/* Animated Background */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute -top-40 -right-40 w-96 h-96 bg-emerald-400/20 rounded-full blur-3xl animate-pulse" />
@@ -112,14 +112,14 @@ export default function CarouselStudioPage() {
                     animate={{ opacity: 1, y: 0 }}
                     className="text-center mb-12"
                 >
-                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-black/5 backdrop-blur-sm rounded-full text-sm font-medium text-stone-600 mb-4">
+                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--foreground)]/5 backdrop-blur-sm rounded-full text-sm font-medium text-[var(--foreground-muted)] mb-4">
                         <Sparkles className="w-4 h-4 text-emerald-600" />
                         AI-Powered Carousel Studio
                     </div>
-                    <h1 className="text-5xl font-black text-stone-900 tracking-tight mb-3">
+                    <h1 className="text-5xl font-black text-[var(--foreground)] tracking-tight mb-3">
                         Create <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-emerald-400">Magic</span>
                     </h1>
-                    <p className="text-xl text-stone-500 max-w-xl mx-auto">
+                    <p className="text-xl text-[var(--foreground-muted)] max-w-xl mx-auto">
                         Transform your ideas into stunning Instagram carousels in seconds
                     </p>
                 </motion.div>
@@ -138,24 +138,24 @@ export default function CarouselStudioPage() {
                             {/* Glassmorphism Input Card */}
                             <div className="relative">
                                 <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/20 to-stone-500/20 rounded-3xl blur-xl" />
-                                <div className="relative bg-white/80 backdrop-blur-xl rounded-3xl border border-white/50 shadow-2xl p-8">
+                                <div className="relative bg-[var(--card)]/80 backdrop-blur-xl rounded-3xl border border-[var(--border)] shadow-2xl p-8">
                                     {/* Input */}
                                     <div className="mb-6">
-                                        <label className="block text-sm font-bold text-stone-600 uppercase tracking-wider mb-3">
+                                        <label className="block text-sm font-bold text-[var(--foreground-muted)] uppercase tracking-wider mb-3">
                                             What's your carousel about?
                                         </label>
                                         <textarea
                                             value={prompt}
                                             onChange={(e) => setPrompt(e.target.value)}
                                             placeholder="e.g., 5 habits that 10x'd my productivity as a founder..."
-                                            className="w-full p-6 text-xl bg-white/50 border-2 border-stone-200 rounded-2xl focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 transition-all resize-none min-h-[140px] placeholder:text-stone-300"
+                                            className="w-full p-6 text-xl bg-[var(--background-secondary)] border-2 border-[var(--border)] rounded-2xl focus:border-[var(--primary)] focus:ring-4 focus:ring-[var(--primary)]/10 transition-all resize-none min-h-[140px] placeholder-[var(--foreground-muted)]"
                                             disabled={isGenerating}
                                         />
                                     </div>
 
                                     {/* Style Selector */}
                                     <div className="mb-8">
-                                        <label className="block text-sm font-bold text-stone-600 uppercase tracking-wider mb-3">
+                                        <label className="block text-sm font-bold text-[var(--foreground-muted)] uppercase tracking-wider mb-3">
                                             Visual Style
                                         </label>
                                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -165,19 +165,19 @@ export default function CarouselStudioPage() {
                                                     onClick={() => setSelectedStyle(style)}
                                                     disabled={!style.prompt || isGenerating}
                                                     className={`relative p-4 rounded-xl border-2 transition-all text-left ${selectedStyle.id === style.id
-                                                            ? 'border-emerald-500 bg-emerald-50 shadow-lg scale-105'
-                                                            : style.prompt
-                                                                ? 'border-stone-200 bg-white hover:border-stone-300 hover:shadow'
-                                                                : 'border-stone-100 bg-stone-50 opacity-50 cursor-not-allowed'
+                                                        ? 'border-[var(--primary)] bg-[var(--primary)]/5 shadow-lg scale-105'
+                                                        : style.prompt
+                                                            ? 'border-[var(--border)] bg-[var(--card)] hover:border-[var(--foreground)]/20 hover:shadow'
+                                                            : 'border-[var(--border)] bg-[var(--background-secondary)] opacity-50 cursor-not-allowed'
                                                         }`}
                                                 >
                                                     {selectedStyle.id === style.id && (
-                                                        <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center">
+                                                        <div className="absolute -top-2 -right-2 w-6 h-6 bg-[var(--primary)] rounded-full flex items-center justify-center">
                                                             <Check className="w-4 h-4 text-white" />
                                                         </div>
                                                     )}
-                                                    <div className="text-sm font-bold text-stone-800 mb-1">{style.name}</div>
-                                                    <div className="text-xs text-stone-500 line-clamp-2">{style.description}</div>
+                                                    <div className="text-sm font-bold text-[var(--foreground)] mb-1">{style.name}</div>
+                                                    <div className="text-xs text-[var(--foreground-muted)] line-clamp-2">{style.description}</div>
                                                 </button>
                                             ))}
                                         </div>
@@ -218,21 +218,21 @@ export default function CarouselStudioPage() {
                                         exit={{ opacity: 0 }}
                                         className="mt-12 text-center"
                                     >
-                                        <div className="inline-flex items-center gap-4 px-8 py-4 bg-white/80 backdrop-blur-xl rounded-2xl shadow-lg">
+                                        <div className="inline-flex items-center gap-4 px-8 py-4 bg-[var(--card)] backdrop-blur-xl rounded-2xl shadow-lg border border-[var(--border)]">
                                             <div className="flex gap-2">
                                                 {['thinking', 'creating', 'polishing', 'done'].map((stage, i) => (
                                                     <div
                                                         key={stage}
                                                         className={`w-3 h-3 rounded-full transition-all duration-500 ${generationStage === stage
-                                                                ? 'bg-emerald-500 scale-125'
-                                                                : ['thinking', 'creating', 'polishing', 'done'].indexOf(generationStage) > i
-                                                                    ? 'bg-emerald-400'
-                                                                    : 'bg-stone-200'
+                                                            ? 'bg-emerald-500 scale-125'
+                                                            : ['thinking', 'creating', 'polishing', 'done'].indexOf(generationStage) > i
+                                                                ? 'bg-[var(--primary)]'
+                                                                : 'bg-[var(--border)]'
                                                             }`}
                                                     />
                                                 ))}
                                             </div>
-                                            <span className="text-sm font-medium text-stone-600">
+                                            <span className="text-sm font-medium text-[var(--foreground-muted)]">
                                                 {generationStage === 'thinking' && 'Analyzing your topic...'}
                                                 {generationStage === 'creating' && 'Crafting each slide...'}
                                                 {generationStage === 'polishing' && 'Adding finishing touches...'}
@@ -255,13 +255,13 @@ export default function CarouselStudioPage() {
                             {/* Result Header */}
                             <div className="flex items-center justify-between mb-8">
                                 <div>
-                                    <h2 className="text-2xl font-bold text-stone-900 mb-1">Your Carousel is Ready! 🎉</h2>
-                                    <p className="text-stone-500">{currentSlides.length} slides • {selectedStyle.name}</p>
+                                    <h2 className="text-2xl font-bold text-[var(--foreground)] mb-1">Your Carousel is Ready! 🎉</h2>
+                                    <p className="text-[var(--foreground-muted)]">{currentSlides.length} slides • {selectedStyle.name}</p>
                                 </div>
                                 <div className="flex items-center gap-3">
                                     <button
                                         onClick={handleReset}
-                                        className="px-4 py-2 text-stone-600 hover:bg-stone-100 rounded-xl font-medium flex items-center gap-2 transition-colors"
+                                        className="px-4 py-2 text-[var(--foreground-muted)] hover:bg-[var(--background-secondary)] rounded-xl font-medium flex items-center gap-2 transition-colors"
                                     >
                                         <RotateCcw className="w-4 h-4" />
                                         New Carousel
@@ -280,11 +280,11 @@ export default function CarouselStudioPage() {
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                                 {/* Main Preview */}
                                 <div className="lg:col-span-2">
-                                    <div className="relative bg-white rounded-3xl shadow-2xl overflow-hidden border border-stone-200">
+                                    <div className="relative bg-[var(--card)] rounded-3xl shadow-2xl overflow-hidden border border-[var(--border)]">
                                         {/* Slide Container */}
                                         <div
                                             ref={slideContainerRef}
-                                            className="aspect-[4/5] relative overflow-hidden bg-stone-100"
+                                            className="aspect-[4/5] relative overflow-hidden bg-[var(--background-secondary)]"
                                         >
                                             <div
                                                 dangerouslySetInnerHTML={{ __html: currentSlides[currentSlideIndex] || '' }}
@@ -305,7 +305,7 @@ export default function CarouselStudioPage() {
                                                     disabled={currentSlideIndex === 0}
                                                     className="p-3 bg-white/90 hover:bg-white rounded-full shadow-lg disabled:opacity-30 transition-all"
                                                 >
-                                                    <ChevronLeft className="w-6 h-6 text-stone-800" />
+                                                    <ChevronLeft className="w-6 h-6 text-[var(--foreground)]" />
                                                 </button>
                                                 <div className="flex gap-2">
                                                     {currentSlides.map((_, i) => (
@@ -322,7 +322,7 @@ export default function CarouselStudioPage() {
                                                     disabled={currentSlideIndex === currentSlides.length - 1}
                                                     className="p-3 bg-white/90 hover:bg-white rounded-full shadow-lg disabled:opacity-30 transition-all"
                                                 >
-                                                    <ChevronRight className="w-6 h-6 text-stone-800" />
+                                                    <ChevronRight className="w-6 h-6 text-[var(--foreground)]" />
                                                 </button>
                                             </div>
                                         </div>
@@ -341,8 +341,8 @@ export default function CarouselStudioPage() {
                                                 key={i}
                                                 onClick={() => setCurrentSlideIndex(i)}
                                                 className={`w-full aspect-[4/5] rounded-xl overflow-hidden border-2 transition-all ${i === currentSlideIndex
-                                                        ? 'border-emerald-500 ring-4 ring-emerald-500/20 scale-[1.02]'
-                                                        : 'border-stone-200 hover:border-stone-300'
+                                                    ? 'border-emerald-500 ring-4 ring-emerald-500/20 scale-[1.02]'
+                                                    : 'border-stone-200 hover:border-stone-300'
                                                     }`}
                                             >
                                                 <div

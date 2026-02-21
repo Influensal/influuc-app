@@ -92,7 +92,7 @@ interface OnboardingData {
     autoPublish: boolean;
 
     // Subscription & Visuals
-    subscriptionTier?: 'starter' | 'growth' | 'authority';
+    subscriptionTier?: 'starter' | 'creator' | 'authority';
     visualMode?: 'none' | 'faceless' | 'clone';
     style_faceless?: string;
     style_carousel?: string;
@@ -1463,19 +1463,10 @@ function Step9Connect({ data, updateData }: { data: OnboardingData; updateData: 
     return (
         <motion.div variants={pageVariants} initial="initial" animate="animate" exit="exit">
             <h1 className="text-3xl font-bold mb-2">Connect Accounts</h1>
-            <p className="text-[var(--foreground-muted)] mb-8">Link your profiles so we can publish for you.</p>
+            <p className="text-[var(--foreground-muted)] mb-8">Link your LinkedIn profile for auto-publishing.</p>
 
             <div className="space-y-4">
-                <button onClick={() => handleConnect('x')} disabled={data.connections.x} className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all ${data.connections.x ? 'border-green-500/50 bg-green-500/10' : 'border-[var(--border)] hover:bg-[var(--background-secondary)]'}`}>
-                    <div className="flex items-center gap-4">
-                        <Twitter className="w-5 h-5" />
-                        <div className="text-left">
-                            <div className="font-bold">X (Twitter)</div>
-                            <div className="text-xs opacity-70">{data.connections.x ? 'Connected' : 'Not connected'}</div>
-                        </div>
-                    </div>
-                    {data.connections.x ? <Check className="text-green-500" /> : <ArrowRight className="text-[var(--muted-foreground)]" />}
-                </button>
+                {/* X (Twitter) removed due to API limitations */}
 
                 <button onClick={() => handleConnect('linkedin')} disabled={data.connections.linkedin} className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all ${data.connections.linkedin ? 'border-green-500/50 bg-green-500/10' : 'border-[var(--border)] hover:bg-[var(--background-secondary)]'}`}>
                     <div className="flex items-center gap-4">
@@ -1487,6 +1478,16 @@ function Step9Connect({ data, updateData }: { data: OnboardingData; updateData: 
                     </div>
                     {data.connections.linkedin ? <Check className="text-green-500" /> : <ArrowRight className="text-[var(--muted-foreground)]" />}
                 </button>
+
+                <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--card)]/50">
+                    <div className="flex items-center gap-3 mb-2">
+                        <Twitter className="w-4 h-4 text-[var(--foreground-muted)]" />
+                        <span className="font-bold text-sm text-[var(--foreground-secondary)]">X (Twitter)</span>
+                    </div>
+                    <p className="text-xs text-[var(--foreground-muted)]">
+                        We'll still generate viral X posts for you! You can copy/paste them directly from your dashboard. Auto-posting is currently unavailable for X.
+                    </p>
+                </div>
             </div>
 
             {/* Auto Publish Toggle (Moved from old step 9) */}
@@ -1494,7 +1495,7 @@ function Step9Connect({ data, updateData }: { data: OnboardingData; updateData: 
                 <div className="flex items-center justify-between">
                     <div>
                         <h3 className="font-bold">Auto-Publish</h3>
-                        <p className="text-sm text-[var(--foreground-muted)]">Post automatically at scheduled times?</p>
+                        <p className="text-sm text-[var(--foreground-muted)]">Post automatically to LinkedIn?</p>
                     </div>
                     <button
                         onClick={() => updateData({ autoPublish: !data.autoPublish })}

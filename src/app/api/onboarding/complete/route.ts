@@ -3,6 +3,8 @@ import { createClient } from '@/utils/supabase/server';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { getProvider } from '@/lib/ai/providers';
 import { scrapeWebsite, extractBusinessSummary } from '@/lib/scraper';
+import { getCarouselStyle, getDefaultStyle } from '@/lib/ai/carousel-styles';
+import dJSON from 'dirty-json';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300; // Allow up to 5 minutes for full batch generation
@@ -54,7 +56,7 @@ interface OnboardingData {
     autoPublish?: boolean;
 
     // Subscription & Visuals (New)
-    subscriptionTier?: 'starter' | 'growth' | 'authority';
+    subscriptionTier?: 'starter' | 'creator' | 'authority';
     visualMode?: 'none' | 'faceless' | 'clone';
     style_faceless?: string;
     style_carousel?: string;
@@ -68,6 +70,11 @@ interface ScheduledPost {
     format: 'single' | 'long_form' | 'video_script';
     topic: string;
     time: string;
+}
+
+interface CarouselIdea {
+    day: string;
+    topic: string;
 }
 
 interface GeneratedPost {
@@ -173,20 +180,26 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // Step 1: Generate weekly strategy
+        // Step 1: Generate weekly strategy (includes text post schedule + carousel ideas)
         console.log('[Onboarding] Generating weekly strategy...');
         const strategy = await generateStrategy(selectedPlatforms, body);
+        const carouselIdeas: CarouselIdea[] = strategy.carousels || [];
+        console.log(`[Onboarding] Strategy: ${strategy.posts?.length || 0} text posts, ${carouselIdeas.length} carousel ideas`);
 
-        // Step 2: Generate content for ALL posts in ONE batch (2 logs total constraint)
-        console.log('[Onboarding] Generating all posts in single batch...');
-        const posts = await generatePostsBatched(strategy.posts, body);
+        // Step 2: Generate text posts + carousels in parallel (2 API calls)
+        console.log('[Onboarding] Generating all content (text + carousels)...');
+        const [posts, carousels] = await Promise.all([
+            generatePostsBatched(strategy.posts, body),
+            generateCarousels(carouselIdeas, body),
+        ]);
+        console.log(`[Onboarding] Generated ${posts.length} text posts, ${carousels.length} carousels`);
 
         // Step 3: Save to Supabase
         console.log('[Onboarding] Saving profile and posts to Supabase...');
         let profileId: string | null = null;
 
         if (isSupabaseConfigured() && user) {
-            profileId = await saveToSupabase(supabase, user.id, body, posts);
+            profileId = await saveToSupabase(supabase, user.id, body, posts, carousels);
         } else {
             console.log('[Onboarding] Supabase not configured or no user (mock mode), skipping save');
             profileId = 'mock-profile-id';
@@ -196,6 +209,7 @@ export async function POST(request: NextRequest) {
             success: true,
             profileId,
             postsCount: posts.length,
+            carouselsCount: carousels.length,
             message: "Generation complete."
         });
 
@@ -214,7 +228,7 @@ export async function POST(request: NextRequest) {
 async function generateStrategy(
     platforms: Array<'x' | 'linkedin'>,
     data: OnboardingData
-): Promise<{ posts: ScheduledPost[] }> {
+): Promise<{ posts: ScheduledPost[]; carousels: CarouselIdea[] }> {
     const provider = await getProvider();
 
     // Calculate strict targets
@@ -301,11 +315,17 @@ LinkedIn:
 SCHEDULING RULES (NON-NEGOTIABLE)
 
 - Start date: Next Monday
-- TOTAL POSTS TO GENERATE: ${totalTarget}
+- TOTAL TEXT POSTS TO GENERATE: ${totalTarget}
 ${targetX > 0 ? `- X: Exactly ${targetX} posts (1 per day, Mon-Sun)` : ''}
-${targetLi > 0 ? `- LinkedIn: Exactly ${targetLi} posts (1 per day, Mon-Fri)` : ''}
+${targetLi > 0 ? `- LinkedIn: Exactly ${targetLi} text posts (1 per day, Mon-Fri)` : ''}
 - Do not schedule posts on weekends for LinkedIn
 - Avoid repeating the same topic on consecutive days
+${platforms.includes('linkedin') ? `
+CAROUSEL IDEAS (LinkedIn only):
+- Also provide exactly 2 carousel topic ideas for LinkedIn
+- Carousels are visual, educational content — lists, frameworks, step-by-step guides
+- Pick carousel days that don't overlap with busy LinkedIn text post days (e.g., Wednesday and Saturday)
+` : ''}
 
 OUTPUT FORMAT (STRICT)
 
@@ -315,17 +335,26 @@ Return ONLY a valid JSON object with this structure:
   "posts": [
     {
       "day": "Monday",
-      "date": "YYYY-MM-DD",
       "platform": "x" | "linkedin",
       "format": "single" | "long_form",
-      "topic": "Brief but specific topic description",
-      "intent": "educate" | "authority" | "soft_conversion"
+      "topic": "Brief but specific topic description"
+    }
+  ],
+  "carousels": [
+    {
+      "day": "Wednesday",
+      "topic": "5 frameworks every founder should know about [specific area]"
+    },
+    {
+      "day": "Saturday",
+      "topic": "The complete guide to [specific topic] — step by step"
     }
   ]
 }
 
 RULES:
 - The "posts" array MUST contain EXACTLY ${totalTarget} items.
+- The "carousels" array MUST contain exactly ${platforms.includes('linkedin') ? 2 : 0} items.${!platforms.includes('linkedin') ? ' Set to empty array [].' : ''}
 - Output calendar only — no explanations
 - Do NOT write post copy
 - Do NOT include hooks, captions, or CTAs
@@ -339,7 +368,7 @@ Before finalizing, ensure:
 - The topics ladder logically across the week
 - The voice matches the provided samples
 - The calendar serves the stated goal clearly
-- YOU HAVE GENERATED EXACTLY ${totalTarget} POSTS.
+- YOU HAVE GENERATED EXACTLY ${totalTarget} TEXT POSTS AND ${platforms.includes('linkedin') ? '2' : '0'} CAROUSEL IDEAS.
 
 If any required input is missing, make strong, reasonable assumptions and proceed.
 
@@ -392,10 +421,27 @@ Output the JSON. Nothing else.`;
 }
 
 function extractJson(text: string): string {
-    const start = text.indexOf('{');
-    const end = text.lastIndexOf('}');
-    if (start === -1 || end === -1) return text; // Fallback to original if no brackets
-    return text.substring(start, end + 1);
+    // Remove code fences
+    let cleaned = text.replace(/```json\n?|\n?```/g, '').trim();
+    // Smart quotes → normal quotes
+    cleaned = cleaned.replace(/[\u201C\u201D]/g, '"').replace(/[\u2018\u2019]/g, "'");
+
+    // Fix: Double double-quote issue seen in logs (""posts")
+    // Use specific replacement for known keys to avoid breaking empty strings in values
+    cleaned = cleaned.replace(/""(posts|carousels)":/g, '"$1":');
+
+    // Strip control chars except newline/tab
+    cleaned = cleaned.replace(/[\x00-\x1F\x7F]/g, (ch: string) =>
+        ch === '\n' || ch === '\t' ? ch : ''
+    );
+    // Extract JSON object
+    const start = cleaned.indexOf('{');
+    const end = cleaned.lastIndexOf('}');
+    if (start === -1 || end === -1) return text;
+    cleaned = cleaned.substring(start, end + 1);
+    // Fix trailing commas before } or ]
+    cleaned = cleaned.replace(/,\s*([\]}])/g, '$1');
+    return cleaned;
 }
 
 function getArchetypeDesc(type: string): string {
@@ -547,8 +593,28 @@ Return the JSON. Nothing else.`;
             });
 
             const cleanContent = extractJson(result.content);
-            const parsed = JSON.parse(cleanContent);
-            return parsed.posts || [];
+            try {
+                const parsed = JSON.parse(cleanContent);
+                return parsed.posts || [];
+            } catch (parseErr) {
+                console.warn('[Batch] First JSON parse failed, attempting dirty-json fix...', parseErr);
+                try {
+                    const parsed = dJSON.parse(cleanContent);
+                    return parsed.posts || [];
+                } catch (dirtyErr) {
+                    console.error('[Batch] dirty-json failed:', dirtyErr);
+                    // Last resort: try the regex fix if dirty-json also fails (unlikely for simple escapes but possible)
+                    const fixedContent = cleanContent
+                        .replace(/(?<="[^"]*?)\n(?=[^"]*?")/g, '\\n')
+                        .replace(/(?<="[^"]*?)\t(?=[^"]*?")/g, '\\t');
+                    try {
+                        const parsed = JSON.parse(fixedContent);
+                        return parsed.posts || [];
+                    } catch (finalErr) {
+                        throw finalErr;
+                    }
+                }
+            }
 
         } catch (e) {
             console.error(`*** BATCH FAILED ***`, e);
@@ -584,11 +650,126 @@ Return the JSON. Nothing else.`;
     }
 }
 
+// ============================================
+// CAROUSEL GENERATION
+// ============================================
+
+interface GeneratedCarousel {
+    day: string;
+    topic: string;
+    slides: string[];
+    styleId: string;
+}
+
+async function generateCarousels(
+    carouselIdeas: CarouselIdea[],
+    data: OnboardingData
+): Promise<GeneratedCarousel[]> {
+    if (carouselIdeas.length === 0) {
+        console.log('[Carousels] No carousel ideas, skipping.');
+        return [];
+    }
+
+    const provider = await getProvider();
+    const carouselStyleId = data.style_carousel || 'minimal-stone';
+    const style = getCarouselStyle(carouselStyleId) || getDefaultStyle();
+
+    if (!style || !style.prompt) {
+        console.warn('[Carousels] No carousel style found, skipping.');
+        return [];
+    }
+
+    // Determine slide counts per carousel
+    const carouselSpecs = carouselIdeas.map((c, i) => {
+        const numberMatch = c.topic.match(
+            /\b(top\s*)?(\d+)\s*(things?|tips?|ways?|habits?|books?|tools?|ideas?|steps?|reasons?|secrets?|hacks?|strategies?|mistakes?|rules?|principles?|lessons?|facts?|myths?)?/i
+        );
+        let slideCount = 6;
+        if (numberMatch && numberMatch[2]) {
+            const n = parseInt(numberMatch[2], 10);
+            if (n >= 3 && n <= 10) slideCount = n + 2; // title + n items + CTA
+        }
+        return { index: i, topic: c.topic, day: c.day, slideCount };
+    });
+
+    let systemPrompt = style.prompt;
+    systemPrompt += `\n\nMULTI-CAROUSEL INSTRUCTIONS:\nYou must generate ${carouselIdeas.length} separate carousels in one response.\n`;
+    systemPrompt += carouselSpecs.map(c =>
+        `Carousel ${c.index}: "${c.topic}" — ${c.slideCount} slides`
+    ).join('\n');
+    systemPrompt += `\n\nReturn ONLY a valid JSON object:\n{\n  "carousels": [\n    {\n      "index": 0,\n      "slides": ["<div>...</div>", "<div>...</div>"]\n    }\n  ]\n}\n\nEach carousel must have exactly the specified number of slides.`;
+
+    const userMessage = carouselSpecs.map(c =>
+        `Carousel ${c.index}: "${c.topic}" — ${c.slideCount} slides`
+    ).join('\n');
+
+    try {
+        console.log(`[Carousels] Generating ${carouselIdeas.length} carousels in a single request...`);
+        const result = await provider.complete({
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: `Create these carousels:\n${userMessage}` }
+            ],
+            temperature: 0.7,
+            maxTokens: 16384,
+            responseFormat: { type: 'json_object' },
+        });
+
+        // Parse response
+        const jsonStr = extractJson(result.content);
+        let data_parsed: any;
+
+        try {
+            data_parsed = dJSON.parse(jsonStr);
+        } catch (dirtyErr) {
+            console.warn('[Carousels] dirty-json failed, attempting regex fix...', dirtyErr);
+            const fixedContent = jsonStr
+                .replace(/(?<="[^"]*?)\n(?=[^"]*?")/g, '\\n')
+                .replace(/(?<="[^"]*?)\t(?=[^"]*?")/g, '\\t');
+            try {
+                data_parsed = JSON.parse(fixedContent);
+            } catch (finalErr) {
+                console.error('[Carousels] All JSON parse attempts failed.');
+                throw finalErr;
+            }
+        }
+
+        const generatedCarousels: Array<{ index: number; slides: string[] }> = data_parsed.carousels || [];
+
+        const results: GeneratedCarousel[] = [];
+        for (let i = 0; i < carouselIdeas.length; i++) {
+            const generated = generatedCarousels.find(c => c.index === i) || generatedCarousels[i];
+            if (generated?.slides && generated.slides.length > 0) {
+                results.push({
+                    day: carouselIdeas[i].day,
+                    topic: carouselIdeas[i].topic,
+                    slides: generated.slides,
+                    styleId: carouselStyleId,
+                });
+            } else {
+                console.warn(`[Carousels] Carousel ${i} missing slides, skipping`);
+            }
+        }
+
+        console.log(`[Carousels] Successfully generated ${results.length} carousels`);
+        return results;
+
+    } catch (e) {
+        console.error('[Carousels] Generation failed:', e);
+        return []; // Non-fatal — text posts still saved
+    }
+}
+
+// ============================================
+// SAVE TO SUPABASE
+// ============================================
+
 async function saveToSupabase(
     supabase: any,
     userId: string,
     data: OnboardingData,
-    posts: Array<ScheduledPost & GeneratedPost>
+    posts: Array<ScheduledPost & GeneratedPost>,
+    carousels: GeneratedCarousel[] = []
 ): Promise<string> {
     // Check if profile exists
     const { data: existingProfiles } = await supabase
@@ -610,6 +791,7 @@ async function saveToSupabase(
                 industry: data.industry,
                 target_audience: data.targetAudience,
                 content_goal: data.contentGoal,
+                weekly_goal: data.contentGoal,
                 topics: data.topics,
                 // cadence: 'moderate', // Removed from frontend, default
                 tone: data.tone, // Mapping tone object (maybe update this later to include archetype)
@@ -661,6 +843,7 @@ async function saveToSupabase(
                 industry: data.industry,
                 target_audience: data.targetAudience,
                 content_goal: data.contentGoal,
+                weekly_goal: data.contentGoal,
                 topics: data.topics,
                 // cadence: 'moderate',
                 tone: data.tone,
@@ -765,9 +948,9 @@ async function saveToSupabase(
         };
     });
 
-    // Batch insert posts
+    // Batch insert text posts
     if (postsData.length > 0) {
-        console.log(`[Onboarding] Inserting ${postsData.length} posts to Supabase...`);
+        console.log(`[Onboarding] Inserting ${postsData.length} text posts to Supabase...`);
         const { error: postsError } = await supabase
             .from('posts')
             .insert(postsData);
@@ -776,9 +959,52 @@ async function saveToSupabase(
             console.error('[Onboarding] Failed to save posts:', postsError);
             throw new Error(`Failed to save posts: ${postsError.message}`);
         }
-        console.log('[Onboarding] Posts saved successfully.');
+        console.log('[Onboarding] Text posts saved successfully.');
     } else {
-        console.warn('[Onboarding] No posts generated to save.');
+        console.warn('[Onboarding] No text posts generated to save.');
+    }
+
+    // Save carousels
+    if (carousels.length > 0) {
+        const today = new Date();
+        const dayMapping: Record<string, number> = {
+            'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3,
+            'Thursday': 4, 'Friday': 5, 'Saturday': 6,
+        };
+
+        const carouselPostsData = carousels.map(carousel => {
+            const targetDay = dayMapping[carousel.day] ?? 3; // Default to Wednesday
+            const currentDay = today.getDay();
+            let daysUntil = (targetDay - currentDay + 7) % 7;
+            if (daysUntil === 0) daysUntil = 7;
+
+            const scheduledDate = new Date(today);
+            scheduledDate.setDate(today.getDate() + daysUntil);
+            scheduledDate.setHours(20, 30, 0, 0);
+
+            return {
+                profile_id: profile.id,
+                platform: 'linkedin',
+                scheduled_date: scheduledDate.toISOString(),
+                content: carousel.topic,
+                format: 'carousel',
+                status: 'scheduled',
+                carousel_slides: carousel.slides,
+                carousel_style: carousel.styleId,
+            };
+        });
+
+        console.log(`[Onboarding] Inserting ${carouselPostsData.length} carousel posts to Supabase...`);
+        const { error: carouselError } = await supabase
+            .from('posts')
+            .insert(carouselPostsData);
+
+        if (carouselError) {
+            console.error('[Onboarding] Failed to save carousels:', carouselError);
+            // Non-fatal — text posts are already saved
+        } else {
+            console.log('[Onboarding] Carousel posts saved successfully.');
+        }
     }
 
     return profile.id;

@@ -8,7 +8,6 @@ import {
     Check,
     Loader2,
     Send,
-    RefreshCw,
     Edit3,
     Save,
     Twitter,
@@ -24,7 +23,6 @@ interface Post {
     content: string;
     format: string;
     status: string;
-    regenerated?: boolean;
 }
 
 interface EditPublishModalProps {
@@ -44,7 +42,6 @@ export default function EditPublishModal({
     const [editedContent, setEditedContent] = useState(post?.content || '');
     const [isSaving, setIsSaving] = useState(false);
     const [isPublishing, setIsPublishing] = useState(false);
-    const [isRegenerating, setIsRegenerating] = useState(false);
     const [copied, setCopied] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [showConfirmPublish, setShowConfirmPublish] = useState(false);
@@ -53,7 +50,6 @@ export default function EditPublishModal({
 
     const PlatformIcon = post.platform.toLowerCase() === 'x' ? Twitter : Linkedin;
     const isPosted = post.status === 'posted';
-    const hasRegenerated = post.regenerated === true;
 
     const handleCopy = async () => {
         await navigator.clipboard.writeText(editedContent);
@@ -82,35 +78,6 @@ export default function EditPublishModal({
             setError(err instanceof Error ? err.message : 'Failed to save');
         } finally {
             setIsSaving(false);
-        }
-    };
-
-    const handleRegenerate = async () => {
-        if (hasRegenerated) {
-            setError('This post has already been regenerated. You can only regenerate once per post.');
-            return;
-        }
-
-        setIsRegenerating(true);
-        setError(null);
-        try {
-            const response = await fetch(`/api/posts/${post.id}/regenerate`, {
-                method: 'POST',
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || data.message || 'Failed to regenerate');
-            }
-
-            // Update content with new generated content
-            setEditedContent(data.content);
-            onContentUpdate(post.id, data.content);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to regenerate');
-        } finally {
-            setIsRegenerating(false);
         }
     };
 
@@ -178,8 +145,8 @@ export default function EditPublishModal({
                     <div className="p-5 border-b border-[var(--border)] flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${post.platform.toLowerCase() === 'x'
-                                    ? 'bg-black text-white dark:bg-white dark:text-black'
-                                    : 'bg-[#0077B5] text-white'
+                                ? 'bg-black text-white dark:bg-white dark:text-black'
+                                : 'bg-[#0077B5] text-white'
                                 }`}>
                                 <PlatformIcon className="w-5 h-5" />
                             </div>
@@ -210,7 +177,29 @@ export default function EditPublishModal({
                             </div>
                         )}
 
-                        {isEditing ? (
+                        {post.format === 'carousel' ? (
+                            <div className="flex flex-col items-center justify-center p-8 bg-[var(--background-secondary)] rounded-xl border border-[var(--border)] border-dashed">
+                                <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg">
+                                    <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                    </svg>
+                                </div>
+                                <h3 className="text-lg font-semibold mb-2">Carousel Post</h3>
+                                <p className="text-[var(--foreground-muted)] text-center mb-6 max-w-sm text-sm">
+                                    This is a visual carousel post.
+                                    Click below to view the slides, edit content, or change the design style.
+                                </p>
+                                <a
+                                    href={`/dashboard/carousels/${post.id}`}
+                                    className="px-6 py-3 bg-[var(--primary)] text-white rounded-xl font-medium hover:opacity-90 transition-all flex items-center gap-2"
+                                >
+                                    View Slides
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                    </svg>
+                                </a>
+                            </div>
+                        ) : isEditing ? (
                             <textarea
                                 value={editedContent}
                                 onChange={(e) => setEditedContent(e.target.value)}
@@ -226,7 +215,7 @@ export default function EditPublishModal({
 
                     {/* Action Buttons */}
                     <div className="p-5 border-t border-[var(--border)] space-y-3">
-                        {/* Top row: Edit/Save, Copy, Regenerate */}
+                        {/* Top row: Edit/Save + Cancel or Done */}
                         <div className="flex gap-2">
                             {isEditing ? (
                                 <>
@@ -252,87 +241,98 @@ export default function EditPublishModal({
                                 </>
                             ) : (
                                 <>
-                                    <button
-                                        onClick={startEdit}
-                                        disabled={isPosted}
-                                        className="flex-1 py-3 rounded-xl font-medium bg-[var(--background-secondary)] hover:bg-[var(--border)] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                                    >
-                                        <Edit3 className="w-4 h-4" />
-                                        Edit
-                                    </button>
-                                    <button
-                                        onClick={handleCopy}
-                                        className="flex-1 py-3 rounded-xl font-medium bg-[var(--background-secondary)] hover:bg-[var(--border)] transition-all flex items-center justify-center gap-2"
-                                    >
-                                        {copied ? (
-                                            <>
-                                                <Check className="w-4 h-4 text-green-500" />
-                                                Copied!
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Copy className="w-4 h-4" />
-                                                Copy
-                                            </>
-                                        )}
-                                    </button>
-                                    <button
-                                        onClick={handleRegenerate}
-                                        disabled={isPosted || isRegenerating || hasRegenerated}
-                                        title={hasRegenerated ? 'Already regenerated once' : 'Regenerate content'}
-                                        className="flex-1 py-3 rounded-xl font-medium bg-[var(--background-secondary)] hover:bg-[var(--border)] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                                    >
-                                        {isRegenerating ? (
-                                            <Loader2 className="w-4 h-4 animate-spin" />
-                                        ) : (
-                                            <RefreshCw className={`w-4 h-4 ${hasRegenerated ? 'text-[var(--foreground-muted)]' : ''}`} />
-                                        )}
-                                        {hasRegenerated ? 'Used' : 'Regen'}
-                                    </button>
+                                    {post.format !== 'carousel' && (
+                                        <button
+                                            onClick={startEdit}
+                                            disabled={isPosted}
+                                            className="flex-1 py-3 rounded-xl font-medium bg-[var(--background-secondary)] hover:bg-[var(--border)] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                                        >
+                                            <Edit3 className="w-4 h-4" />
+                                            Edit
+                                        </button>
+                                    )}
+                                    {post.platform.toLowerCase() === 'x' && !isPosted && (
+                                        <button
+                                            onClick={async () => {
+                                                // Mark as posted manually
+                                                try {
+                                                    await fetch(`/api/posts/${post.id}/publish`, { method: 'POST' }); // Re-use publish endpoint which marks as posted
+                                                    onPublishSuccess(post.id);
+                                                    onClose();
+                                                } catch (e) { alert('Failed to mark as posted'); }
+                                            }}
+                                            className="flex-1 py-3 rounded-xl font-medium bg-green-500/10 hover:bg-green-500/20 text-green-700 dark:text-green-400 transition-all flex items-center justify-center gap-2"
+                                            title="Mark as posted after you publish manually"
+                                        >
+                                            <Check className="w-4 h-4" />
+                                            Done
+                                        </button>
+                                    )}
                                 </>
                             )}
                         </div>
 
-                        {/* Bottom row: Publish */}
+                        {/* Bottom Action: Copy (Full Width) for X, or Publish for LinkedIn */}
                         {!isPosted && !isEditing && (
-                            showConfirmPublish ? (
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => setShowConfirmPublish(false)}
-                                        className="flex-1 py-4 rounded-xl font-semibold bg-[var(--background-secondary)] hover:bg-[var(--border)] transition-all"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        onClick={handlePublish}
-                                        disabled={isPublishing}
-                                        className="flex-1 py-4 rounded-xl font-semibold bg-gradient-to-r from-emerald-500 to-green-600 text-white hover:opacity-90 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                                    >
-                                        {isPublishing ? (
-                                            <Loader2 className="w-5 h-5 animate-spin" />
-                                        ) : (
-                                            <>
-                                                <Send className="w-5 h-5" />
-                                                Confirm & Publish Now
-                                            </>
-                                        )}
-                                    </button>
-                                </div>
-                            ) : (
+                            post.platform.toLowerCase() === 'x' ? (
+                                // X (Twitter) Manual Flow - Copy Button Full Width
                                 <button
-                                    onClick={() => setShowConfirmPublish(true)}
-                                    className="w-full py-4 rounded-xl font-semibold bg-white text-black hover:bg-gray-100 transition-all flex items-center justify-center gap-2 shadow-lg"
+                                    onClick={handleCopy}
+                                    className="w-full py-4 rounded-xl font-semibold bg-black text-white dark:bg-white dark:text-black hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-lg"
                                 >
-                                    <Send className="w-5 h-5" />
-                                    Review & Publish
+                                    {copied ? (
+                                        <>
+                                            <Check className="w-5 h-5 text-green-500" />
+                                            Copied!
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Copy className="w-5 h-5" />
+                                            Copy & Open X
+                                        </>
+                                    )}
                                 </button>
+                            ) : (
+                                // LinkedIn Auto-Publish Flow
+                                showConfirmPublish ? (
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => setShowConfirmPublish(false)}
+                                            className="flex-1 py-4 rounded-xl font-semibold bg-[var(--background-secondary)] hover:bg-[var(--border)] transition-all"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            onClick={handlePublish}
+                                            disabled={isPublishing}
+                                            className="flex-1 py-4 rounded-xl font-semibold bg-gradient-to-r from-emerald-500 to-green-600 text-white hover:opacity-90 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                                        >
+                                            {isPublishing ? (
+                                                <Loader2 className="w-5 h-5 animate-spin" />
+                                            ) : (
+                                                <>
+                                                    <Send className="w-5 h-5" />
+                                                    Confirm
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button
+                                        onClick={() => setShowConfirmPublish(true)}
+                                        className="w-full py-4 rounded-xl font-semibold bg-[#0A66C2] text-white hover:bg-[#004182] transition-all flex items-center justify-center gap-2 shadow-lg"
+                                    >
+                                        <Send className="w-5 h-5" />
+                                        Post Now
+                                    </button>
+                                )
                             )
                         )}
 
                         {isPosted && (
                             <div className="text-center py-3 text-emerald-500 font-medium flex items-center justify-center gap-2">
                                 <Check className="w-5 h-5" />
-                                Already Published
+                                Published
                             </div>
                         )}
                     </div>

@@ -119,17 +119,26 @@ export async function POST(request: NextRequest) {
         const weekNumber = await getUserWeekNumber(user.id);
 
         if (weekNumber > 1) {
+            // Check subscriptions table first
             const { data: subscription } = await supabase
                 .from('subscriptions')
                 .select('status')
                 .eq('account_id', user.id)
                 .single();
 
-            if (!subscription || !['active', 'trialing'].includes(subscription.status)) {
-                return NextResponse.json({
-                    error: 'Active subscription required for Week 2+',
-                    weekNumber
-                }, { status: 402 });
+            const hasActiveSubscription = subscription && ['active', 'trialing'].includes(subscription.status);
+
+            // Fallback: check founder_profiles.subscription_tier
+            if (!hasActiveSubscription) {
+                const profileTier = (profile as any).subscription_tier;
+                const hasPaidTier = profileTier && profileTier !== 'starter' && profileTier !== 'free';
+
+                if (!hasPaidTier) {
+                    return NextResponse.json({
+                        error: 'Active subscription required for Week 2+',
+                        weekNumber
+                    }, { status: 402 });
+                }
             }
         }
 

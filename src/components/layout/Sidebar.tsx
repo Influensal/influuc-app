@@ -18,7 +18,7 @@ import {
     ChevronDown,
     Archive,
 } from 'lucide-react';
-import { useTheme, useAuth } from '@/contexts';
+import { useTheme, useAuth, usePosts } from '@/contexts';
 
 interface SidebarProps {
     profileName?: string;
@@ -42,24 +42,7 @@ export function Sidebar({ profileName = 'Demo Founder' }: SidebarProps) {
     const pathname = usePathname();
     const { resolvedTheme, toggleTheme } = useTheme();
     const { signOut, user } = useAuth(); // Use auth context
-    const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-
-    // Fetch user profile to get selected platforms
-    useEffect(() => {
-        async function fetchProfile() {
-            try {
-                const response = await fetch('/api/profile');
-                if (response.ok) {
-                    const data = await response.json();
-                    setUserProfile(data.profile);
-                }
-            } catch (err) {
-                console.error('Failed to fetch profile:', err);
-            }
-        }
-        // Only fetch if we have a user (or in demo mode)
-        fetchProfile();
-    }, []);
+    const { profile: userProfile } = usePosts(); // Use global profile to avoid flickering
 
     // Build navigation items based on user's selected platforms
     const mainNavItems = [

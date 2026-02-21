@@ -1,0 +1,1345 @@
+[
+  {
+    "id": "TC001",
+    "title": "Complete onboarding with platforms, writing samples, accepted preview, and successful plan checkout",
+    "description": "Verifies the full onboarding happy path from platform selection through accepting the sample preview, selecting a plan, and reaching the dashboard prepared state.",
+    "category": "Onboarding Flow",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/onboarding\""
+      },
+      {
+        "type": "action",
+        "description": "Click to select the \"X\" platform checkbox"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Next\" or \"Continue\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Sample content in your voice\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "Accept sample preview after providing writing samples and proceed to plan selection",
+    "description": "Verifies that after pasting writing samples the user can reach the preview, accept it, and reach the subscription plan selection step.",
+    "category": "Onboarding Flow",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Here is a writing sample in my voice. I build products, test ideas, and share lessons learned.\" into the first writing sample text area"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Next\" or \"Continue\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Sample content in your voice\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Yes\" to accept the sample preview"
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "Minimal or no writing samples shows warning and allows continuing anyway",
+    "description": "Verifies the inline warning for minimal input appears and the user can still proceed and see training status leading to dashboard placeholder state.",
+    "category": "Onboarding Flow",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Next\" or \"Continue\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"More text gives better results\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Continue anyway\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Training your voice model...\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "After minimal-input training, user reaches dashboard and sees 'Content is being prepared'",
+    "description": "Verifies that proceeding with minimal input ultimately lands the user on the dashboard with the placeholder prepared-state messaging.",
+    "category": "Onboarding Flow",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Continue anyway\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Training your voice model...\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the page to finish transitioning after training"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Content is being prepared\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "Discard sample preview, edit samples, and see updated preview before accepting",
+    "description": "Verifies that rejecting the generated preview returns the user to edit samples and a subsequent preview is shown again before acceptance.",
+    "category": "Onboarding Flow",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "action",
+        "description": "Type \"First draft writing sample about my product and what I learned this week.\" into the first writing sample text area"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Next\" or \"Continue\""
+      },
+      {
+        "type": "action",
+        "description": "Click \"No\" or \"Discard\" on the sample preview"
+      },
+      {
+        "type": "action",
+        "description": "Type \" Updated with more detail and a clearer tone.\" into the writing sample text area"
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "After editing samples, generate a new preview and accept it to proceed",
+    "description": "Verifies that after discarding and editing writing samples, a new preview appears and can be accepted to continue onward.",
+    "category": "Onboarding Flow",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Revised writing sample with a different angle and phrasing to change the voice.\" into the first writing sample text area"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Next\" or \"Continue\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Sample content in your voice\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Yes\" to accept the sample preview"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Choose\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "View upcoming week calendar with platform-specific post cards",
+    "description": "Verifies the user can access the dashboard week view and see post cards for the upcoming week.",
+    "category": "Weekly Content Calendar Generation",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Week\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"LinkedIn\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"X\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "Open a post card and view full generated content details",
+    "description": "Verifies the user can open a post detail view and read the generated content including hook and CTA.",
+    "category": "Weekly Content Calendar Generation",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "action",
+        "description": "Click a visible post card in the week view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Hook\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"CTA\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "Weekly digest entry point links user to dashboard week view",
+    "description": "Verifies there is a visible weekly digest entry point that takes the user to the dashboard to view the week plan.",
+    "category": "Weekly Content Calendar Generation",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Weekly\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Digest\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "Show generation failure message on dashboard when posts cannot be prepared",
+    "description": "Verifies the dashboard can display the friendly error message indicating weekly posts are being retried.",
+    "category": "Weekly Content Calendar Generation",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"We’re sorry, we’re having trouble preparing this week’s posts.\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"We’ll try again soon.\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "Retry weekly generation from Settings when generation failed (if available)",
+    "description": "Verifies a user can initiate a retry from Settings and sees a visible in-app status/confirmation.",
+    "category": "Weekly Content Calendar Generation",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Settings\" navigation item"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard/settings\""
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Retry generation\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Retry\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "Empty state prompts user to finalize setup and routes to onboarding",
+    "description": "Verifies the dashboard empty state appears when setup is incomplete and the prompt takes the user to onboarding.",
+    "category": "Weekly Content Calendar Generation",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Finalize setup to see your weekly plan\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Finalize setup to see your weekly plan\" prompt"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/onboarding\""
+      }
+    ]
+  },
+  {
+    "id": "TC013",
+    "title": "LinkedIn post detail shows optional CTA when present",
+    "description": "Verifies the LinkedIn post detail can display a CTA section when included for that post.",
+    "category": "Post Review / Post Detail Experience",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "action",
+        "description": "Click a LinkedIn post card"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"CTA\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Copy to clipboard\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC014",
+    "title": "Instagram script detail shows structured sections (Opening + bullets)",
+    "description": "Verifies the Instagram script detail view presents an Opening section and bullet points in a structured format.",
+    "category": "Post Review / Post Detail Experience",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "action",
+        "description": "Click an Instagram script card"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Opening\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Script\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC015",
+    "title": "Alternate hook selection updates the displayed opening line",
+    "description": "Verifies clicking an alternate hook swaps the highlighted opening line to match the selected hook.",
+    "category": "Post Review / Post Detail Experience",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "action",
+        "description": "Click a post card for a specific day/platform"
+      },
+      {
+        "type": "action",
+        "description": "Click an alternate hook option"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Highlighted opening line\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC016",
+    "title": "Create a new text idea and verify it appears in the Ideas list with a timestamp",
+    "description": "Verifies a user can create a new text idea and see it listed with a visible timestamp.",
+    "category": "Ideas Inbox (Spontaneous Ideas)",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /ideas"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"New Idea\" button"
+      },
+      {
+        "type": "action",
+        "description": "Type \"My quick idea for a post about building habits\" into the idea text field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Save\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"My quick idea for a post about building habits\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Idea timestamp\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC017",
+    "title": "Generate a LinkedIn post from an existing text idea and verify a generated post card appears",
+    "description": "Verifies generating for LinkedIn creates a separate generated post card under the idea without altering the original idea text.",
+    "category": "Ideas Inbox (Spontaneous Ideas)",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /ideas"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"New Idea\" button"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Idea to share a lesson learned about shipping small features\" into the idea text field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Save\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Idea to share a lesson learned about shipping small features\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Generate for LinkedIn\" on that idea card"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"LinkedIn\" is visible within the generated content area for that idea"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Generated post card\" is visible under the idea"
+      }
+    ]
+  },
+  {
+    "id": "TC018",
+    "title": "Attempt to save an empty idea and verify a visible validation message",
+    "description": "Verifies the UI prevents saving a blank idea and shows a clear validation error.",
+    "category": "Ideas Inbox (Spontaneous Ideas)",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /ideas"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"New Idea\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Save\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Please enter an idea\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC019",
+    "title": "Switch founder profile from header selector and verify dashboard updates",
+    "description": "Verifies a user can switch to another founder profile using the header selector and the dashboard content updates to the selected profile context.",
+    "category": "Founder Profiles (Switching & Management)",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "action",
+        "description": "Click the profile selector in the header"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Profile B\" in the profile list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Profile B\" is visible in the header profile selector"
+      }
+    ]
+  },
+  {
+    "id": "TC020",
+    "title": "Create a new founder profile when plan allows",
+    "description": "Verifies a user can add a new founder profile from Settings and it appears in the profile selector after creation.",
+    "category": "Founder Profiles (Switching & Management)",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Settings\" in the app navigation"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard/settings\""
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Profiles\" management area/tab"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Add Profile\" button"
+      }
+    ]
+  },
+  {
+    "id": "TC021",
+    "title": "Complete profile creation form and verify profile is created",
+    "description": "Verifies the profile creation form accepts a name and sample text and creates a new profile that becomes selectable.",
+    "category": "Founder Profiles (Switching & Management)",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Settings\" in the app navigation"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Profiles\" management area/tab"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Add Profile\" button"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Test Profile 01\" into the profile name field"
+      }
+    ]
+  },
+  {
+    "id": "TC022",
+    "title": "Submit new profile creation and verify it appears in selector",
+    "description": "Verifies submitting the profile creation flow results in the new profile appearing in the UI and being available in the selector.",
+    "category": "Founder Profiles (Switching & Management)",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Settings\" in the app navigation"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Profiles\" management area/tab"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Add Profile\" button"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Test Profile 02\" into the profile name field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Sample writing 1. This is a short example in my voice.\" into the samples text area"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Create\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Test Profile 02\" is visible in the Profiles list"
+      }
+    ]
+  },
+  {
+    "id": "TC023",
+    "title": "Hit plan limit when adding a profile and see upgrade message",
+    "description": "Verifies that when the account is at the profile limit, attempting to add a profile shows an upgrade prompt and a clear path to billing.",
+    "category": "Founder Profiles (Switching & Management)",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Settings\" in the app navigation"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Profiles\" management area/tab"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Add Profile\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Upgrade to add more profiles\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC024",
+    "title": "Upgrade prompt links to Billing area from plan-limit message",
+    "description": "Verifies the upgrade action from the plan-limit state takes the user to billing/subscription details within Settings.",
+    "category": "Founder Profiles (Switching & Management)",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Settings\" in the app navigation"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Profiles\" management area/tab"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Add Profile\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Billing\" link in the upgrade message"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Billing\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC025",
+    "title": "Profiles management area loads and shows existing profiles",
+    "description": "Verifies the Profiles management area in Settings is accessible and displays a list of existing profiles for the account.",
+    "category": "Founder Profiles (Switching & Management)",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Settings\" in the app navigation"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard/settings\""
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Profiles\" management area/tab"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Profiles\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Profiles list\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC026",
+    "title": "View current subscription plan details from Settings > Billing",
+    "description": "Verifies an authenticated user can open Settings, switch to Billing, and see Current Plan details including allowance and next billing date.",
+    "category": "Settings & Billing",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Settings\" in the dashboard navigation"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Billing\" tab"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Current Plan\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC027",
+    "title": "Billing tab shows plan allowance and next billing date fields",
+    "description": "Verifies Billing UI exposes key plan metadata (profile allowance and next billing date) in a visible, user-readable format.",
+    "category": "Settings & Billing",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Settings\" in the dashboard navigation"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Billing\" tab"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Profiles\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC028",
+    "title": "Downgrade blocked when profile count exceeds target tier limit",
+    "description": "Verifies attempting to downgrade while exceeding the target tier’s profile allowance shows the blocking message with guidance.",
+    "category": "Settings & Billing",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Settings\" in the dashboard navigation"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Billing\" tab"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Downgrade\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Remove extra profiles to continue\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC029",
+    "title": "Downgrade blocking message includes user guidance",
+    "description": "Verifies the downgrade-blocking UI provides clear guidance about deleting profiles or upgrading.",
+    "category": "Settings & Billing",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Settings\" in the dashboard navigation"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Billing\" tab"
+      },
+      {
+        "type": "action",
+        "description": "Click \"Downgrade\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"delete profiles\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC030",
+    "title": "Disable weekly email digest and save successfully",
+    "description": "Verifies a user can toggle weekly email digest off and save, receiving a confirmation that digests are disabled.",
+    "category": "Settings & Billing",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Settings\" in the dashboard navigation"
+      },
+      {
+        "type": "action",
+        "description": "Scroll to \"Email Preferences\""
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Weekly digest\" toggle to turn it off"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Save\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Email digests are disabled\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC031",
+    "title": "Email digest preference change persists after page refresh via revisit",
+    "description": "Verifies the weekly digest setting remains off when the user revisits Settings, indicating the preference was saved.",
+    "category": "Settings & Billing",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_USER}}\" into the email/username field"
+      },
+      {
+        "type": "action",
+        "description": "Type \"{{LOGIN_PASSWORD}}\" into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Log in\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/dashboard\""
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Settings\" in the dashboard navigation"
+      },
+      {
+        "type": "action",
+        "description": "Scroll to \"Email Preferences\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Weekly digest\" is visible"
+      }
+    ]
+  }
+]

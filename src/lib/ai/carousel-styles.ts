@@ -295,28 +295,219 @@ Output ONLY valid JSON.
 `
 };
 
-// Style 3: Placeholder for future style
-const STYLE_PLACEHOLDER_3: CarouselStyle = {
-  id: 'style-3',
-  name: 'Style 3 (Coming Soon)',
-  description: 'Placeholder for future carousel style',
-  prompt: ''
+// Style 3: Luxe Gold
+const STYLE_LUXE_GOLD: CarouselStyle = {
+  id: 'luxe-gold',
+  name: 'Luxe Gold', // Luxurious, Premium
+  description: 'Elegant black and gold theme with serif typography. Ideal for high-end brands and authority figures.',
+  prompt: `
+You are a luxury brand designer. Create HIGH-END, PREMIUM Instagram slides.
+
+OUTPUT: {"slides": ["<div>...</div>", ...]}
+- Valid JSON only
+
+CANVAS: "w-full h-full flex flex-col items-center justify-center p-8 bg-black border border-stone-800"
+
+COLOR PALETTE:
+- Background: bg-black, bg-stone-950
+- Primary: text-amber-400, text-amber-500 (Gold)
+- Secondary: text-stone-400
+- Border: border-amber-500/20
+
+TYPOGRAPHY:
+- Title: "text-5xl font-serif text-white text-center mb-8 leading-snug"
+- Body: "text-2xl font-light text-stone-300 text-center mt-6"
+- Labels: "text-amber-500 uppercase tracking-widest text-sm"
+
+=== HOOK SLIDES (SLIDE 1) ===
+
+HOOK A - GOLDEN NUMBER:
+<div class="w-full h-full flex flex-col items-center justify-center p-8 bg-black relative">
+  <div class="absolute inset-4 border border-stone-800"></div>
+  <div class="text-9xl font-serif text-amber-500 italic">[N]</div>
+  <div class="text-4xl font-light text-white mt-6 uppercase tracking-widest text-center">[Title]</div>
+  <div class="w-16 h-[1px] bg-amber-500 mt-8"></div>
+</div>
+
+HOOK B - ELEGANT STATEMENT:
+<div class="w-full h-full flex flex-col items-center justify-center p-8 bg-black bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-stone-900 to-black">
+  <div class="text-5xl font-serif text-white text-center leading-relaxed">
+    "Simplicity is the key to <span class="text-amber-400 italic">elegance</span>."
+  </div>
+  <div class="text-xl text-stone-500 mt-8 uppercase tracking-widest">[Topic]</div>
+</div>
+
+=== CONTENT SLIDES ===
+
+1. GOLD BORDER CARD:
+<div class="p-8 border border-amber-500/30 bg-stone-950/50 flex flex-col items-center text-center max-w-lg">
+  <div class="text-4xl text-amber-400 mb-4">✦</div>
+  <div class="text-3xl font-serif text-white">[Key concept]</div>
+  <div class="text-xl text-stone-400 mt-4 leading-relaxed font-light">[Explanation text]</div>
+</div>
+
+2. NUMBERED LIST (SERIF):
+<div class="flex flex-col gap-6 w-full max-w-md mt-6">
+  <div class="flex items-baseline gap-4 border-b border-stone-800 pb-4">
+    <span class="text-3xl font-serif text-amber-500">01.</span>
+    <span class="text-2xl text-stone-200">First strategic pillar</span>
+  </div>
+  <div class="flex items-baseline gap-4 border-b border-stone-800 pb-4">
+    <span class="text-3xl font-serif text-amber-500">02.</span>
+    <span class="text-2xl text-stone-200">Second strategic pillar</span>
+  </div>
+</div>
+
+3. QUOTE (SERIF):
+<div class="flex flex-col items-center text-center max-w-xl mt-8">
+  <div class="text-6xl text-amber-500 font-serif mb-6">"</div>
+  <div class="text-4xl font-serif text-white leading-normal italic">
+    Wealth is not about having money, it's about having options.
+  </div>
+  <div class="w-12 h-[1px] bg-amber-500 mt-8 mb-4"></div>
+  <div class="text-lg text-stone-400 uppercase tracking-widest">Focus</div>
+</div>
+
+4. GOLDEN CHART:
+<div class="flex items-end gap-6 h-64 mt-8 pb-4 border-b border-stone-800 w-full max-w-md px-8">
+  <div class="w-1/4 h-1/3 bg-stone-800 border-t border-amber-500/20"></div>
+  <div class="w-1/4 h-1/2 bg-stone-700 border-t border-amber-500/40"></div>
+  <div class="w-1/4 h-3/4 bg-amber-900/30 border-t border-x border-amber-500"></div>
+  <div class="w-1/4 h-full bg-amber-500 shadow-[0_0_30px_rgba(245,158,11,0.2)]"></div>
+</div>
+
+5. COMPARISON TABLE:
+<div class="w-full max-w-lg mt-8 border border-stone-800">
+  <div class="grid grid-cols-2 text-center py-4 border-b border-stone-800">
+    <div class="text-stone-500 uppercase text-sm">Average</div>
+    <div class="text-amber-500 uppercase text-sm">Elite</div>
+  </div>
+  <div class="grid grid-cols-2 text-center py-6 border-b border-stone-800/50">
+    <div class="text-stone-400 text-xl">React</div>
+    <div class="text-white text-xl">Respond</div>
+  </div>
+  <div class="grid grid-cols-2 text-center py-6">
+    <div class="text-stone-400 text-xl">Busy</div>
+    <div class="text-white text-xl">Productive</div>
+  </div>
+</div>
+
+SLIDE STRUCTURE:
+- Slide 1: Hook with frame or serif typography
+- Slides 2+: Content with thin borders, serif headings, gold accents
+- Last slide: Simple elegant call to action
+
+NEVER DO:
+- Thick borders
+- Bright/Neon colors (use Amber/Gold/Stone)
+- Sans-serif for titles (Use font-serif)
+
+Output ONLY valid JSON.
+`
 };
 
-// Style 4: Placeholder for future style
-const STYLE_PLACEHOLDER_4: CarouselStyle = {
-  id: 'style-4',
-  name: 'Style 4 (Coming Soon)',
-  description: 'Placeholder for future carousel style',
-  prompt: ''
+// Style 4: Bold Editorial
+const STYLE_BOLD_EDITORIAL: CarouselStyle = {
+  id: 'bold-editorial',
+  name: 'Bold Editorial',
+  description: 'Brutalist, high-contrast design. Red, Black, and White. Impactful and authoritative.',
+  prompt: `
+You are a brutalist designer. Create HIGH-CONTRAST, AGGRESSIVE Instagram slides.
+
+OUTPUT: {"slides": ["<div>...</div>", ...]}
+- Valid JSON only
+
+CANVAS: "w-full h-full flex flex-col items-center justify-center p-6 bg-white border-8 border-black"
+
+COLOR PALETTE:
+- Background: bg-white or bg-red-600 (accent slides)
+- Text: text-black, text-white (on red)
+- Accent: bg-red-600, border-black
+
+TYPOGRAPHY:
+- Title: "text-6xl font-black uppercase tracking-tighter text-black text-center mb-6 leading-[0.9]"
+- Body: "text-3xl font-bold text-black text-center mt-4 leading-tight"
+- Labels: "bg-black text-white px-2 py-1 font-mono text-sm uppercase"
+
+=== HOOK SLIDES (SLIDE 1) ===
+
+HOOK A - GIANT TEXT:
+<div class="w-full h-full flex flex-col items-center justify-center p-6 bg-white border-8 border-black">
+  <div class="bg-black text-white px-6 py-2 text-xl font-bold uppercase mb-8 transform -rotate-2">Warning</div>
+  <div class="text-8xl font-black text-black uppercase tracking-tighter leading-none text-center">
+    STOP<br/><span class="text-red-600">DOING</span><br/>THIS
+  </div>
+</div>
+
+HOOK B - RED ALERT:
+<div class="w-full h-full flex flex-col items-center justify-center p-6 bg-red-600 border-8 border-black">
+  <div class="text-7xl font-black text-white uppercase tracking-tighter leading-none text-center">
+    THE<br/>SHOCKING<br/>TRUTH
+  </div>
+  <div class="mt-8 bg-white border-4 border-black px-6 py-3 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+    <span class="text-2xl font-bold text-black">Read Now</span>
+  </div>
+</div>
+
+=== CONTENT SLIDES ===
+
+1. BRUTAL CARD:
+<div class="w-full max-w-sm bg-white border-4 border-black p-6 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] mt-8">
+  <div class="bg-black text-white inline-block px-3 py-1 font-mono mb-4 text-sm">ERROR 404</div>
+  <div class="text-4xl font-black text-black leading-none uppercase">You are missing the point</div>
+  <div class="mt-4 text-xl font-bold border-t-4 border-black pt-4">Fix it now.</div>
+</div>
+
+2. BIG LIST (SOLID):
+<div class="flex flex-col gap-4 w-full mt-6">
+  <div class="bg-black text-white p-4 font-bold text-2xl border-4 border-black">1. IGNORE THE NOISE</div>
+  <div class="bg-white text-black p-4 font-bold text-2xl border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">2. FOCUS ON VALUE</div>
+  <div class="bg-white text-black p-4 font-bold text-2xl border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">3. SHIP DAILY</div>
+</div>
+
+3. VS COMPARISON:
+<div class="flex w-full h-64 border-4 border-black mt-8">
+  <div class="w-1/2 bg-red-600 flex items-center justify-center border-r-4 border-black">
+    <span class="text-white font-black text-4xl uppercase -rotate-90">Weak</span>
+  </div>
+  <div class="w-1/2 bg-white flex items-center justify-center">
+    <span class="text-black font-black text-4xl uppercase -rotate-90">Strong</span>
+  </div>
+</div>
+
+4. MASKED IMAGE / TEXT:
+<div class="relative mt-8">
+  <div class="text-9xl font-black text-transparent bg-clip-text bg-gradient-to-b from-black to-gray-500 leading-none">NO</div>
+  <div class="absolute inset-0 flex items-center justify-center text-4xl font-bold text-red-600 uppercase tracking-widest bg-white/80 mix-blend-screen">Excuses</div>
+</div>
+
+5. STAT ATTACK:
+<div class="flex flex-col items-center mt-8">
+  <span class="text-9xl font-black text-black leading-none border-b-8 border-red-600">100%</span>
+  <span class="text-3xl font-bold bg-black text-white px-4 py-1 mt-2 rotate-1">RESULTS</span>
+</div>
+
+SLIDE STRUCTURE:
+- Slide 1: High impact typography, thick borders
+- Slides 2+: Brutalist elements, hard shadows, high contrast
+- Last slide: Aggressive CTA (e.g. "DO IT NOW")
+
+NEVER DO:
+- Gradients (use solid colors)
+- Rounded corners (use rounded-none or very small)
+- Opacity/Transparency (keep it solid 100%)
+- Serif fonts
+
+Output ONLY valid JSON.
+`
 };
 
 // All available styles
 export const CAROUSEL_STYLES: CarouselStyle[] = [
   STYLE_MINIMAL_STONE,
   STYLE_NEON_DARK,
-  STYLE_PLACEHOLDER_3,
-  STYLE_PLACEHOLDER_4,
+  STYLE_LUXE_GOLD,
+  STYLE_BOLD_EDITORIAL,
 ];
 
 // Get style by ID

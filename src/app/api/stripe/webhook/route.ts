@@ -1,7 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
-import { createClient } from '@supabase/supabase-js';
+import { TIER_DB_FEATURES, createAdminSupabaseClient } from '@/lib/subscription';
 import Stripe from 'stripe';
 
 export const runtime = 'nodejs';
@@ -9,9 +9,8 @@ export const runtime = 'nodejs';
 // This secret comes from the Stripe Dashboard > Developers > Webhooks
 const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 
-// Helper to get logic-tier from metadata or price
+// Helper to get tier from subscription metadata
 const getTierFromSubscription = (subscription: Stripe.Subscription | Stripe.Response<Stripe.Subscription>): string => {
-    // Access with 'any' to handle Response wrappers safely
     return (subscription as any).metadata?.tier || 'starter';
 };
 
@@ -33,11 +32,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: `Webhook Error: ${err.message}` }, { status: 400 });
     }
 
-    // Use Service Role for Admin Access
-    const adminClient = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const adminClient = createAdminSupabaseClient();
 
     try {
         console.log(`[Webhook] Processing event: ${event.type}`);
@@ -52,46 +47,57 @@ export async function POST(req: NextRequest) {
 
                 const subscription = await stripe.subscriptions.retrieve(subscriptionId);
                 const tier = getTierFromSubscription(subscription);
+                const features = TIER_DB_FEATURES[tier as keyof typeof TIER_DB_FEATURES] || TIER_DB_FEATURES.starter;
 
                 console.log(`[Webhook] Checkout Completed. User: ${userId}, Tier: ${tier}`);
 
-                // Update Accounts Table
-                // Fix: Cast subscription to any to bypass Response<T> type limitations on some properties
-                await adminClient.from('accounts').update({
-                    plan_tier: tier,
-                    subscription_status: 'active',
-                    stripe_subscription_id: subscriptionId,
+                // 1. Upsert into subscriptions table
+                await adminClient.from('subscriptions').upsert({
+                    account_id: userId,
                     stripe_customer_id: session.customer as string,
-                    current_period_end: (subscription as any).current_period_end
-                }).eq('id', userId);
+                    stripe_subscription_id: subscriptionId,
+                    plan: tier,
+                    status: 'active',
+                    current_period_start: new Date((subscription as any).current_period_start * 1000).toISOString(),
+                    current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
+                }, { onConflict: 'account_id' });
 
-                // Update Founder Profile (Legacy/Sync)
+                // 2. Update founder_profiles with tier + features
                 await adminClient.from('founder_profiles').update({
-                    // subscription_tier: tier, 
+                    subscription_tier: tier,
+                    ...features,
                 }).eq('account_id', userId);
 
+                console.log(`[Webhook] Updated subscriptions + founder_profiles for ${userId}`);
                 break;
             }
 
             case 'customer.subscription.updated': {
                 const subscription = event.data.object as Stripe.Subscription;
                 const tier = getTierFromSubscription(subscription);
+                const features = TIER_DB_FEATURES[tier as keyof typeof TIER_DB_FEATURES] || TIER_DB_FEATURES.starter;
 
-                // Find user by stripe_customer_id
-                const { data: accounts } = await adminClient
-                    .from('accounts')
-                    .select('id')
-                    .eq('stripe_customer_id', subscription.customer as string);
+                // Find user by stripe_customer_id in subscriptions table
+                const { data: sub } = await adminClient
+                    .from('subscriptions')
+                    .select('account_id')
+                    .eq('stripe_customer_id', subscription.customer as string)
+                    .single();
 
-                if (accounts && accounts.length > 0) {
-                    const userId = accounts[0].id;
-                    console.log(`[Webhook] Subscription Updated. User: ${userId}, Status: ${subscription.status}`);
+                if (sub) {
+                    const userId = sub.account_id;
+                    console.log(`[Webhook] Subscription Updated. User: ${userId}, Status: ${subscription.status}, Tier: ${tier}`);
 
-                    await adminClient.from('accounts').update({
-                        plan_tier: tier,
-                        subscription_status: subscription.status,
-                        current_period_end: (subscription as any).current_period_end
-                    }).eq('id', userId);
+                    await adminClient.from('subscriptions').update({
+                        plan: tier,
+                        status: subscription.status,
+                        current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
+                    }).eq('account_id', userId);
+
+                    await adminClient.from('founder_profiles').update({
+                        subscription_tier: tier,
+                        ...features,
+                    }).eq('account_id', userId);
                 }
                 break;
             }
@@ -99,20 +105,26 @@ export async function POST(req: NextRequest) {
             case 'customer.subscription.deleted': {
                 const subscription = event.data.object as Stripe.Subscription;
 
-                const { data: accounts } = await adminClient
-                    .from('accounts')
-                    .select('id')
-                    .eq('stripe_customer_id', subscription.customer as string);
+                const { data: sub } = await adminClient
+                    .from('subscriptions')
+                    .select('account_id')
+                    .eq('stripe_customer_id', subscription.customer as string)
+                    .single();
 
-                if (accounts && accounts.length > 0) {
-                    const userId = accounts[0].id;
+                if (sub) {
+                    const userId = sub.account_id;
                     console.log(`[Webhook] Subscription Deleted/Canceled. User: ${userId}`);
 
-                    await adminClient.from('accounts').update({
-                        plan_tier: 'starter',
-                        subscription_status: 'canceled',
-                        current_period_end: null
-                    }).eq('id', userId);
+                    await adminClient.from('subscriptions').update({
+                        plan: 'starter',
+                        status: 'canceled',
+                        current_period_end: null,
+                    }).eq('account_id', userId);
+
+                    await adminClient.from('founder_profiles').update({
+                        subscription_tier: 'starter',
+                        ...TIER_DB_FEATURES.starter,
+                    }).eq('account_id', userId);
                 }
                 break;
             }

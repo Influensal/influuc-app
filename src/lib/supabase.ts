@@ -22,7 +22,7 @@ export interface Account {
     id: string;
     email: string;
     created_at: string;
-    plan_tier: 'solo' | 'team' | 'scale';
+    plan_tier: 'starter' | 'creator' | 'authority';
 }
 
 export interface FounderProfile {

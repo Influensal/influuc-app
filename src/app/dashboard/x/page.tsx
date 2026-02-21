@@ -71,6 +71,7 @@ export default function XCalendarPage() {
             case 'single': return 'Single Post';
             case 'thread': return 'Thread';
             case 'long_form': return 'Long Form';
+            case 'carousel': return '📊 Carousel';
             default: return fmt;
         }
     };
@@ -152,11 +153,6 @@ export default function XCalendarPage() {
                                             <span className="text-xs text-[var(--foreground-muted)]">{formatPostFormat(post.format)}</span>
                                         </div>
                                     </div>
-                                    {post.regenerated && (
-                                        <span className="text-xs text-amber-500 bg-amber-500/10 px-2 py-1 rounded-full">
-                                            Regenerated
-                                        </span>
-                                    )}
                                 </div>
                                 <p className="text-sm text-[var(--foreground)] line-clamp-3 whitespace-pre-wrap">
                                     {post.content.split('\n')[0]}...

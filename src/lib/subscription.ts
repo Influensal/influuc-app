@@ -3,7 +3,7 @@
  * Check if user has access to specific features based on their tier
  */
 
-export type SubscriptionTier = 'starter' | 'growth' | 'authority';
+export type SubscriptionTier = 'starter' | 'creator' | 'authority';
 
 interface TierLimits {
     ideasPerMonth: number;
@@ -23,7 +23,7 @@ const TIER_CONFIG: Record<SubscriptionTier, TierLimits> = {
         hasFaceClone: false,
         hasNewsJacking: false,
     },
-    growth: {
+    creator: {
         ideasPerMonth: Infinity,
         carouselsPerWeek: 2,
         hasCarousels: true,
@@ -61,7 +61,7 @@ export function canGenerateIdea(
         return {
             allowed: false,
             reason: `You've used all ${limits.ideasPerMonth} ideas this month. Upgrade to Creator for unlimited.`,
-            requiredTier: 'growth',
+            requiredTier: 'creator',
             upgradeUrl: '/dashboard/settings?tab=billing',
         };
     }
@@ -79,7 +79,7 @@ export function canCreateCarousel(tier: SubscriptionTier): TierCheckResult {
         return {
             allowed: false,
             reason: 'Carousels are available on Creator plan and above.',
-            requiredTier: 'growth',
+            requiredTier: 'creator',
             upgradeUrl: '/dashboard/settings?tab=billing',
         };
     }
@@ -97,7 +97,7 @@ export function canUseFacelessVisuals(tier: SubscriptionTier): TierCheckResult {
         return {
             allowed: false,
             reason: 'Faceless Visuals are available on Creator plan and above.',
-            requiredTier: 'growth',
+            requiredTier: 'creator',
             upgradeUrl: '/dashboard/settings?tab=billing',
         };
     }
@@ -156,4 +156,30 @@ export function parseTier(tier: string | null | undefined): SubscriptionTier {
         return tier as SubscriptionTier;
     }
     return 'starter'; // Default fallback
+}
+
+/**
+ * Database feature flags per tier
+ * Used by Stripe webhook/checkout to sync to founder_profiles
+ */
+export const TIER_DB_FEATURES: Record<SubscriptionTier, {
+    ideas_limit_monthly: number;
+    carousels_limit_weekly: number;
+    news_feature_enabled: boolean;
+}> = {
+    starter: { ideas_limit_monthly: 30, carousels_limit_weekly: 0, news_feature_enabled: false },
+    creator: { ideas_limit_monthly: 999999, carousels_limit_weekly: 2, news_feature_enabled: false },
+    authority: { ideas_limit_monthly: 999999, carousels_limit_weekly: 2, news_feature_enabled: true },
+};
+
+/**
+ * Create an admin Supabase client (service role)
+ * Used by webhook + checkout-session for DB writes
+ */
+export function createAdminSupabaseClient() {
+    const { createClient } = require('@supabase/supabase-js');
+    return createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
 }

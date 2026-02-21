@@ -6,6 +6,11 @@ export const runtime = 'nodejs';
 interface GenerateIdeaRequest {
     idea: string;
     platforms: ('x' | 'linkedin')[];
+    history?: {
+        role: 'user' | 'assistant';
+        content?: string;
+        platformOutputs?: GeneratedContent[];
+    }[];
     userContext?: {
         industry?: string;
         targetAudience?: string;
@@ -67,11 +72,32 @@ export async function POST(request: NextRequest) {
             const systemPrompt = buildSystemPrompt(platform, platformConfig, body.userContext);
             const userPrompt = buildUserPrompt(body.idea, platform, platformConfig);
 
+            const aiMessages = [{ role: 'system', content: systemPrompt }];
+
+            // Append history if provided
+            if (body.history && Array.isArray(body.history)) {
+                body.history.forEach((msg) => {
+                    if (msg.role === 'user' && msg.content) {
+                        aiMessages.push({ role: 'user', content: msg.content });
+                    } else if (msg.role === 'assistant') {
+                        // For the assistant's previous responses, we want to summarize them or pass them as context
+                        // Best is to pass the generated content back as an assistant message
+                        if (msg.platformOutputs && msg.platformOutputs.length > 0) {
+                            const combinedOutputs = msg.platformOutputs
+                                .map((out) => `[${out.platform.toUpperCase()} POST]:\n${out.content}`)
+                                .join('\n\n');
+                            aiMessages.push({ role: 'assistant', content: combinedOutputs });
+                        } else if (msg.content) {
+                            aiMessages.push({ role: 'assistant', content: msg.content });
+                        }
+                    }
+                });
+            }
+
+            aiMessages.push({ role: 'user', content: userPrompt });
+
             const result = await provider.complete({
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: userPrompt },
-                ],
+                messages: aiMessages as any,
                 temperature: 0.7,
                 maxTokens: 1500,
             });

@@ -97,7 +97,8 @@ export async function POST(request: NextRequest) {
                 content: finalContent,
                 scheduled_date: scheduledDate,
                 status: status || 'scheduled',
-                format: format || 'single'
+                format: format || 'single',
+                topic: topic || null,
             })
             .select()
             .single();

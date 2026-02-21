@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { usePosts } from '@/contexts';
+import { usePosts, useAuth } from '@/contexts';
 import {
     Twitter,
     Linkedin,
@@ -137,6 +137,7 @@ function ContextItem({
 
 export default function SettingsPage() {
     const { profile, loading, refreshPosts } = usePosts();
+    // const { signOut } = useAuth(); // Moved to inside component body above users of handleSignOut
     const router = useRouter();
     const searchParams = useSearchParams();
 
@@ -198,21 +199,10 @@ export default function SettingsPage() {
         }
     }, [searchParams, refreshPosts]);
 
+    const { signOut } = useAuth(); // Use centralized auth context
+
     const handleSignOut = async () => {
-        const supabase = createClient();
-
-        // Clear local storage to prevent data leakage to other accounts
-        localStorage.removeItem('onboarding_temp_data');
-
-        // Also clear any user-specific keys if possible, or just all onboarding keys
-        Object.keys(localStorage).forEach(key => {
-            if (key.startsWith('onboarding_data_')) {
-                localStorage.removeItem(key);
-            }
-        });
-
-        await supabase.auth.signOut();
-        router.push('/signup');
+        await signOut();
     };
 
     const handleSave = async () => {
@@ -545,46 +535,22 @@ export default function SettingsPage() {
                     {/* Integrations Tab */}
                     {activeTab === 'integrations' && (
                         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-                            {/* X Connection */}
-                            <div className={`
-                                relative p-6 rounded-2xl border transition-all duration-300 flex items-center justify-between gap-6
-                                ${isXConnected
-                                    ? 'bg-[var(--card)] border-[var(--border-hover)]'
-                                    : 'bg-[var(--card)] border-[var(--border)]'}
-                            `}>
+                            {/* X (Twitter) Info */}
+                            <div className="relative p-6 rounded-2xl border border-[var(--border)] bg-[var(--card)]/50 flex items-center justify-between gap-6">
                                 <div className="flex items-center gap-4">
-                                    <div className="p-3 bg-black text-white dark:bg-white dark:text-black rounded-xl">
+                                    <div className="p-3 bg-black text-white dark:bg-white dark:text-black rounded-xl opacity-80">
                                         <Twitter className="w-6 h-6" />
                                     </div>
                                     <div>
                                         <h4 className="font-bold text-lg">X (Twitter)</h4>
                                         <p className="text-sm text-[var(--foreground-muted)]">
-                                            {isXConnected ? 'Connected via API' : 'Not connected'}
+                                            Auto-posting unavailable. Generate content here, then copy & paste to X.
                                         </p>
                                     </div>
                                 </div>
-
-                                {isXConnected ? (
-                                    <div className="flex items-center gap-4">
-                                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-                                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                            Active
-                                        </span>
-                                        <a
-                                            href="/api/auth/x/init?redirect=/dashboard/settings"
-                                            className="text-sm font-semibold text-[var(--foreground-muted)] hover:text-[var(--primary)]"
-                                        >
-                                            Reconnect
-                                        </a>
-                                    </div>
-                                ) : (
-                                    <a
-                                        href="/api/auth/x/init?redirect=/dashboard/settings"
-                                        className="px-6 py-2.5 rounded-xl bg-black text-white dark:bg-white dark:text-black font-bold text-sm hover:opacity-90 transition-all border border-transparent dark:border-gray-200"
-                                    >
-                                        Connect
-                                    </a>
-                                )}
+                                <div className="px-4 py-2 rounded-lg bg-[var(--background-secondary)] text-xs font-bold text-[var(--foreground-muted)] border border-[var(--border)]">
+                                    Manual Publish
+                                </div>
                             </div>
 
                             {/* LinkedIn Connection */}
