@@ -100,9 +100,9 @@ export default function CarouselStudioPage() {
         <div className="min-h-screen bg-[var(--background)] relative overflow-hidden">
             {/* Animated Background */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute -top-40 -right-40 w-96 h-96 bg-emerald-400/20 rounded-full blur-3xl animate-pulse" />
+                <div className="absolute -top-40 -right-40 w-96 h-96 bg-violet-400/20 rounded-full blur-3xl animate-pulse" />
                 <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-stone-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-r from-emerald-500/5 to-stone-500/5 rounded-full blur-3xl" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-r from-violet-500/5 to-stone-500/5 rounded-full blur-3xl" />
             </div>
 
             <div className="relative z-10 max-w-7xl mx-auto px-6 py-12">
@@ -113,11 +113,11 @@ export default function CarouselStudioPage() {
                     className="text-center mb-12"
                 >
                     <div className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--foreground)]/5 backdrop-blur-sm rounded-full text-sm font-medium text-[var(--foreground-muted)] mb-4">
-                        <Sparkles className="w-4 h-4 text-emerald-600" />
+                        <Sparkles className="w-4 h-4 text-violet-600" />
                         AI-Powered Carousel Studio
                     </div>
                     <h1 className="text-5xl font-black text-[var(--foreground)] tracking-tight mb-3">
-                        Create <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-emerald-400">Magic</span>
+                        Create <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-violet-400">Magic</span>
                     </h1>
                     <p className="text-xl text-[var(--foreground-muted)] max-w-xl mx-auto">
                         Transform your ideas into stunning Instagram carousels in seconds
@@ -137,7 +137,7 @@ export default function CarouselStudioPage() {
                         >
                             {/* Glassmorphism Input Card */}
                             <div className="relative">
-                                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/20 to-stone-500/20 rounded-3xl blur-xl" />
+                                <div className="absolute inset-0 bg-gradient-to-r from-violet-500/20 to-stone-500/20 rounded-3xl blur-xl" />
                                 <div className="relative bg-[var(--card)]/80 backdrop-blur-xl rounded-3xl border border-[var(--border)] shadow-2xl p-8">
                                     {/* Input */}
                                     <div className="mb-6">
@@ -224,7 +224,7 @@ export default function CarouselStudioPage() {
                                                     <div
                                                         key={stage}
                                                         className={`w-3 h-3 rounded-full transition-all duration-500 ${generationStage === stage
-                                                            ? 'bg-emerald-500 scale-125'
+                                                            ? 'bg-violet-500 scale-125'
                                                             : ['thinking', 'creating', 'polishing', 'done'].indexOf(generationStage) > i
                                                                 ? 'bg-[var(--primary)]'
                                                                 : 'bg-[var(--border)]'
@@ -268,7 +268,7 @@ export default function CarouselStudioPage() {
                                     </button>
                                     <button
                                         onClick={handleSave}
-                                        className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold flex items-center gap-2 transition-colors shadow-lg"
+                                        className="px-6 py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-bold flex items-center gap-2 transition-colors shadow-lg"
                                     >
                                         <Download className="w-5 h-5" />
                                         Save & Export
@@ -341,7 +341,7 @@ export default function CarouselStudioPage() {
                                                 key={i}
                                                 onClick={() => setCurrentSlideIndex(i)}
                                                 className={`w-full aspect-[4/5] rounded-xl overflow-hidden border-2 transition-all ${i === currentSlideIndex
-                                                    ? 'border-emerald-500 ring-4 ring-emerald-500/20 scale-[1.02]'
+                                                    ? 'border-violet-500 ring-4 ring-violet-500/20 scale-[1.02]'
                                                     : 'border-stone-200 hover:border-stone-300'
                                                     }`}
                                             >

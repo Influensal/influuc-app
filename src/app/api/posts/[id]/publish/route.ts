@@ -72,21 +72,60 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
             const content = post.content;
 
-            // Only use threading if the post format is explicitly 'thread'
-            // For 'single' and 'long_form' posts, post as-is (user has X Premium for long posts)
+            // Download media if post has an image
+            let mediaIds: string[] = [];
+            if (post.image_url) {
+                try {
+                    console.log('[Publish] Downloading image for X:', post.image_url);
+                    const imageRes = await fetch(post.image_url);
+                    const arrayBuffer = await imageRes.arrayBuffer();
+                    const buffer = Buffer.from(arrayBuffer);
+                    const mimeType = imageRes.headers.get('content-type') || 'image/png';
+
+                    const mediaId = await client.v1.uploadMedia(buffer, { mimeType });
+                    mediaIds.push(mediaId);
+                    console.log('[Publish] Uploaded media to X, Media ID:', mediaId);
+                } catch (imgError) {
+                    console.error('[Publish] Failed to upload media to X:', imgError);
+                    // Decide whether to fail the post or just post without image
+                    // Let's fail it so they know
+                    throw new Error('Failed to attach image to X post.');
+                }
+            }
+
             if (post.format === 'thread') {
                 // Split by double newlines for thread format
                 const tweets = content.split('\n\n').filter((t: string) => t.trim().length > 0);
                 if (tweets.length > 1) {
-                    const thread = await client.v2.tweetThread(tweets);
-                    externalId = thread[0].data.id;
+                    // If we have media, attach it to the first tweet of the thread
+                    if (mediaIds.length > 0) {
+                        const threadPayload = tweets.map((text: string, index: number) => {
+                            if (index === 0) {
+                                return { text, media: { media_ids: mediaIds as [string, ...string[]] } };
+                            }
+                            return { text };
+                        });
+                        const thread = await client.v2.tweetThread(threadPayload);
+                        externalId = thread[0].data.id;
+                    } else {
+                        const thread = await client.v2.tweetThread(tweets);
+                        externalId = thread[0].data.id;
+                    }
                 } else {
-                    const tweet = await client.v2.tweet(content);
+                    const tweetPayload: any = { text: content };
+                    if (mediaIds.length > 0) {
+                        tweetPayload.media = { media_ids: mediaIds as [string, ...string[]] };
+                    }
+                    const tweet = await client.v2.tweet(tweetPayload);
                     externalId = tweet.data.id;
                 }
             } else {
-                // Single post - post content as-is
-                const tweet = await client.v2.tweet(content);
+                // Single post
+                const tweetPayload: any = { text: content };
+                if (mediaIds.length > 0) {
+                    tweetPayload.media = { media_ids: mediaIds as [string, ...string[]] };
+                }
+                const tweet = await client.v2.tweet(tweetPayload);
                 externalId = tweet.data.id;
             }
 
@@ -95,17 +134,89 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             // Using UGC API or Posts API
             // Endpoint: https://api.linkedin.com/v2/ugcPosts
 
+            let specificContent: any = {
+                'com.linkedin.ugc.ShareContent': {
+                    shareCommentary: {
+                        text: post.content
+                    },
+                    shareMediaCategory: 'NONE'
+                }
+            };
+
+            // Handle Image Attachment for LinkedIn
+            if (post.image_url) {
+                try {
+                    console.log('[Publish] Registering image upload with LinkedIn...');
+                    // 1. Register Upload
+                    const registerRes = await fetch('https://api.linkedin.com/v2/assets?action=registerUpload', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${connection.access_token}`,
+                            'Content-Type': 'application/json',
+                            'X-Restli-Protocol-Version': '2.0.0'
+                        },
+                        body: JSON.stringify({
+                            registerUploadRequest: {
+                                recipes: ['urn:li:digitalmediaRecipe:feedshare-image'],
+                                owner: `urn:li:person:${connection.profile_id}`,
+                                serviceRelationships: [{
+                                    relationshipType: 'OWNER',
+                                    identifier: 'urn:li:userGeneratedContent'
+                                }]
+                            }
+                        })
+                    });
+
+                    if (!registerRes.ok) {
+                        const errText = await registerRes.text();
+                        throw new Error(`LinkedIn register upload failed: ${errText}`);
+                    }
+
+                    const registerData = await registerRes.json();
+                    const uploadUrl = registerData.value.uploadMechanism['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest'].uploadUrl;
+                    const assetUrn = registerData.value.asset;
+
+                    console.log('[Publish] LinkedIn asset registered:', assetUrn, 'Uploading image bytes...');
+
+                    // 2. Fetch image and upload bytes to LinkedIn
+                    const imageRes = await fetch(post.image_url);
+                    const arrayBuffer = await imageRes.arrayBuffer();
+                    const buffer = Buffer.from(arrayBuffer);
+
+                    const uploadMediaRes = await fetch(uploadUrl, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `Bearer ${connection.access_token}`,
+                            'Content-Type': 'application/octet-stream' // generic stream often works, or image/png
+                        },
+                        body: buffer
+                    });
+
+                    if (!uploadMediaRes.ok) {
+                        const errText = await uploadMediaRes.text();
+                        throw new Error(`LinkedIn media upload failed: ${errText}`);
+                    }
+
+                    // 3. Update specificContent to include the image
+                    specificContent['com.linkedin.ugc.ShareContent'].shareMediaCategory = 'IMAGE';
+                    specificContent['com.linkedin.ugc.ShareContent'].media = [{
+                        status: 'READY',
+                        description: { text: 'Post Image' },
+                        media: assetUrn,
+                        title: { text: 'Post Image' }
+                    }];
+                    console.log('[Publish] LinkedIn media upload successful.');
+
+                } catch (imgError) {
+                    console.error('[Publish] Failed to attach image to LinkedIn post:', imgError);
+                    throw new Error('Failed to attach image to LinkedIn post.');
+                }
+            }
+
             const body = {
                 author: `urn:li:person:${connection.profile_id}`,
                 lifecycleState: 'PUBLISHED',
-                specificContent: {
-                    'com.linkedin.ugc.ShareContent': {
-                        shareCommentary: {
-                            text: post.content
-                        },
-                        shareMediaCategory: 'NONE'
-                    }
-                },
+                specificContent: specificContent,
                 visibility: {
                     'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC'
                 }

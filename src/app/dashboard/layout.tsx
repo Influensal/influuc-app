@@ -33,7 +33,7 @@ export default async function DashboardLayout({
         <div className="flex h-screen bg-[var(--background)]">
             <Sidebar />
             <main className="flex-1 overflow-y-auto ml-[320px]">
-                <div className="p-8 md:p-12 max-w-[1600px] mx-auto">
+                <div id="dashboard-content-wrapper" className="p-8 md:p-12 max-w-[1600px] mx-auto min-h-screen">
                     <DashboardClientWrapper>
                         {children}
                     </DashboardClientWrapper>

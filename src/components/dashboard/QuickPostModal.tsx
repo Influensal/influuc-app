@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Sparkles, Loader2, Send, Save, RefreshCw, PenTool } from 'lucide-react';
+import { X, Sparkles, Loader2, Send, Save, RefreshCw, PenTool, ImagePlus, User, Trash2 } from 'lucide-react';
+import Image from 'next/image';
 
 interface QuickPostModalProps {
     isOpen: boolean;
@@ -15,6 +16,11 @@ export function QuickPostModal({ isOpen, onClose, onSuccess }: QuickPostModalPro
     const [step, setStep] = useState<'input' | 'review'>('input');
     const [generatedContent, setGeneratedContent] = useState('');
     const [postId, setPostId] = useState<string | null>(null);
+
+    // Image Generation State
+    const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+    const [imageUrl, setImageUrl] = useState<string | null>(null);
+    const [showImageOptions, setShowImageOptions] = useState(false);
 
     const handleGenerate = async () => {
         if (!topic.trim()) return;
@@ -55,7 +61,33 @@ export function QuickPostModal({ isOpen, onClose, onSuccess }: QuickPostModalPro
             console.error('Quick Post Error:', error);
             alert('Failed to generate post. Please try again.');
         } finally {
-            setIsGenerating(false);
+            setIsGeneratingImage(false);
+        }
+    };
+
+    const handleGenerateImage = async (mode: 'faceless' | 'digital_twin') => {
+        if (!postId) return;
+        setIsGeneratingImage(true);
+        try {
+            const response = await fetch(`/api/posts/${postId}/generate-image`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mode, aspectRatio: platform === 'x' ? '16:9' : '1:1' }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to generate image');
+            }
+
+            setImageUrl(data.imageUrl);
+            setShowImageOptions(false);
+        } catch (error: any) {
+            console.error('Image Generation Error:', error);
+            alert(error.message || 'Failed to generate image.');
+        } finally {
+            setIsGeneratingImage(false);
         }
     };
 
@@ -126,8 +158,8 @@ export function QuickPostModal({ isOpen, onClose, onSuccess }: QuickPostModalPro
                                     <button
                                         onClick={() => setPlatform('linkedin')}
                                         className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${platform === 'linkedin'
-                                                ? 'bg-white text-black shadow-sm'
-                                                : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'
+                                            ? 'bg-white text-black shadow-sm'
+                                            : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'
                                             }`}
                                     >
                                         LinkedIn
@@ -135,8 +167,8 @@ export function QuickPostModal({ isOpen, onClose, onSuccess }: QuickPostModalPro
                                     <button
                                         onClick={() => setPlatform('x')}
                                         className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${platform === 'x'
-                                                ? 'bg-black text-white shadow-sm dark:bg-white dark:text-black'
-                                                : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'
+                                            ? 'bg-black text-white shadow-sm dark:bg-white dark:text-black'
+                                            : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'
                                             }`}
                                     >
                                         X (Twitter)
@@ -190,6 +222,75 @@ export function QuickPostModal({ isOpen, onClose, onSuccess }: QuickPostModalPro
                                         onChange={(e) => setGeneratedContent(e.target.value)}
                                         className="w-full h-64 p-4 rounded-lg bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-mono text-sm leading-relaxed focus:ring-2 focus:ring-[var(--primary)]/50 resize-none"
                                     />
+                                </div>
+
+                                {/* Optional Image Generation Section */}
+                                <div className="mt-4 border-t border-[var(--border)] pt-4">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h4 className="font-semibold text-sm text-[var(--foreground)] flex items-center gap-2">
+                                            <ImagePlus className="w-4 h-4" />
+                                            Attach Visual
+                                        </h4>
+                                        {imageUrl && (
+                                            <button
+                                                onClick={() => setImageUrl(null)}
+                                                className="text-xs text-red-500 hover:text-red-600 flex items-center gap-1 transition-colors"
+                                            >
+                                                <Trash2 className="w-3 h-3" /> Remove
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {imageUrl ? (
+                                        <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] flex items-center justify-center">
+                                            <Image src={imageUrl} alt="Generated post visualization" width={800} height={450} className="w-full h-full object-cover" />
+                                        </div>
+                                    ) : showImageOptions ? (
+                                        <div className="space-y-3">
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <button
+                                                    onClick={() => handleGenerateImage('faceless')}
+                                                    disabled={isGeneratingImage}
+                                                    className="p-3 rounded-xl border border-[var(--border)] bg-[var(--background)] hover:border-[var(--primary)] transition-all flex flex-col items-center gap-1 text-center disabled:opacity-50"
+                                                >
+                                                    <div className="w-8 h-8 rounded-full bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center">
+                                                        <Sparkles className="w-4 h-4" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-semibold text-xs">Faceless</p>
+                                                    </div>
+                                                </button>
+                                                <button
+                                                    onClick={() => handleGenerateImage('digital_twin')}
+                                                    disabled={isGeneratingImage}
+                                                    className="p-3 rounded-xl border border-[var(--border)] bg-[var(--background)] hover:border-[var(--primary)] transition-all flex flex-col items-center gap-1 text-center disabled:opacity-50 relative overflow-hidden group"
+                                                >
+                                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center z-10">
+                                                        <User className="w-4 h-4" />
+                                                    </div>
+                                                    <div className="z-10">
+                                                        <p className="font-semibold text-xs text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-purple-600">
+                                                            Digital Twin
+                                                        </p>
+                                                    </div>
+                                                </button>
+                                            </div>
+                                            {isGeneratingImage && (
+                                                <div className="flex items-center justify-center gap-2 text-xs text-[var(--primary)] py-2">
+                                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                                    Generating image...
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <button
+                                            onClick={() => setShowImageOptions(true)}
+                                            className="w-full py-3 border-2 border-dashed border-[var(--border)] rounded-xl text-[var(--foreground-muted)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-all flex items-center justify-center gap-2 text-sm"
+                                        >
+                                            <ImagePlus className="w-4 h-4" />
+                                            <span>Generate AI Image for Post</span>
+                                        </button>
+                                    )}
                                 </div>
 
                                 <div className="flex gap-2 pt-2">

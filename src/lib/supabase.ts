@@ -46,6 +46,9 @@ export interface FounderProfile {
     };
     voice_model_id: string | null;
     next_generation_date: string | null;
+    subscription_tier?: string;
+    visual_lora_id?: string | null;
+    visual_training_status?: string | null;
     created_at: string;
 }
 

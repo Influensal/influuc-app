@@ -246,20 +246,60 @@ export default function SpontaneousIdeasPage() {
     const isEmptyState = activeMessages.length === 0 && !isGenerating && !optimisticPrompt;
 
     return (
-        <div className="flex h-[calc(100vh-80px)] xl:h-[calc(100vh-32px)] overflow-hidden bg-[#131314] text-[#E3E3E3] font-sans -m-6 sm:-m-8">
+        <div className="flex h-[100vh] overflow-hidden bg-[var(--gemini-bg)] text-[var(--gemini-text)] font-sans">
+            <style dangerouslySetInnerHTML={{
+                __html: `
+                #dashboard-content-wrapper { padding: 0 !important; max-width: none !important; }
+                
+                /* Override the global sidebar styling specifically for this page to create a seamless Gemini layout */
+                .sidebar {
+                    left: 0 !important;
+                    top: 0 !important;
+                    bottom: 0 !important;
+                    border-radius: 0 !important;
+                    box-shadow: none !important;
+                    border-right: 1px solid var(--gemini-border) !important;
+                    background: var(--gemini-bg) !important;
+                }
+                main.flex-1 {
+                    margin-left: 280px !important; /* Force flush with the 280px sidebar */
+                }
+
+                .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+                .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background-color: var(--gemini-hover); border-radius: 20px; }
+                .custom-scrollbar:hover::-webkit-scrollbar-thumb { background-color: var(--gemini-text-muted); }
+
+                :root {
+                  --gemini-bg: #FFFFFF;
+                  --gemini-card: #F0F4F9;
+                  --gemini-text: #1F1F1F;
+                  --gemini-text-muted: #444746;
+                  --gemini-hover: #E1E5EA;
+                  --gemini-border: #E1E5EA;
+                }
+                [data-theme="dark"] {
+                  --gemini-bg: #131314;
+                  --gemini-card: #1E1F20;
+                  --gemini-text: #E3E3E3;
+                  --gemini-text-muted: #C4C7C5;
+                  --gemini-hover: #333537;
+                  --gemini-border: #444746;
+                }
+             `}} />
 
             {/* Inner Sidebar for Chat History */}
             <div className={`
-                shrink-0 bg-[#1E1F20] transition-all duration-300 flex flex-col z-20 
+                shrink-0 bg-[var(--gemini-card)] transition-all duration-300 flex flex-col z-20 
                 ${isSidebarOpen ? 'w-[280px] opacity-100' : 'w-0 opacity-0 overflow-hidden'}
             `}>
                 <div className="p-4 flex items-center gap-3">
-                    <button onClick={() => setIsSidebarOpen(false)} className="p-2 hover:bg-[#333537] rounded-full text-[#C4C7C5] transition-colors">
+                    <button onClick={() => setIsSidebarOpen(false)} className="p-2 hover:bg-[var(--gemini-hover)] rounded-full text-[var(--gemini-text-muted)] transition-colors">
                         <Menu className="w-5 h-5" />
                     </button>
                     <button
                         onClick={() => setCurrentChatId(null)}
-                        className="flex items-center gap-2 px-4 py-2 hover:bg-[#333537] bg-[#131314] text-[#C4C7C5] rounded-full transition-all text-sm font-medium"
+                        className="flex items-center gap-2 px-4 py-2 hover:bg-[var(--gemini-hover)] bg-[var(--gemini-bg)] text-[var(--gemini-text-muted)] rounded-full transition-all text-sm font-medium"
                     >
                         <Plus className="w-4 h-4" />
                         New chat
@@ -267,11 +307,11 @@ export default function SpontaneousIdeasPage() {
                 </div>
 
                 <div className="flex-1 overflow-y-auto px-3 py-2 space-y-0.5 custom-scrollbar">
-                    <div className="px-4 py-2 text-[13px] font-medium text-[#C4C7C5] mt-2 mb-1">
+                    <div className="px-4 py-2 text-[13px] font-medium text-[var(--gemini-text-muted)] mt-2 mb-1">
                         Recent
                     </div>
                     {savedChats.length === 0 ? (
-                        <div className="px-4 py-2 text-sm text-[#C4C7C5]">No chats yet.</div>
+                        <div className="px-4 py-2 text-sm text-[var(--gemini-text-muted)]">No chats yet.</div>
                     ) : (
                         savedChats.map((chat) => (
                             <div key={chat.id} className="group relative flex items-center mb-1">
@@ -279,16 +319,16 @@ export default function SpontaneousIdeasPage() {
                                     onClick={() => setCurrentChatId(chat.id)}
                                     className={`w-full text-left px-4 py-2.5 rounded-full text-[13px] flex items-center gap-3 transition-colors
                                         ${currentChatId === chat.id
-                                            ? 'bg-[#333537] text-white'
-                                            : 'hover:bg-[#333537] text-[#E3E3E3]'}
+                                            ? 'bg-[var(--gemini-active-bg)] text-[var(--gemini-active-text)]'
+                                            : 'hover:bg-[var(--gemini-hover)] text-[var(--gemini-text)]'}
                                     `}
                                 >
-                                    <MessageSquare className="w-4 h-4 shrink-0 text-[#C4C7C5]" />
+                                    <MessageSquare className="w-4 h-4 shrink-0 text-[var(--gemini-text-muted)]" />
                                     <span className="truncate pr-6">{chat.input || "Untitled Idea"}</span>
                                 </button>
                                 <button
                                     onClick={(e) => handleDelete(chat.id, e)}
-                                    className={`absolute right-2 p-1.5 text-[#C4C7C5] hover:text-white hover:bg-[#444746] rounded-full opacity-0 group-hover:opacity-100 transition-all`}
+                                    className={`absolute right-2 p-1.5 text-[var(--gemini-text-muted)] hover:text-white hover:bg-[var(--gemini-border)] rounded-full opacity-0 group-hover:opacity-100 transition-all`}
                                 >
                                     <Trash2 className="w-3.5 h-3.5" />
                                 </button>
@@ -299,16 +339,16 @@ export default function SpontaneousIdeasPage() {
             </div>
 
             {/* Main Content */}
-            <div className="flex-1 flex flex-col relative w-full h-full min-w-0 bg-[#131314]">
+            <div className="flex-1 flex flex-col relative w-full h-full min-w-0 bg-[var(--gemini-bg)]">
                 {/* Header Navbar */}
                 <div className="h-16 flex items-center justify-between px-4 shrink-0">
                     <div className="flex items-center gap-2">
                         {!isSidebarOpen && (
-                            <button onClick={() => setIsSidebarOpen(true)} className="p-2 hover:bg-[#1E1F20] bg-transparent rounded-full text-[#C4C7C5] transition-colors md:mr-2">
+                            <button onClick={() => setIsSidebarOpen(true)} className="p-2 hover:bg-[var(--gemini-card)] bg-transparent rounded-full text-[var(--gemini-text-muted)] transition-colors md:mr-2">
                                 <Menu className="w-5 h-5" />
                             </button>
                         )}
-                        <span className="text-lg font-medium text-[#E3E3E3]">Gemini AI</span>
+                        <span className="text-lg font-medium text-[var(--gemini-text)]">Gemini AI</span>
                     </div>
                 </div>
 
@@ -318,16 +358,16 @@ export default function SpontaneousIdeasPage() {
                         /* Empty State - Centered */
                         <div className="flex-1 w-full max-w-[800px] flex flex-col justify-center px-4 md:px-8 pb-32">
                             <div className="mb-10 text-left md:text-center w-full">
-                                <h1 className="text-4xl md:text-[56px] font-medium mb-3 bg-clip-text text-transparent bg-gradient-to-r from-[#4285F4] via-[#D96570] to-[#F4B400] inline-block tracking-tight">
+                                <h1 className="text-4xl md:text-[56px] font-medium mb-3 bg-clip-text !text-transparent bg-gradient-to-r from-[#4285F4] via-[#D96570] to-[#F4B400] inline-block tracking-tight">
                                     Hi there
                                 </h1>
-                                <h2 className="text-4xl md:text-[56px] font-medium text-[#444746] tracking-tight mt-2">
+                                <h2 className="text-4xl md:text-[56px] font-medium text-[var(--gemini-text-muted)] tracking-tight mt-2">
                                     Where should we start?
                                 </h2>
                             </div>
 
                             {/* Center Input Box */}
-                            <div className="relative w-full bg-[#1E1F20] rounded-[32px] p-2 flex flex-col border border-transparent focus-within:bg-[#333537]/50 transition-colors shadow-sm">
+                            <div className="relative w-full bg-[var(--gemini-card)] rounded-[32px] p-2 flex flex-col border border-transparent focus-within:bg-[#333537]/50 transition-colors shadow-sm">
                                 <textarea
                                     ref={textareaRef}
                                     value={ideaInput}
@@ -335,13 +375,13 @@ export default function SpontaneousIdeasPage() {
                                     onKeyDown={handleKeyDown}
                                     placeholder="Enter a prompt here"
                                     rows={1}
-                                    className="w-full bg-transparent border-none outline-none resize-none text-[16px] text-[#E3E3E3] placeholder:text-[#C4C7C5] px-5 pt-5 pb-14 max-h-[300px] custom-scrollbar"
+                                    className="w-full bg-transparent border-none outline-none resize-none text-[16px] text-[var(--gemini-text)] placeholder:text-[var(--gemini-text-muted)] px-5 pt-5 pb-14 max-h-[300px] custom-scrollbar"
                                 />
                                 <div className="absolute bottom-3 right-3 flex items-center gap-2">
                                     <button
                                         onClick={handleGenerate}
                                         disabled={!ideaInput.trim() || isGenerating}
-                                        className={`w-10 h-10 rounded-full transition-colors flex items-center justify-center ${ideaInput.trim() && !isGenerating ? 'bg-[#E3E3E3] text-[#131314] hover:bg-white' : 'text-[#444746] bg-transparent cursor-not-allowed'}`}
+                                        className={`w-10 h-10 rounded-full transition-colors flex items-center justify-center ${ideaInput.trim() && !isGenerating ? 'bg-[#E3E3E3] text-[#131314] hover:bg-white' : 'text-[var(--gemini-text-muted)] bg-transparent cursor-not-allowed'}`}
                                     >
                                         <Send className="w-4 h-4 shrink-0" />
                                     </button>
@@ -359,7 +399,7 @@ export default function SpontaneousIdeasPage() {
                                                 textareaRef.current.focus();
                                             }
                                         }}
-                                        className="flex items-center gap-2 px-5 py-3.5 bg-[#1E1F20] hover:bg-[#333537] rounded-full text-[14px] font-medium text-[#E3E3E3] transition-colors whitespace-nowrap border border-transparent hover:border-[#444746]"
+                                        className="flex items-center gap-2 px-5 py-3.5 bg-[var(--gemini-card)] hover:bg-[var(--gemini-hover)] rounded-full text-[14px] font-medium text-[var(--gemini-text)] transition-colors whitespace-nowrap border border-transparent hover:border-[var(--gemini-border)]"
                                     >
                                         <s.icon className={`w-4 h-4 shrink-0 ${s.color}`} />
                                         {s.text}
@@ -376,7 +416,7 @@ export default function SpontaneousIdeasPage() {
                                         {msg.role === 'user' ? (
                                             /* User Bubble - Gemini style (light gray/dark gray pill, right aligned) */
                                             <div className="flex justify-end w-full mb-6 relative">
-                                                <div className="bg-[#1E1F20] text-[#E3E3E3] px-6 py-4 rounded-3xl max-w-[85%] text-[15.5px] font-medium leading-[1.6] break-words">
+                                                <div className="bg-[var(--gemini-card)] text-[var(--gemini-text)] px-6 py-4 rounded-3xl max-w-[85%] text-[15.5px] font-medium leading-[1.6] break-words">
                                                     {msg.content}
                                                 </div>
                                             </div>
@@ -388,7 +428,7 @@ export default function SpontaneousIdeasPage() {
                                                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#4285F4] via-[#D96570] to-[#F4B400] flex items-center justify-center shrink-0 mt-0.5">
                                                         <Sparkles className="w-4 h-4 text-white" />
                                                     </div>
-                                                    <div className="flex-1 mt-1 text-[#E3E3E3] space-y-4 overflow-hidden">
+                                                    <div className="flex-1 mt-1 text-[var(--gemini-text)] space-y-4 overflow-hidden">
                                                         {msg.content && (
                                                             <p className="text-[15.5px] leading-[1.7] whitespace-pre-wrap">{msg.content}</p>
                                                         )}
@@ -396,20 +436,20 @@ export default function SpontaneousIdeasPage() {
                                                         {msg.platformOutputs && msg.platformOutputs.length > 0 && (
                                                             <div className="flex flex-col gap-4 mt-4 w-full max-w-2xl">
                                                                 {msg.platformOutputs.map((item, index) => (
-                                                                    <div key={index} className="bg-[#1E1F20] rounded-2xl p-6 border border-[#333537] relative group">
+                                                                    <div key={index} className="bg-[var(--gemini-card)] rounded-2xl p-6 border border-[#333537] relative group">
                                                                         <div className="flex items-center justify-between mb-5">
-                                                                            <span className="text-[12px] font-bold uppercase tracking-widest text-[#E3E3E3] bg-[#333537] px-3.5 py-1.5 rounded-full flex items-center gap-2">
+                                                                            <span className="text-[12px] font-bold uppercase tracking-widest text-[var(--gemini-text)] bg-[#333537] px-3.5 py-1.5 rounded-full flex items-center gap-2">
                                                                                 {renderPlatformIcon(item.platform, "w-3 h-3")} {item.format}
                                                                             </span>
                                                                             <button
                                                                                 onClick={() => handleCopy(item.content, `${currentChatId}-${idx}-${index}`)}
-                                                                                className="text-[#C4C7C5] hover:text-[#E3E3E3] transition-colors p-2 bg-[#131314] rounded-full opacity-0 group-hover:opacity-100 shadow-sm border border-[#333537]"
+                                                                                className="text-[var(--gemini-text-muted)] hover:text-[var(--gemini-text)] transition-colors p-2 bg-[var(--gemini-bg)] rounded-full opacity-0 group-hover:opacity-100 shadow-sm border border-[#333537]"
                                                                                 title="Copy to clipboard"
                                                                             >
                                                                                 {copied === `${currentChatId}-${idx}-${index}` ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
                                                                             </button>
                                                                         </div>
-                                                                        <p className="text-[15px] whitespace-pre-wrap leading-[1.7] text-[#C4C7C5] group-hover:text-[#E3E3E3] transition-colors">{item.content}</p>
+                                                                        <p className="text-[15px] whitespace-pre-wrap leading-[1.7] text-[var(--gemini-text-muted)] group-hover:text-[var(--gemini-text)] transition-colors">{item.content}</p>
                                                                     </div>
                                                                 ))}
                                                             </div>
@@ -425,7 +465,7 @@ export default function SpontaneousIdeasPage() {
                                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col w-full">
                                         {optimisticPrompt && (
                                             <div className="flex justify-end w-full mb-6">
-                                                <div className="bg-[#1E1F20] text-[#E3E3E3] px-6 py-4 rounded-3xl max-w-[85%] text-[15.5px] font-medium leading-[1.6] break-words opacity-60">
+                                                <div className="bg-[var(--gemini-card)] text-[var(--gemini-text)] px-6 py-4 rounded-3xl max-w-[85%] text-[15.5px] font-medium leading-[1.6] break-words opacity-60">
                                                     {optimisticPrompt}
                                                 </div>
                                             </div>
@@ -436,7 +476,7 @@ export default function SpontaneousIdeasPage() {
                                                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#4285F4] via-[#D96570] to-[#F4B400] flex items-center justify-center shrink-0 mt-0.5 animate-pulse">
                                                         <Sparkles className="w-4 h-4 text-white" />
                                                     </div>
-                                                    <div className="flex-1 mt-1 text-[#E3E3E3]">
+                                                    <div className="flex-1 mt-1 text-[var(--gemini-text)]">
                                                         <span className="text-[15px] bg-clip-text text-transparent bg-gradient-to-r from-[#4285F4] via-[#D96570] to-[#F4B400] font-medium animate-pulse">Generating...</span>
                                                     </div>
                                                 </div>
@@ -455,7 +495,7 @@ export default function SpontaneousIdeasPage() {
                 {!isEmptyState && (
                     <div className="absolute bottom-0 left-0 w-full px-4 md:px-8 bg-gradient-to-t from-[#131314] via-[#131314] to-transparent pt-16 pb-6 flex justify-center z-30 pointer-events-none">
                         <div className="max-w-[800px] w-full relative pointer-events-auto">
-                            <div className="relative w-full bg-[#1E1F20] rounded-[32px] p-2 flex flex-col border border-transparent focus-within:bg-[#333537]/50 transition-colors shadow-[0_8px_30px_rgba(0,0,0,0.4)]">
+                            <div className="relative w-full bg-[var(--gemini-card)] rounded-[32px] p-2 flex flex-col border border-transparent focus-within:bg-[#333537]/50 transition-colors shadow-[0_8px_30px_rgba(0,0,0,0.4)]">
                                 <textarea
                                     ref={textareaRef}
                                     value={ideaInput}
@@ -463,19 +503,19 @@ export default function SpontaneousIdeasPage() {
                                     onKeyDown={handleKeyDown}
                                     placeholder="Enter a prompt here"
                                     rows={1}
-                                    className="w-full bg-transparent border-none outline-none resize-none text-[16px] text-[#E3E3E3] placeholder:text-[#C4C7C5] px-5 pt-4 pb-12 max-h-[300px] custom-scrollbar"
+                                    className="w-full bg-transparent border-none outline-none resize-none text-[16px] text-[var(--gemini-text)] placeholder:text-[var(--gemini-text-muted)] px-5 pt-4 pb-12 max-h-[300px] custom-scrollbar"
                                 />
                                 <div className="absolute bottom-3 right-3 flex items-center gap-2">
                                     <button
                                         onClick={handleGenerate}
                                         disabled={!ideaInput.trim() || isGenerating}
-                                        className={`w-10 h-10 rounded-full transition-colors flex items-center justify-center ${ideaInput.trim() && !isGenerating ? 'bg-[#E3E3E3] text-[#131314] hover:bg-white' : 'text-[#444746] bg-transparent cursor-not-allowed'}`}
+                                        className={`w-10 h-10 rounded-full transition-colors flex items-center justify-center ${ideaInput.trim() && !isGenerating ? 'bg-[#E3E3E3] text-[#131314] hover:bg-white' : 'text-[var(--gemini-text-muted)] bg-transparent cursor-not-allowed'}`}
                                     >
                                         <Send className="w-4 h-4 shrink-0" />
                                     </button>
                                 </div>
                             </div>
-                            <div className="text-center mt-3 text-[12px] opacity-70 text-[#C4C7C5]">
+                            <div className="text-center mt-3 text-[12px] opacity-70 text-[var(--gemini-text-muted)]">
                                 Influuc AI can make mistakes. Verify important information.
                             </div>
                         </div>

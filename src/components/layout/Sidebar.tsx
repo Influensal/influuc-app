@@ -17,6 +17,7 @@ import {
     Sparkles,
     ChevronDown,
     Archive,
+    Camera,
 } from 'lucide-react';
 import { useTheme, useAuth, usePosts } from '@/contexts';
 
@@ -59,8 +60,8 @@ export function Sidebar({ profileName = 'Demo Founder' }: SidebarProps) {
 
     // Always show Ideas and Library
     mainNavItems.push({ href: '/dashboard/ideas', label: 'Spontaneous Ideas', icon: Lightbulb, alwaysShow: true });
-    // Carousels
     mainNavItems.push({ href: '/dashboard/carousels', label: 'Carousels', icon: Archive, alwaysShow: true });
+    mainNavItems.push({ href: '/dashboard/visuals', label: 'AI Visuals', icon: Camera, alwaysShow: true });
     mainNavItems.push({ href: '/dashboard/library', label: 'Content Library', icon: Archive, alwaysShow: true });
 
     const displayName = userProfile?.name || profileName;
