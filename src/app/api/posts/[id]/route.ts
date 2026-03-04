@@ -62,10 +62,18 @@ export async function PATCH(
     }
 
     try {
-        const { content } = await request.json();
+        const { content, is_liked } = await request.json();
 
-        if (!content || typeof content !== 'string') {
-            return NextResponse.json({ error: 'Content is required' }, { status: 400 });
+        if (content !== undefined && typeof content !== 'string') {
+            return NextResponse.json({ error: 'Content must be a string' }, { status: 400 });
+        }
+
+        if (is_liked !== undefined && typeof is_liked !== 'boolean') {
+            return NextResponse.json({ error: 'is_liked must be a boolean' }, { status: 400 });
+        }
+
+        if (content === undefined && is_liked === undefined) {
+            return NextResponse.json({ error: 'Nothing to update' }, { status: 400 });
         }
 
         // Verify ownership
@@ -85,18 +93,22 @@ export async function PATCH(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
         }
 
-        // Don't allow editing posted content
-        if (post.status === 'posted') {
+        // Don't allow editing content of posted posts, but allow liking them
+        if (content !== undefined && post.status === 'posted') {
             return NextResponse.json({ error: 'Cannot edit posted content' }, { status: 400 });
         }
 
-        // Update the content
+        // Build update object
+        const updateData: any = {
+            updated_at: new Date().toISOString()
+        };
+        if (content !== undefined) updateData.content = content;
+        if (is_liked !== undefined) updateData.is_liked = is_liked;
+
+        // Update the post
         const { error: updateError } = await supabase
             .from('posts')
-            .update({
-                content,
-                updated_at: new Date().toISOString()
-            })
+            .update(updateData)
             .eq('id', postId);
 
         if (updateError) {

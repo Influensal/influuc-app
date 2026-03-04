@@ -1,6 +1,6 @@
-
 import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
+import { getUserWeekNumber } from '@/lib/generation';
 
 export const runtime = 'nodejs';
 
@@ -47,6 +47,11 @@ export async function GET(req: Request) {
 
         // Return the first found profile, or null
         const profile = profiles && profiles.length > 0 ? profiles[0] : null;
+
+        // Add week number
+        if (profile) {
+            (profile as any).week_number = await getUserWeekNumber(user.id);
+        }
 
         return NextResponse.json({ profile });
     } catch (error) {

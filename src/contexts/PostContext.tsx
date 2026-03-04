@@ -44,6 +44,7 @@ interface UserProfile {
         productContext: Array<{ id: string; type: string; label: string; value: string }>;
     };
     awaitingGoalInput?: boolean;
+    weekNumber?: number;
 }
 
 interface PostContextType {
@@ -134,6 +135,7 @@ export function PostProvider({ children }: { children: ReactNode }) {
                         nextGenerationDate: dbProfile.next_generation_date ? parseISO(dbProfile.next_generation_date) : undefined,
                         contextData: dbProfile.context_data || { aboutYou: '', personalContext: [], productContext: [] },
                         awaitingGoalInput: dbProfile.awaiting_goal_input || false,
+                        weekNumber: dbProfile.week_number || 1,
                     });
                 }
             }

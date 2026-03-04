@@ -37,7 +37,7 @@ const PLATFORM_FORMATS: Record<string, { format: string; maxLength: number; styl
     linkedin: {
         format: 'Long-form Post',
         maxLength: 3000,
-        style: 'Professional yet conversational. Start with a hook. Use numbered lists or bullet points. End with a question or CTA.',
+        style: 'Professional yet conversational. Shortform: ~800 chars. Longform: 1500-2000 chars. Start with a hook. Use numbered lists or bullet points. End with a question or CTA.',
     },
 };
 

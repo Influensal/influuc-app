@@ -21,6 +21,7 @@ interface Post {
     format: string;
     status: string;
     created_at: string;
+    is_liked?: boolean;
     regenerated?: boolean;
 }
 
@@ -58,6 +59,12 @@ export default function XCalendarPage() {
         if (selectedPost?.id === postId) {
             setSelectedPost({ ...selectedPost, content: newContent });
         }
+    };
+
+    const handleLikeUpdate = (postId: string, isLiked: boolean) => {
+        setPosts(posts.map(p =>
+            p.id === postId ? { ...p, is_liked: isLiked } : p
+        ));
     };
 
     const handlePublishSuccess = (postId: string) => {
@@ -104,7 +111,7 @@ export default function XCalendarPage() {
         );
     }
 
-    const scheduledPosts = posts.filter(p => p.status !== 'posted');
+    const scheduledPosts = posts.filter(p => p.status === 'scheduled' && new Date(p.scheduled_date) >= new Date());
     const postedPosts = posts.filter(p => p.status === 'posted');
 
     return (
@@ -212,6 +219,7 @@ export default function XCalendarPage() {
                     post={selectedPost}
                     onClose={() => setSelectedPost(null)}
                     onContentUpdate={handleContentUpdate}
+                    onLikeUpdate={handleLikeUpdate}
                     onPublishSuccess={handlePublishSuccess}
                 />
             )}

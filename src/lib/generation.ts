@@ -141,6 +141,17 @@ export async function generateWeeklyContent(
 ): Promise<GenerationResult> {
     const supabase = createAdminClient();
 
+    // Fetch up to 10 recently liked posts as examples for the AI
+    const { data: likedPosts } = await supabase
+        .from('posts')
+        .select('content, topic, format, platform')
+        .eq('profile_id', profile.id)
+        .eq('is_liked', true)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+    const likedExamples = likedPosts || [];
+
     // Determine active platforms
     const platforms: Array<'x' | 'linkedin'> = [];
     if (profile.platforms.x) platforms.push('x');
@@ -196,7 +207,7 @@ export async function generateWeeklyContent(
         await archiveOldPosts(supabase, profile.id);
 
         // Step 2: Generate strategy (schedule) — includes text + carousel ideas
-        const strategy = await generateStrategy(platforms, profile);
+        const strategy = await generateStrategy(platforms, profile, likedExamples);
         console.log(`[Generation] Strategy returned: ${strategy.posts?.length || 0} posts, ${strategy.carousels?.length || 0} carousels`);
         console.log(`[Generation] Carousel ideas:`, JSON.stringify(strategy.carousels || []));
 
@@ -205,7 +216,8 @@ export async function generateWeeklyContent(
         const { textPosts, carouselPosts } = await generateAllContentBatch(
             strategy.posts,
             carouselIdeas,
-            profile
+            profile,
+            likedExamples
         );
 
         // Step 4: Save all posts to database
@@ -287,14 +299,19 @@ export async function generateWeeklyContent(
 // ============================================
 
 async function archiveOldPosts(supabase: any, profileId: string): Promise<number> {
+    const now = new Date().toISOString();
+
+    // Archive all unposted items that are:
+    // 1. Explicitly backdated (scheduled_date < now)
+    // 2. OR part of the previous generation cycle
     const { data, error } = await supabase
         .from('posts')
         .update({
             status: 'archived',
-            archived_at: new Date().toISOString()
+            archived_at: now
         })
         .eq('profile_id', profileId)
-        .in('status', ['scheduled', 'skipped'])
+        .in('status', ['scheduled', 'skipped', 'failed'])
         .is('archived_at', null)
         .select();
 
@@ -329,7 +346,8 @@ interface GeneratedCarouselPost {
 async function generateAllContentBatch(
     textSchedule: ScheduledPost[],
     carouselIdeas: CarouselIdea[],
-    profile: UserProfile
+    profile: UserProfile,
+    likedExamples: any[] = []
 ): Promise<{
     textPosts: Array<ScheduledPost & GeneratedPost>;
     carouselPosts: GeneratedCarouselPost[];
@@ -357,12 +375,19 @@ USER CONTEXT:
 - Expertise: ${profile.expertise}
 - Tone: ${profile.tone?.boldness || 'bold'} / ${profile.tone?.style || 'educational'}
 
+${likedExamples.length > 0 ? `PAST SUCCESSFUL POSTS (Emulate this style, structure, and tone):
+${likedExamples.map((ex, i) => `EXAMPLE ${i + 1} (${ex.platform} / ${ex.format}):
+"${ex.content}"`).join('\n\n')}` : ''}
+
 POSTS TO GENERATE:
 ${postsSpec.map(p => `[${p.index}] ${p.platform} / ${p.format} — "${p.topic}"`).join('\n')}
 
-PLATFORM CONSTRAINTS:
-- X (Twitter): Max 280 chars, no hashtags, punchy and sharp
-- LinkedIn: Professional formatting, 800-1200 chars, structured thinking
+PLATFORM AND FORMAT CONSTRAINTS:
+- Format "single" (X): Max 280 chars, punchy and sharp.
+- Format "single" (LinkedIn): 800-1200 chars, professional story or insight.
+- Format "long_form": 1500-2000 chars, structured thinking, deep dive (ideal for Detailed LinkedIn posts).
+- Platform X: No hashtags under any circumstances
+- Platform LinkedIn: Professional formatting with line breaks
 
 RULES:
 - Each post must start with a strong hook
@@ -429,7 +454,7 @@ The "posts" array must have exactly ${textSchedule.length} items, one per post, 
                 const generated = generatedPosts.find(g => g.index === i) || generatedPosts[i];
                 return {
                     ...post,
-                    content: generated?.content || 'Generation failed. Please edit.',
+                    content: (generated?.content || 'Generation failed. Please edit.').replace(/NaN$/, '').trim(),
                     hooks: generated?.hooks || [],
                     cta: generated?.cta || null,
                 };
@@ -485,7 +510,10 @@ The "posts" array must have exactly ${textSchedule.length} items, one per post, 
 MULTI-CAROUSEL INSTRUCTIONS:
 You must generate ${carouselIdeas.length} separate carousels in one response.
 
-USER CONTEXT:`;
+USER CONTEXT:
+${likedExamples.length > 0 ? `PAST SUCCESSFUL CONTENT:
+${likedExamples.filter(ex => ex.format === 'carousel').map((ex, i) => `EXAMPLE ${i + 1}:\n"${ex.content}"`).join('\n\n')}` : ''}`;
+
         if (profile.industry) systemPrompt += `\n- Industry: ${profile.industry}`;
         if (profile.role) systemPrompt += `\n- Role: ${profile.role}`;
         if (profile.company_name) systemPrompt += `\n- Company: ${profile.company_name}`;
@@ -565,7 +593,8 @@ Each carousel must have exactly the specified number of slides.`;
 
 async function generateStrategy(
     platforms: Array<'x' | 'linkedin'>,
-    profile: UserProfile
+    profile: UserProfile,
+    likedExamples: any[] = []
 ): Promise<{ posts: ScheduledPost[]; carousels: CarouselIdea[] }> {
     const provider = await getProvider();
 
@@ -603,6 +632,9 @@ USER CONTEXT:
 - Company: ${profile.company_name}
 - Business Description: ${profile.business_description}
 - Core Expertise: ${profile.expertise}
+
+${likedExamples.length > 0 ? `PREVIOUSLY LIKED POSTS (Topics and styles the user prefers):
+${likedExamples.map((ex, i) => `- [${ex.platform}] Topic: ${ex.topic} | Content: ${ex.content.substring(0, 100)}...`).join('\n')}` : ''}
 
 STRATEGIC CONTENT PRINCIPLES (APPLY BY DEFAULT)
 
@@ -956,6 +988,7 @@ export async function generateSinglePost(postId: string): Promise<{ success: boo
         .select(`
             *,
             founder_profiles!inner (
+                id,
                 role,
                 company_name,
                 business_description,
@@ -975,6 +1008,17 @@ export async function generateSinglePost(postId: string): Promise<{ success: boo
     }
 
     const profile = post.founder_profiles;
+
+    // Fetch up to 5 recently liked posts as examples
+    const { data: likedPosts } = await supabase
+        .from('posts')
+        .select('content, topic, format, platform')
+        .eq('profile_id', profile.id)
+        .eq('is_liked', true)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+    const likedExamples = likedPosts || [];
 
     // ── CAROUSEL BRANCH ──
     if (post.format === 'carousel') {
@@ -1027,8 +1071,17 @@ CONTEXT:
 - Expertise: ${profile.expertise}
 - Tone: ${tone.boldness} / ${tone.style}
 
+${likedExamples.length > 0 ? `PAST SUCCESSFUL POSTS (Emulate this style, structure, and tone):
+${likedExamples.map((ex, i) => `EXAMPLE ${i + 1} (${ex.platform} / ${ex.format}):
+"${ex.content}"`).join('\n\n')}` : ''}
+
+${post.is_liked ? `Note: User liked this post's topic/format enough to toggle specific feedback. Maintain this high standard.` : ''}
+
 CONSTRAINTS:
-${post.platform === 'x' ? '- Max 280 chars\n- No Hashtags' : '- Professional formatting\n- 800-1200 chars'}
+${post.platform === 'x' ? '- No Hashtags' : '- Professional formatting'}
+${post.platform === 'linkedin'
+            ? (post.format === 'long_form' ? '- Length: 1500-2000 chars (Deep dive and structured thinking)' : '- Length: 800-1200 chars (Professional story or insight)')
+            : (post.format === 'long_form' ? '- Length: 1000-1500 chars (Deep dive and structured thinking)' : '- Length: Max 280 chars (Punchy and sharp)')}
 - Start with a strong hook
 - Be concise and authoritative
 
@@ -1052,7 +1105,7 @@ Return ONLY a JSON object:
         });
 
         const parsed = robustJsonParse(result.content);
-        const finalContent = parsed.content || 'Failed to generate content';
+        const finalContent = (parsed.content || 'Failed to generate content').replace(/NaN$/, '').trim();
 
         // Update Post
         await supabase

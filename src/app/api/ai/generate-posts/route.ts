@@ -32,7 +32,7 @@ interface GeneratedPost {
 const FORMAT_INSTRUCTIONS: Record<string, string> = {
     single: 'Write a single, standalone post. Keep it punchy and complete.',
     thread: 'Write a thread of 4-6 connected posts. Number each one. Each should be under 280 characters.',
-    long_form: 'Write a long-form post with proper paragraphs, lists, and structure. Aim for 800-1500 characters.',
+    long_form: 'Write a long-form post with proper paragraphs, lists, and structure. Aim for 1500-2000 characters.',
     video_script: 'Write a video script with: HOOK (first 3 seconds), TALKING POINTS (3-5 bullet points), CLOSING (call to action), and CAPTION.',
     carousel: 'Write carousel content. This will be processed separately by the carousel generation pipeline.',
 };
@@ -122,7 +122,7 @@ function buildSystemPrompt(
 
 PLATFORM: ${platform.toUpperCase()}
 FORMAT: ${format.toUpperCase()}
-FORMAT INSTRUCTIONS: ${FORMAT_INSTRUCTIONS[format] || 'Write a single post.'}
+FORMAT INSTRUCTIONS: ${FORMAT_INSTRUCTIONS[format] || 'Write a single post.'} ${platform.toLowerCase() === 'linkedin' && format === 'single' ? 'For LinkedIn, aim for ~800 characters.' : ''}
 
 WRITING PRINCIPLES:
 1. Start with a HOOK that stops the scroll. Make it provocative, counterintuitive, or deeply relatable.

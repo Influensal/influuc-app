@@ -816,6 +816,8 @@ async function saveToSupabase(
                 style_carousel: data.style_carousel,
                 style_face: data.style_face,
                 avatar_urls: data.avatar_urls,
+                visual_training_status: data.avatar_urls && data.avatar_urls.length > 0 ? 'completed' : 'not_started',
+                visual_lora_id: data.avatar_urls && data.avatar_urls.length > 0 ? data.avatar_urls[0] : null,
             })
             .eq('id', existingProfiles[0].id)
             .select()
@@ -871,6 +873,8 @@ async function saveToSupabase(
                 style_carousel: data.style_carousel,
                 style_face: data.style_face,
                 avatar_urls: data.avatar_urls,
+                visual_training_status: data.avatar_urls && data.avatar_urls.length > 0 ? 'completed' : 'not_started',
+                visual_lora_id: data.avatar_urls && data.avatar_urls.length > 0 ? data.avatar_urls[0] : null,
             })
             .select()
             .single();

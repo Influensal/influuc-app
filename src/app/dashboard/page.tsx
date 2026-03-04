@@ -34,7 +34,6 @@ import { usePosts } from '@/contexts';
 import { format, addDays, isAfter, isBefore, startOfDay, endOfDay, nextMonday, differenceInDays, startOfWeek, endOfWeek, isWithinInterval, isToday } from 'date-fns';
 import { NotificationBanner } from '@/components/dashboard/NotificationBanner';
 import { WeeklyGoalModal } from '@/components/dashboard/WeeklyGoalModal';
-import { QuickPostModal } from '@/components/dashboard/QuickPostModal';
 
 export default function DashboardPage() {
     const containerVariants = {
@@ -57,8 +56,9 @@ export default function DashboardPage() {
     const [isPublishing, setIsPublishing] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [showGoalModal, setShowGoalModal] = useState(false);
-    const [showQuickPostModal, setShowQuickPostModal] = useState(false);
-    const [weekNumber, setWeekNumber] = useState(1);
+
+    // Sync week number from profile
+    const weekNumber = profile?.weekNumber || 1;
 
     // Get today's posts only
     const todaysPosts = getPostsForToday();
@@ -247,20 +247,6 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex items-center gap-2">
                     <button
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-[var(--primary)] text-white hover:opacity-90 rounded-lg transition-all shadow-lg shadow-[var(--primary)]/20"
-                        onClick={() => setShowQuickPostModal(true)}
-                    >
-                        <Plus className="w-4 h-4" />
-                        Write Post
-                    </button>
-                    <QuickPostModal
-                        isOpen={showQuickPostModal}
-                        onClose={() => setShowQuickPostModal(false)}
-                        onSuccess={() => {
-                            refreshPosts();
-                        }}
-                    />
-                    <button
                         onClick={async () => {
                             setIsRefreshing(true);
                             await refreshPosts();
@@ -305,7 +291,7 @@ export default function DashboardPage() {
                                     <span className="text-5xl font-bold tracking-tighter text-[var(--foreground)]">
                                         {daysUntilStrategy}
                                     </span>
-                                    <span className="text-xl font-medium text-[var(--foreground-muted)]">days</span>
+                                    <span className="text-xl font-medium text-[var(--foreground-muted)]">{daysUntilStrategy === 1 ? 'day' : 'days'}</span>
                                 </div>
                                 <p className="text-sm text-[var(--foreground-muted)] mt-1">
                                     until next strategy cycle
@@ -342,7 +328,7 @@ export default function DashboardPage() {
                                     <span className="text-5xl font-bold tracking-tighter text-[var(--foreground)] decoration-orange-500/20 underline decoration-4 underline-offset-4">
                                         {streak}
                                     </span>
-                                    <span className="text-xl font-medium text-[var(--foreground-muted)]">weeks</span>
+                                    <span className="text-xl font-medium text-[var(--foreground-muted)]">{streak === 1 ? 'week' : 'weeks'}</span>
                                 </div>
                             </div>
 
@@ -386,7 +372,7 @@ export default function DashboardPage() {
                                     <span className="text-5xl font-bold tracking-tighter text-[var(--foreground)]">
                                         {runwayDays}
                                     </span>
-                                    <span className="text-xl font-medium text-[var(--foreground-muted)]">days</span>
+                                    <span className="text-xl font-medium text-[var(--foreground-muted)]">{runwayDays === 1 ? 'day' : 'days'}</span>
                                 </div>
                             </div>
 

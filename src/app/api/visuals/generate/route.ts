@@ -79,9 +79,23 @@ export async function POST(req: Request) {
         } else {
             // mode === 'faceless'
             // Use standard Gemini 2.5 Flash for abstract/scenery/faceless images
+            const stylePrompt = `High-end cinematic technology advertisement still, photorealistic, 8K quality, designed for thought-leadership social media.
+Scene: A vast, modern, architectural workspace — not an office, not sci-fi — timeless and elevated. Polished concrete floor, soft fog in the air, tall shadowed structures fading into darkness.
+Center frame: A single human silhouette (gender-neutral, no facial detail), standing calm and upright. Not working — overseeing. Hands relaxed at their sides.
+Around the human, abstract, luminous forms made of light, geometry, and flowing data representing: ${prompt}
+The human is not interacting directly — no keyboard, no screen — clearly in a supervisory role, embodying judgment and intent rather than execution.
+In the environment: Subtle holographic pathways representing workflows, clean data streams flowing end-to-end, occasional secure locks, checkmarks, and transaction nodes (minimal, symbolic, premium).
+Typography (cinematic title-card style, minimal): Include a very short, punchy main headline and a restrained subline derived from the concept. Optional micro-credit style text.
+Lighting: soft, motivated top light, cool whites and cloud blues, deep shadows, gentle volumetric rays.
+Camera: anamorphic lens look, shallow depth of field, elegant composition, cinematic contrast.
+Color palette: Google-cloud adjacent but restrained — whites, blues, steel, soft cyan highlights.
+Mood: calm inevitability, trust, maturity, post-hype realism.
+Style references: luxury tech ad, future-of-work manifesto, restrained sci-fi realism.
+Negative prompts: busy UI screens, dashboards, bullet points, cartoon robots, glowing eyes, cheap sci-fi tropes, clutter, stock imagery, exaggerated cyberpunk, blur, watermark spam.`;
+
             result = await fal.subscribe("fal-ai/gemini-25-flash-image", {
                 input: {
-                    prompt: prompt,
+                    prompt: stylePrompt,
                     aspect_ratio: nanoAspectRatio,
                     output_format: "png"
                 },

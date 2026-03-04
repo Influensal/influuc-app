@@ -49,6 +49,7 @@ export interface FounderProfile {
     subscription_tier?: string;
     visual_lora_id?: string | null;
     visual_training_status?: string | null;
+    avatar_urls?: string[] | null;
     created_at: string;
 }
 

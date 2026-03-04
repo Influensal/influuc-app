@@ -52,10 +52,18 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         let result: any;
 
         if (mode === 'digital_twin') {
-            let referenceUrl = profile.visual_lora_id;
+            const hasAvatarUrls = Array.isArray(profile.avatar_urls) && profile.avatar_urls.length > 0;
+            const hasLoraId = !!profile.visual_lora_id;
 
-            if (!referenceUrl) {
+            if (!hasAvatarUrls && !hasLoraId) {
                 return NextResponse.json({ error: 'No Neural Face Map found. Please setup your Digital Twin first.' }, { status: 400 });
+            }
+
+            let referenceUrls: string[] = [];
+            if (hasAvatarUrls) {
+                referenceUrls = profile.avatar_urls.slice(0, 3);
+            } else if (hasLoraId) {
+                referenceUrls = [profile.visual_lora_id];
             }
 
             // Call Fal.ai Digital Twin Edit
@@ -63,7 +71,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
                 input: {
                     prompt: `generate an image of this exact person representing this social media post concept: ${postContext}`,
                     aspect_ratio: nanoAspectRatio,
-                    image_urls: [referenceUrl],
+                    image_urls: referenceUrls,
                     output_format: "png"
                 },
                 logs: true,
@@ -71,9 +79,23 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
         } else {
             // mode === 'faceless'
+            const stylePrompt = `High-end cinematic technology advertisement still, photorealistic, 8K quality, designed for thought-leadership social media.
+Scene: A vast, modern, architectural workspace — not an office, not sci-fi — timeless and elevated. Polished concrete floor, soft fog in the air, tall shadowed structures fading into darkness.
+Center frame: A single human silhouette (gender-neutral, no facial detail), standing calm and upright. Not working — overseeing. Hands relaxed at their sides.
+Around the human, abstract, luminous forms made of light, geometry, and flowing data representing: ${postContext}
+The human is not interacting directly — no keyboard, no screen — clearly in a supervisory role, embodying judgment and intent rather than execution.
+In the environment: Subtle holographic pathways representing workflows, clean data streams flowing end-to-end, occasional secure locks, checkmarks, and transaction nodes (minimal, symbolic, premium).
+Typography (cinematic title-card style, minimal): Include a very short, punchy main headline and a restrained subline derived from the concept. Optional micro-credit style text.
+Lighting: soft, motivated top light, cool whites and cloud blues, deep shadows, gentle volumetric rays.
+Camera: anamorphic lens look, shallow depth of field, elegant composition, cinematic contrast.
+Color palette: Google-cloud adjacent but restrained — whites, blues, steel, soft cyan highlights.
+Mood: calm inevitability, trust, maturity, post-hype realism.
+Style references: luxury tech ad, future-of-work manifesto, restrained sci-fi realism.
+Negative prompts: busy UI screens, dashboards, bullet points, cartoon robots, glowing eyes, cheap sci-fi tropes, clutter, stock imagery, exaggerated cyberpunk, blur, watermark spam.`;
+
             result = await fal.subscribe("fal-ai/gemini-25-flash-image", {
                 input: {
-                    prompt: `generate a high quality, striking social media image representing this concept: ${postContext}. Do not include any text in the image.`,
+                    prompt: stylePrompt,
                     aspect_ratio: nanoAspectRatio,
                     output_format: "png"
                 },

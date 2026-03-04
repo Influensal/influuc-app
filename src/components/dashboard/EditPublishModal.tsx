@@ -16,7 +16,8 @@ import {
     ImagePlus,
     User,
     Sparkles,
-    Trash2
+    Trash2,
+    Heart
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import Image from 'next/image';
@@ -29,12 +30,14 @@ interface Post {
     format: string;
     status: string;
     image_url?: string;
+    is_liked?: boolean;
 }
 
 interface EditPublishModalProps {
     post: Post | null;
     onClose: () => void;
     onContentUpdate: (postId: string, newContent: string) => void;
+    onLikeUpdate?: (postId: string, isLiked: boolean) => void;
     onPublishSuccess: (postId: string) => void;
 }
 
@@ -42,6 +45,7 @@ export default function EditPublishModal({
     post,
     onClose,
     onContentUpdate,
+    onLikeUpdate,
     onPublishSuccess
 }: EditPublishModalProps) {
     const [isEditing, setIsEditing] = useState(false);
@@ -51,6 +55,8 @@ export default function EditPublishModal({
     const [copied, setCopied] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [showConfirmPublish, setShowConfirmPublish] = useState(false);
+    const [isLiked, setIsLiked] = useState(post?.is_liked || false);
+    const [isLiking, setIsLiking] = useState(false);
 
     // Image Generation State
     const [isGeneratingImage, setIsGeneratingImage] = useState(false);
@@ -89,6 +95,33 @@ export default function EditPublishModal({
             setError(err instanceof Error ? err.message : 'Failed to save');
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    const handleToggleLike = async () => {
+        if (isLiking) return;
+        setIsLiking(true);
+        const newLikeStatus = !isLiked;
+        try {
+            const response = await fetch(`/api/posts/${post.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ is_liked: newLikeStatus }),
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || 'Failed to update like status');
+            }
+
+            setIsLiked(newLikeStatus);
+            if (onLikeUpdate) {
+                onLikeUpdate(post.id, newLikeStatus);
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to update like status');
+        } finally {
+            setIsLiking(false);
         }
     };
 
@@ -195,12 +228,25 @@ export default function EditPublishModal({
                                 </p>
                             </div>
                         </div>
-                        <button
-                            onClick={onClose}
-                            className="p-2 hover:bg-[var(--background-secondary)] rounded-lg transition-colors"
-                        >
-                            <X className="w-5 h-5" />
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={handleToggleLike}
+                                disabled={isLiking}
+                                className={`p-2 rounded-lg transition-all ${isLiked
+                                    ? 'bg-red-500/10 text-red-500'
+                                    : 'hover:bg-[var(--background-secondary)] text-[var(--foreground-muted)]'
+                                    }`}
+                                title={isLiked ? "Unlike post" : "Like post"}
+                            >
+                                <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
+                            </button>
+                            <button
+                                onClick={onClose}
+                                className="p-2 hover:bg-[var(--background-secondary)] rounded-lg transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
                     </div>
 
                     {/* Content Area */}
@@ -248,15 +294,15 @@ export default function EditPublishModal({
                             </div>
                         )}
 
-                        {/* Optional Image Generation Section */}
-                        {post.format !== 'carousel' && !isPosted && !isEditing && (
+                        {/* Image Attachment Preview */}
+                        {post.format !== 'carousel' && imageUrl && (
                             <div className="mt-6 border-t border-[var(--border)] pt-6">
                                 <div className="flex items-center justify-between mb-4">
                                     <h4 className="font-semibold text-[var(--foreground)] flex items-center gap-2">
                                         <ImagePlus className="w-4 h-4" />
-                                        Post Image Attachments
+                                        Post Image Attachment
                                     </h4>
-                                    {imageUrl && (
+                                    {!isPosted && (
                                         <button
                                             onClick={() => setImageUrl(null)}
                                             className="text-xs text-red-500 hover:text-red-600 flex items-center gap-1 transition-colors"
@@ -265,75 +311,15 @@ export default function EditPublishModal({
                                         </button>
                                     )}
                                 </div>
-
-                                {imageUrl ? (
-                                    <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] flex items-center justify-center">
-                                        <Image src={imageUrl} alt="Generated post visualization" width={800} height={450} className="w-full h-full object-cover" />
-                                    </div>
-                                ) : showImageOptions ? (
-                                    <div className="space-y-3">
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <button
-                                                onClick={() => handleGenerateImage('faceless')}
-                                                disabled={isGeneratingImage}
-                                                className="p-4 rounded-xl border border-[var(--border)] bg-[var(--background)] hover:border-[var(--primary)] transition-all flex flex-col items-center gap-2 text-center disabled:opacity-50"
-                                            >
-                                                <div className="w-10 h-10 rounded-full bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center shadow-inner">
-                                                    <Sparkles className="w-5 h-5" />
-                                                </div>
-                                                <div>
-                                                    <p className="font-semibold text-sm">Faceless Visual</p>
-                                                    <p className="text-xs text-[var(--foreground-muted)]">Aesthetic imagery</p>
-                                                </div>
-                                            </button>
-                                            <button
-                                                onClick={() => handleGenerateImage('digital_twin')}
-                                                disabled={isGeneratingImage}
-                                                className="p-4 rounded-xl border border-[var(--border)] bg-[var(--background)] hover:border-[var(--primary)] transition-all flex flex-col items-center gap-2 text-center disabled:opacity-50 relative overflow-hidden group"
-                                            >
-                                                <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-purple-500/5 to-pink-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center z-10 shadow-lg group-hover:scale-105 transition-transform">
-                                                    <User className="w-5 h-5" />
-                                                </div>
-                                                <div className="z-10 mt-1">
-                                                    <p className="font-semibold text-sm flex items-center justify-center gap-1 text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-purple-600">
-                                                        Digital Twin
-                                                    </p>
-                                                    <p className="text-[10px] text-[var(--primary)] bg-[var(--primary)]/10 px-2 py-0.5 rounded-full inline-block mt-1">Authority Only</p>
-                                                </div>
-                                            </button>
-                                        </div>
-                                        {isGeneratingImage && (
-                                            <div className="flex items-center justify-center gap-2 text-sm text-[var(--primary)] py-3 font-medium">
-                                                <Loader2 className="w-4 h-4 animate-spin" />
-                                                Generating magical visual with Gemini...
-                                            </div>
-                                        )}
-                                        <button
-                                            onClick={() => setShowImageOptions(false)}
-                                            disabled={isGeneratingImage}
-                                            className="w-full py-2.5 text-sm font-medium rounded-lg text-[var(--foreground-muted)] hover:bg-[var(--background-secondary)] hover:text-[var(--foreground)] mt-2 transition-all"
-                                        >
-                                            Cancel
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <button
-                                        onClick={() => setShowImageOptions(true)}
-                                        className="w-full py-5 border-2 border-dashed border-[var(--border)] rounded-xl text-[var(--foreground-muted)] hover:text-[var(--primary)] hover:border-[var(--primary)] hover:bg-[var(--primary)]/5 transition-all flex flex-col items-center justify-center gap-2"
-                                    >
-                                        <ImagePlus className="w-6 h-6 opacity-70" />
-                                        <span className="font-medium text-[var(--foreground)]">Generate AI Image for this post</span>
-                                        <p className="text-xs max-w-xs text-center">Increase engagement by attaching a stunning, on-brand visual.</p>
-                                    </button>
-                                )}
+                                <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] flex items-center justify-center">
+                                    <Image src={imageUrl} alt="Generated post visualization" width={800} height={450} className="w-full h-full object-cover" />
+                                </div>
                             </div>
                         )}
                     </div>
 
                     {/* Action Buttons */}
                     <div className="p-5 border-t border-[var(--border)] space-y-3">
-                        {/* Top row: Edit/Save + Cancel or Done */}
                         <div className="flex gap-2">
                             {isEditing ? (
                                 <>
@@ -369,6 +355,15 @@ export default function EditPublishModal({
                                             Edit
                                         </button>
                                     )}
+                                    {post.format !== 'carousel' && !isPosted && !imageUrl && !showImageOptions && (
+                                        <button
+                                            onClick={() => setShowImageOptions(true)}
+                                            className="flex-1 py-3 rounded-xl font-medium border border-dashed border-[var(--primary)] text-[var(--primary)] hover:bg-[var(--primary)]/5 transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <ImagePlus className="w-4 h-4" />
+                                            Generate Image
+                                        </button>
+                                    )}
                                     {post.platform.toLowerCase() === 'x' && !isPosted && (
                                         <button
                                             onClick={async () => {
@@ -389,6 +384,43 @@ export default function EditPublishModal({
                                 </>
                             )}
                         </div>
+
+                        {/* Image Generation Options (Sticky if triggered) */}
+                        {post.format !== 'carousel' && !isPosted && !isEditing && showImageOptions && !imageUrl && (
+                            <div className="bg-[var(--background-secondary)] p-3 rounded-xl border border-[var(--border)] mt-2">
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button
+                                        onClick={() => handleGenerateImage('faceless')}
+                                        disabled={isGeneratingImage}
+                                        className="p-3 rounded-lg border border-[var(--border)] bg-[var(--background)] hover:border-[var(--primary)] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                                    >
+                                        <Sparkles className="w-4 h-4 text-[var(--primary)]" />
+                                        <span className="font-medium text-sm">Faceless</span>
+                                    </button>
+                                    <button
+                                        onClick={() => handleGenerateImage('digital_twin')}
+                                        disabled={isGeneratingImage}
+                                        className="p-3 rounded-lg border border-[var(--border)] bg-[var(--background)] hover:border-[var(--primary)] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                                    >
+                                        <User className="w-4 h-4 text-purple-500" />
+                                        <span className="font-medium text-sm">Digital Twin</span>
+                                    </button>
+                                </div>
+                                {isGeneratingImage && (
+                                    <div className="flex items-center justify-center gap-2 text-xs text-[var(--primary)] mt-3">
+                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                        Generating visual...
+                                    </div>
+                                )}
+                                <button
+                                    onClick={() => setShowImageOptions(false)}
+                                    disabled={isGeneratingImage}
+                                    className="w-full py-2 text-xs font-medium rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] mt-2 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        )}
 
                         {/* Bottom Action: Copy (Full Width) for X, or Publish for LinkedIn */}
                         {!isPosted && !isEditing && (
