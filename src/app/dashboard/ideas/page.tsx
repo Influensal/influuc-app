@@ -206,7 +206,7 @@ export default function SpontaneousIdeasPage() {
     };
 
     const renderPlatformIcon = (platform: string, className = "w-4 h-4") => {
-        return platform === 'x' ? <i className={`fi fi-brands-twitter flex items-center justify-center ${""}`} className={className} ></i> : <i className={`fi fi-brands-linkedin flex items-center justify-center ${""}`} className={className} ></i>;
+        return platform === 'x' ? <i className={`fi fi-brands-twitter flex items-center justify-center ${className || ""}`}></i> : <i className={`fi fi-brands-linkedin flex items-center justify-center ${className || ""}`}></i>;
     };
 
     const isEmptyState = activeMessages.length === 0 && !isGenerating && !optimisticPrompt;
@@ -272,7 +272,7 @@ export default function SpontaneousIdeasPage() {
                                         className={`w-full text-left p-3 rounded-xl border transition-all flex flex-col gap-1 ${currentChatId === chat.id ? 'bg-[var(--primary)] border-[var(--primary)] text-white' : 'bg-[var(--background-secondary)]/50 border-[var(--border)] hover:border-[var(--primary)]/30 text-[var(--foreground)]'}`}
                                     >
                                         <div className="flex items-center gap-2 mb-1">
-                                            <i className={`fi fi-sr-comment flex items-center justify-center ${""}`} className={`w-3 h-3 ${currentChatId === chat.id ? 'text-white' : 'text-[var(--primary)]'}`} ></i>
+                                            <i className={`fi fi-sr-comment flex items-center justify-center w-3 h-3 ${currentChatId === chat.id ? 'text-white' : 'text-[var(--primary)]'}`}></i>
                                             <span className="text-[10px] font-semibold opacity-70">{chat.createdAt}</span>
                                         </div>
                                         <span className="text-xs font-semibold line-clamp-1 opacity-90">{chat.input}</span>

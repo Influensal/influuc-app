@@ -228,7 +228,7 @@ export default function LinkedInCalendarPage() {
                                         </div>
                                     </div>
                                     <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
-                                        <i className={`fi fi-sr-check flex items-center justify-center ${"w-4 h-4"}`} Circle2  ></i>
+                                        <i className={`fi fi-sr-check flex items-center justify-center w-4 h-4`}></i>
                                         Posted
                                     </span>
                                 </div>

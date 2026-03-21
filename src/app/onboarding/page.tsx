@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -1417,7 +1417,7 @@ function Step5Goals({ data, updateData }: { data: OnboardingData; updateData: (u
                 {goals.map(g => (
                     <button key={g.id} onClick={() => updateData({ contentGoal: g.id })} className={`flex items-center gap-4 p-4 rounded-xl border-2 text-left transition-all ${data.contentGoal === g.id ? 'border-[var(--primary)] bg-[var(--primary)]/10' : 'border-[var(--border)] hover:bg-[var(--card)]'}`}>
                         <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${data.contentGoal === g.id ? 'bg-[var(--primary)] text-white' : 'bg-[var(--card)]'}`}>
-                            <g.icon className="w-5 h-5" />
+                            <i className={`fi ${g.icon} w-5 h-5`}></i>
                         </div>
                         <span className="font-medium text-lg">{g.label}</span>
                     </button>
@@ -1446,7 +1446,7 @@ function Step6Archetype({ data, updateData }: { data: OnboardingData; updateData
                 {archetypes.map(a => (
                     <button key={a.id} onClick={() => updateData({ archetype: a.id as any })} className={`text-left p-5 rounded-xl border-2 transition-all ${data.archetype === a.id ? 'border-[var(--primary)] bg-[var(--primary)]/5' : 'border-[var(--border)] hover:bg-[var(--card)]'}`}>
                         <div className="flex items-center gap-3 mb-2">
-                            <a.icon className={`w-6 h-6 ${data.archetype === a.id ? 'text-[var(--primary)]' : 'text-[var(--foreground)]'}`} />
+                            <i className={`fi ${a.icon} w-6 h-6 ${data.archetype === a.id ? 'text-[var(--primary)]' : 'text-[var(--foreground)]'}`}></i>
                             <span className="font-bold text-lg">{a.label}</span>
                         </div>
                         <p className="text-sm text-[var(--foreground-secondary)]">{a.desc}</p>

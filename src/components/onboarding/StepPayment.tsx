@@ -162,9 +162,7 @@ export default function StepPayment({ data, updateData, onNext }: StepPaymentPro
                         {/* Title & Price */}
                         <div className="mb-8">
                             <div className="flex items-center gap-3 mb-4">
-                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center bg-[var(--foreground)]/5 border border-[var(--foreground)]/10 text-[var(--foreground)] group-hover:scale-110 transition-transform duration-300`}>
-                                    <plan.icon className="w-5 h-5" />
-                                </div>
+                                <i className={`fi ${plan.icon} w-5 h-5`}></i>
                                 <h3 className="text-xl font-bold">{plan.name}</h3>
                             </div>
                             <div className="flex items-baseline gap-1">

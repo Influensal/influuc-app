@@ -291,7 +291,7 @@ export default function SettingsPage() {
                         exit={{ opacity: 0, y: -10 }}
                         className="p-4 rounded-xl bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 flex items-center gap-3 font-medium"
                     >
-                        <i className={`fi fi-sr-check flex items-center justify-center ${"w-5 h-5"}`} Circle2  ></i>
+                        <i className={`fi fi-sr-check flex items-center justify-center w-5 h-5`}></i>
                         {successMessage}
                     </motion.div>
                 )}
@@ -302,7 +302,7 @@ export default function SettingsPage() {
                         exit={{ opacity: 0, y: -10 }}
                         className="p-4 rounded-xl bg-red-500/10 text-red-600 border border-red-500/20 flex items-center gap-3 font-medium"
                     >
-                        <i className={`fi fi-sr-info flex items-center justify-center ${"w-5 h-5"}`}  ></i>
+                        <i className={`fi fi-sr-info flex items-center justify-center ${"w-5 h-5"}`}></i>
                         {error}
                     </motion.div>
                 )}

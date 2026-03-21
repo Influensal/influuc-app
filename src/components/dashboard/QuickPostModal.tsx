@@ -228,7 +228,7 @@ export function QuickPostModal({ isOpen, onClose, onSuccess }: QuickPostModalPro
                                 <div className="mt-4 border-t border-[var(--border)] pt-4">
                                     <div className="flex items-center justify-between mb-3">
                                         <h4 className="font-semibold text-sm text-[var(--foreground)] flex items-center gap-2">
-                                            <i className={`fi fi-sr-picture flex items-center justify-center ${"w-4 h-4"}`} Plus  ></i>
+                                            <i className={`fi fi-sr-picture flex items-center justify-center w-4 h-4`}></i>
                                             Attach Visual
                                         </h4>
                                         {imageUrl && (
@@ -243,7 +243,7 @@ export function QuickPostModal({ isOpen, onClose, onSuccess }: QuickPostModalPro
 
                                     {imageUrl ? (
                                         <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] flex items-center justify-center">
-                                            <i className={`fi fi-sr-picture flex items-center justify-center ${"w-full h-full object-cover"}`} src={imageUrl} alt="Generated post visualization" width={800} height={450}  ></i>
+                                            <img className="w-full h-full object-cover" src={imageUrl} alt="Generated post visualization" />
                                         </div>
                                     ) : showImageOptions ? (
                                         <div className="space-y-3">
@@ -287,7 +287,7 @@ export function QuickPostModal({ isOpen, onClose, onSuccess }: QuickPostModalPro
                                             onClick={() => setShowImageOptions(true)}
                                             className="w-full py-3 border-2 border-dashed border-[var(--border)] rounded-xl text-[var(--foreground-muted)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-all flex items-center justify-center gap-2 text-sm"
                                         >
-                                            <i className={`fi fi-sr-picture flex items-center justify-center ${"w-4 h-4"}`} Plus  ></i>
+                                            <i className={`fi fi-sr-picture flex items-center justify-center w-4 h-4`}></i>
                                             <span>Generate AI Image for Post</span>
                                         </button>
                                     )}

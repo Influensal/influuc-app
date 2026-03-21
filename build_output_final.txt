@@ -1,0 +1,78 @@
+﻿
+> influuc-app@0.1.0 build
+> next build
+
+node.exe : ΓÜá Warning: Next.js inferred your 
+workspace root, but it may not be correct.
+At C:\Program Files\nodejs\npm.ps1:29 char:3
++   & $NODE_EXE $NPM_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (ΓÜá 
+    Warning: Ne...not be correct.:String) [], R  
+  emoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ We detected multiple lockfiles and selected the 
+directory of C:\Users\Lenovo\package-lock.json 
+as the root directory.
+ To silence this warning, set `turbopack.root` 
+in your Next.js config, or consider removing one 
+of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/
+config/next-config-js/turbopack#root-directory 
+for more information.
+ Detected additional lockfiles: 
+   * C:\Users\Lenovo\Documents\Influuc\influuc-ap
+p\package-lock.json
+
+Γû▓ Next.js 16.1.4 (Turbopack)
+- Environments: .env.local
+
+ΓÜá The "middleware" file convention is 
+deprecated. Please use "proxy" instead. Learn 
+more: https://nextjs.org/docs/messages/middleware
+-to-proxy
+  Creating an optimized production build ...
+Γ£ô Compiled successfully in 4.2s
+  Running TypeScript ...
+Failed to compile.
+
+./src/components/dashboard/QuickPostModal.tsx:231
+:125
+Type error: Type '{ className: string; Plus: 
+true; }' is not assignable to type 
+'DetailedHTMLProps<HTMLAttributes<HTMLElement>, 
+HTMLElement>'.
+  Property 'Plus' does not exist on type 
+'DetailedHTMLProps<HTMLAttributes<HTMLElement>, 
+HTMLElement>'.
+
+[0m [90m 229 |[39m                            
+         [33m<[39m[33mdiv[39m 
+className[33m=[39m[32m"flex items-center 
+justify-between mb-3"[39m[33m>[39m
+ [90m 230 |[39m                                
+         [33m<[39m[33mh4[39m 
+className[33m=[39m[32m"font-semibold text-sm 
+text-[var(--foreground)] flex items-center 
+gap-2"[39m[33m>[39m
+[31m[1m>[22m[39m[90m 231 |[39m             
+                                
+[33m<[39m[33mi[39m 
+className[33m=[39m{[32m`fi fi-sr-picture flex 
+items-center justify-center ${"w-4 h-4"}`[39m} 
+[33mPlus[39m  [33m>[39m[33m<[39m[33m/[39m
+[33mi[39m[33m>[39m
+ [90m     |[39m                                
+                                                 
+                                            
+[31m[1m^[22m[39m
+ [90m 232 |[39m                                
+             [33mAttach[39m [33mVisual[39m
+ [90m 233 |[39m                                
+         
+[33m<[39m[33m/[39m[33mh4[39m[33m>[39m
+ [90m 234 |[39m                                
+         {imageUrl [33m&&[39m ([0m
+Next.js build worker exited with code: 1 and 
+signal: null

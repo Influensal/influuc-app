@@ -239,7 +239,7 @@ export default function DashboardPage() {
                         disabled={isRefreshing}
                         className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-[var(--foreground-secondary)] bg-[var(--background-secondary)]/50 hover:bg-[var(--background-secondary)] hover:text-[var(--foreground)] rounded-lg transition-all"
                     >
-                        <i className={`fi fi-sr-rotate-right flex items-center justify-center ${""}`} className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} ></i>
+                        <i className={`fi fi-sr-rotate-right flex items-center justify-center w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`}></i>
                         Refresh
                     </button>
                 </div>
