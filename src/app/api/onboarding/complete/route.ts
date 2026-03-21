@@ -4,6 +4,7 @@ import { isSupabaseConfigured } from '@/lib/supabase';
 import { getProvider } from '@/lib/ai/providers';
 import { scrapeWebsite, extractBusinessSummary } from '@/lib/scraper';
 import { getCarouselStyle, getDefaultStyle } from '@/lib/ai/carousel-styles';
+import { compileStrategyBrief, detectArchetypeFromDiscovery, buildMasterOnboardingPrompt } from '@/lib/ai/strategy-brief';
 import dJSON from 'dirty-json';
 
 export const runtime = 'nodejs';
@@ -28,17 +29,35 @@ interface OnboardingData {
     industry: string;
     targetAudience: string;
 
-    // New Context Fields (mapped to businessDescription for AI/DB)
+    // Context Fields
     aboutYou: string;
     personalContext: Array<{ type: string; label: string; value: string }>;
     productContext: Array<{ type: string; label: string; value: string }>;
 
-    // Legacy support (optional now)
+    // Legacy support
     businessDescription?: string;
     expertise: string;
 
     contentGoal: string;
     topics: string[];
+
+    // Strategic Foundation (NEW)
+    archetypeDiscovery: {
+        q1: string;
+        q2: string;
+        q3: string;
+    };
+    positioningStatement: string;
+    povStatement: string;
+    identityGap: string;
+    limitingBelief?: string;
+    weeklyThroughline?: string;
+    competitors: string[];
+    contentPillars: {
+        name: string;
+        description: string;
+        job: 'authority' | 'relatability' | 'proof';
+    }[];
 
     // Style
     archetype: 'builder' | 'teacher' | 'contrarian' | 'executive' | 'custom';
@@ -55,26 +74,38 @@ interface OnboardingData {
 
     autoPublish?: boolean;
 
-    // Subscription & Visuals (New)
+    // Subscription & Visuals
     subscriptionTier?: 'starter' | 'creator' | 'authority';
     visualMode?: 'none' | 'faceless' | 'clone';
     style_faceless?: string;
     style_carousel?: string;
     style_face?: string;
     avatar_urls?: string[];
+
+    // Brand Kit
+    brandColors?: {
+        primary: string;
+        background: string;
+        accent: string;
+    };
 }
 
 interface ScheduledPost {
     day: string;
     platform: 'x' | 'linkedin';
-    format: 'single' | 'long_form' | 'video_script';
+    format: 'single' | 'long_form' | 'video_script' | 'long' | 'short';
     topic: string;
     time: string;
+    pillar?: string;
+    hook_type?: string;
 }
 
 interface CarouselIdea {
     day: string;
     topic: string;
+    pillar?: string;
+    hook_type?: string;
+    slide_count?: number;
 }
 
 interface GeneratedPost {
@@ -85,8 +116,8 @@ export async function POST(request: NextRequest) {
     try {
         const body: OnboardingData = await request.json();
 
-        // Validate required fields (New check uses aboutYou)
-        if (!body.industry || !body.contentGoal || body.topics.length === 0 || !body.aboutYou) {
+        // Validate required fields
+        if (!body.industry || !body.contentGoal || !body.aboutYou) {
             return NextResponse.json(
                 { error: 'Missing required onboarding data' },
                 { status: 400 }
@@ -180,18 +211,119 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // Step 1: Generate weekly strategy (includes text post schedule + carousel ideas)
-        console.log('[Onboarding] Generating weekly strategy...');
-        const strategy = await generateStrategy(selectedPlatforms, body);
-        const carouselIdeas: CarouselIdea[] = strategy.carousels || [];
-        console.log(`[Onboarding] Strategy: ${strategy.posts?.length || 0} text posts, ${carouselIdeas.length} carousel ideas`);
+        // === STRATEGIC FOUNDATION PROCESSING ===
 
-        // Step 2: Generate text posts + carousels in parallel (2 API calls)
+        // Step A: Detect archetype from discovery answers
+        let archetypeResult: { primary: string; secondary: string; flavor: string } = { primary: body.archetype || 'builder', secondary: 'teacher', flavor: '' };
+        if (body.archetypeDiscovery?.q1 && body.archetypeDiscovery?.q2 && body.archetypeDiscovery?.q3) {
+            archetypeResult = detectArchetypeFromDiscovery(
+                body.archetypeDiscovery.q1,
+                body.archetypeDiscovery.q2,
+                body.archetypeDiscovery.q3
+            );
+            body.archetype = archetypeResult.primary as any;
+            console.log(`[Onboarding] Detected archetype: ${archetypeResult.primary} / ${archetypeResult.secondary}`);
+        }
+
+        const validCompetitors = (body.competitors || []).filter((c: string) => c.trim() !== '');
+
+        // === MASTER STRATEGY & CONTENT GENERATION (REQUEST 1 of 2) ===
+        console.log('[Onboarding] Triggering Master Strategy & Content Generation...');
+        const masterPrompt = buildMasterOnboardingPrompt(body, archetypeResult, selectedPlatforms);
+
+        let masterResult: any;
+        try {
+            const aiResponse = await provider.complete({
+                messages: [
+                    {
+                        role: 'system',
+                        content: masterPrompt,
+                        cache_control: { type: 'ephemeral' }
+                    },
+                    { role: 'user', content: 'Generate my brand strategy and weekly content plan. Do NOT write the actual post content yet—just the topics, hooks, and day-by-day calendar.' }
+                ],
+                temperature: 0.7,
+                responseFormat: { type: 'json_object' },
+                maxTokens: 16384 // Increased from 8192 to prevent truncation
+            });
+            const cleanContent = extractJson(aiResponse.content);
+            console.log('[Onboarding] Master generation response length:', cleanContent.length);
+            console.log('[Onboarding] Master generation start:', cleanContent.substring(0, 100));
+            console.log('[Onboarding] Master generation end:', cleanContent.substring(cleanContent.length - 100));
+
+            try {
+                masterResult = robustJsonParse(cleanContent);
+            } catch (parseError: any) {
+                console.error('[Onboarding] JSON Parsing failed. Error:', parseError.message);
+                console.error('[Onboarding] Content suspected to be problematic:', cleanContent);
+                throw new Error(`Failed to parse strategy. The AI response was ${cleanContent.length} characters long and may have been truncated or misformatted.`);
+            }
+            console.log('[Onboarding] Master generation complete');
+        } catch (e: any) {
+            console.error('[Onboarding] Master generation failed:', e);
+            throw new Error(`Failed to generate brand strategy: ${e.message}`);
+        }
+
+        // Map results back to local variables for compatibility
+        const voiceAnalysis = masterResult.voice_analysis || {};
+        const competitorAnalysis = masterResult.competitor_analysis || {};
+        const foundation = masterResult.foundation || {};
+        const strategy = masterResult.calendar || { posts: [], carousels: [] };
+
+        // Back-fill body for SaveToSupabase and Strategy Brief compilation
+        body.positioningStatement = body.positioningStatement || foundation.positioning_statement;
+        body.povStatement = body.povStatement || foundation.pov_statement;
+        body.identityGap = body.identityGap || foundation.identity_gap;
+        body.limitingBelief = body.limitingBelief || foundation.limiting_belief;
+        body.weeklyThroughline = masterResult.weekly_throughline;
+        body.contentPillars = (body.contentPillars && body.contentPillars.length > 0) ? body.contentPillars : foundation.content_pillars;
+
+        // Compile Strategy Brief (using the new automated data)
+        const strategyBrief = compileStrategyBrief(
+            {
+                name: body.name,
+                role: body.role,
+                company_name: body.companyName,
+                business_description: body.businessDescription || body.aboutYou,
+                industry: body.industry,
+                content_goal: body.contentGoal,
+                target_audience: body.targetAudience,
+                archetype_primary: archetypeResult.primary,
+                archetype_secondary: archetypeResult.secondary,
+                archetype_flavor: archetypeResult.flavor,
+                positioning_statement: body.positioningStatement,
+                pov_statement: body.povStatement,
+                identity_gap: body.identityGap,
+                competitor_context: {
+                    names: validCompetitors,
+                    shared_patterns: competitorAnalysis.shared_patterns,
+                    whitespace: competitorAnalysis.whitespace,
+                },
+                content_pillars: body.contentPillars,
+                voice_analysis: voiceAnalysis,
+                personal_context: body.personalContext,
+                product_context: body.productContext,
+                topics: body.topics,
+                tone: body.tone,
+                limiting_belief: body.limitingBelief,
+                weekly_throughline: body.weeklyThroughline,
+            },
+            body.voiceSamples
+        );
+
+        // Attach processed data to body for saveToSupabase
+        (body as any)._archetypeResult = archetypeResult;
+        (body as any)._voiceAnalysis = voiceAnalysis;
+        (body as any)._competitorAnalysis = competitorAnalysis;
+        (body as any)._strategyBrief = strategyBrief;
+
+        // === CONTENT GENERATION (REQUESTS 2 & 3 in parallel) ===
         console.log('[Onboarding] Generating all content (text + carousels)...');
         const [posts, carousels] = await Promise.all([
-            generatePostsBatched(strategy.posts, body),
-            generateCarousels(carouselIdeas, body),
+            generatePostsBatched(strategy.posts, body, strategyBrief),
+            generateCarousels(strategy.carousels || [], body),
         ]);
+
         console.log(`[Onboarding] Generated ${posts.length} text posts, ${carousels.length} carousels`);
 
         // Step 3: Save to Supabase
@@ -225,223 +357,277 @@ export async function POST(request: NextRequest) {
     }
 }
 
-async function generateStrategy(
-    platforms: Array<'x' | 'linkedin'>,
-    data: OnboardingData
-): Promise<{ posts: ScheduledPost[]; carousels: CarouselIdea[] }> {
+
+async function generatePostsBatched(
+    schedule: ScheduledPost[],
+    data: OnboardingData,
+    strategyBrief: string
+): Promise<Array<ScheduledPost & GeneratedPost>> {
     const provider = await getProvider();
 
-    // Calculate strict targets
-    const targetX = platforms.includes('x') ? 7 : 0;
-    const targetLi = platforms.includes('linkedin') ? 5 : 0;
-    const totalTarget = targetX + targetLi;
+    const generateBatch = async (batchSchedule: ScheduledPost[]): Promise<GeneratedPost[]> => {
+        if (batchSchedule.length === 0) return [];
 
-    const systemPrompt = `You are an elite content strategist for founders.
+        const count = batchSchedule.length;
+        const systemPrompt = `You are an elite ghostwriter for top founders. You write conviction, not content. Every post must sound like a real operator speaking to intelligent peers from lived experience. Never theory. Never generic. Never AI.
 
-You specialize in turning a founder’s lived experience, thinking, and POV into high-signal content that builds authority over time.
+---
 
-Your User's Persona:
-- Archetype: ${data.archetype.toUpperCase()}
-- Archetype Description: ${getArchetypeDesc(data.archetype)}
+PERSONA — NON-NEGOTIABLE
+Archetype: ${data.archetype.toUpperCase()}
+Description: ${getArchetypeDesc(data.archetype)}
 
-You prioritize:
-- Clarity over cleverness
-- Signal over volume
-- Authority over virality
+Tone, cadence, confidence, and worldview must match this archetype exactly. A Builder sounds nothing like a Teacher. A Contrarian sounds nothing like an Executive. If the voice feels off — rewrite until it doesn't.
 
-Every post should feel intentional, credible, and worth saving.
+---
 
-MISSION  
-Create a 1-week content calendar that positions the user as a thoughtful, trusted authority with their target audience.
-
-The calendar should:
-- Reflect the user’s real expertise and role
-- Build narrative momentum across the week
-- Balance teaching, perspective, and light conversion
-
-INPUTS YOU WILL RECEIVE
-
-- Name: ${data.name}
-- Role: ${data.role}
-- Company: ${data.companyName}
-- Industry: ${data.industry}
-- Primary Goal: ${data.contentGoal}
-- Core Topics / Pillars: ${data.topics.join(', ')}
-- Business Description: ${data.businessDescription}
-- Target Audience: ${data.targetAudience}
-
-VOICE & STYLE CONSTRAINTS
-
-You MUST mimic the tone, cadence, and framing of the provided voice samples.
-
-VOICE SAMPLES (REFERENCE ONLY — DO NOT COPY):
+VOICE SAMPLES — MIMIC THE SOUL, NEVER COPY THE WORDS
 ${data.voiceSamples.map((s, i) => `Sample ${i + 1}: ${s.content}`).join('\n\n')}
 
-Apply:
-- Similar sentence length and rhythm
-- Similar level of directness and confidence
-- Similar use of clarity, contrast, and framing
+Before writing anything, extract:
+- Sentence length and rhythm — short and punchy or long and deliberate?
+- How they open — statement, fact, or contrast?
+- How they close — provocation, directive, or silence?
+- What they never say — filler, hedging, corporate softness
+- Their confidence signature — where does the certainty come from?
 
-Do NOT:
-- Copy phrases verbatim
-- Introduce jargon not present in the samples
-- Over-polish or “marketing-ize” the voice
+Every post must pass this test: could this have come from the voice samples? If no — rewrite.
 
-CONTENT STRATEGY PRINCIPLES (APPLY BY DEFAULT)
+---
 
-- Write for intelligent peers, not beginners
-- Avoid generic tips or surface-level advice
-- Reframe ideas as insights, lessons, or frameworks
-- Assume the audience is busy and skeptical
+STRATEGY PLAYBOOK — EVERY WORD MUST SERVE THIS
+${strategyBrief}
 
-Weekly intent mix (guideline, not rigid):
-- ~60% Educate (teach, explain, reframe)
-- ~30% Authority (POV, experience, pattern recognition)
-- ~10% Soft Conversion (invites, never salesy)
+Before writing a single post, internalize:
+- POV: every post moves the reader one step closer to agreeing with this belief
+- Identity Gap: every post makes the reader feel one step closer to who they want to become
+- Limiting Belief: at least one post this batch makes this belief harder to hold
+- Competitor Whitespace: no post could have been written by any named competitor
+- Pillars: every post serves one pillar — authority, relatability, or proof. Never two. Never none.
 
-PLATFORM RULES (STRICT)
+---
+
+---
+
+PLATFORM CONSTRAINTS
 
 X:
-- Single posts only (NO threads)
-- Mix of short and long_form
-- One clear idea per post
-- Concise, sharp, opinionated
+- Short: hard max 280 characters. One idea. One punch. No setup.
+- Long: 1,800–2,400 characters. No threads. One continuous post.
 
 LinkedIn:
-- Mostly long_form
-- Structured thinking, frameworks, POVs
-- Professional, calm, confident tone
+- Short: 800–1,200 characters. Punchy. Line breaks every 1-2 sentences.
+- Long: 2,500–3,200 characters. Narrative weight. Every word earns its place.
 
-SCHEDULING RULES (NON-NEGOTIABLE)
+---
 
-- Start date: Next Monday
-- TOTAL TEXT POSTS TO GENERATE: ${totalTarget}
-${targetX > 0 ? `- X: Exactly ${targetX} posts (1 per day, Mon-Sun)` : ''}
-${targetLi > 0 ? `- LinkedIn: Exactly ${targetLi} text posts (1 per day, Mon-Fri)` : ''}
-- Do not schedule posts on weekends for LinkedIn
-- Avoid repeating the same topic on consecutive days
-${platforms.includes('linkedin') ? `
-CAROUSEL IDEAS (LinkedIn only):
-- Also provide exactly 2 carousel topic ideas for LinkedIn
-- Carousels are visual, educational content — lists, frameworks, step-by-step guides
-- Pick carousel days that don't overlap with busy LinkedIn text post days (e.g., Wednesday and Saturday)
-` : ''}
+POST STRUCTURES — VARY ACROSS THE BATCH, NEVER REPEAT CONSECUTIVELY
 
-OUTPUT FORMAT (STRICT)
+1. NARRATIVE STORY
+Open with the moment — conflict, decision, or realization. Show the process. End with the lesson. Never summarize. Let the story land on its own.
 
-Return ONLY a valid JSON object with this structure:
+2. ATOMIC ESSAY
+Hook line. 3-5 tight paragraphs, each earning the next. Final sentence reframes everything above it.
+
+3. SPIKY POV
+Name the wrong belief. Challenge it directly. Give the superior alternative with a specific mechanism behind it. Never hedge. Never qualify.
+
+4. TACTICAL BREAKDOWN
+A specific how-to grounded in real process. Steps that are actually usable — not obvious. Closes with the insight behind the tactic, not just the tactic.
+
+5. CONTRAST FRAME
+Two worlds. Wrong way and right way. Before and after. Show both. Let the contrast do the work without explaining it.
+
+---
+
+HOOK RULES — EVERY POST, NO EXCEPTIONS
+
+- First line is the hook. Nothing before it.
+- Never start with "I", "We", "Today", "Here's", or "Did you know"
+- Never open with context — open with the conclusion, the provocation, or the result
+- The hook must stop the scroll before the reader knows what the post is about
+- Hook types assigned in the content plan:
+  — Contrarian: names a belief and immediately breaks it
+  — Identity Challenge: mirror between who they are and who they want to be
+  — Curiosity Gap: withholds just enough to pull them into the next line
+  — Specific Result: leads with the outcome, makes them ask how
+
+---
+
+QUALITY GATES — RUN ON EVERY POST BEFORE OUTPUTTING
+
+1. Does this sound like ${data.name} or does it sound like AI?
+2. Could any named competitor have written this? If yes — it is not differentiated enough.
+3. Does it serve exactly one pillar?
+4. Does the hook stop the scroll before they know what the post is about?
+5. Does it contribute to the weekly throughline?
+6. Would the target audience feel this was written specifically for them?
+
+Fail more than one gate — discard and regenerate from scratch. Never patch bad writing.
+
+---
+
+OUTPUT: STRICT JSON ONLY
+No explanation. No markdown. No text outside the JSON.
 
 {
   "posts": [
     {
-      "day": "Monday",
-      "platform": "x" | "linkedin",
-      "format": "single" | "long_form",
-      "topic": "Brief but specific topic description"
-    }
-  ],
-  "carousels": [
-    {
-      "day": "Wednesday",
-      "topic": "5 frameworks every founder should know about [specific area]"
-    },
-    {
-      "day": "Saturday",
-      "topic": "The complete guide to [specific topic] — step by step"
+      "platform": "x",
+      "format": "long",
+      "pillar": "authority",
+      "hook_type": "contrarian",
+      "structure": "spiky_pov",
+      "content": "Full post content here"
     }
   ]
 }
 
-RULES:
-- The "posts" array MUST contain EXACTLY ${totalTarget} items.
-- The "carousels" array MUST contain exactly ${platforms.includes('linkedin') ? 2 : 0} items.${!platforms.includes('linkedin') ? ' Set to empty array [].' : ''}
-- Output calendar only — no explanations
-- Do NOT write post copy
-- Do NOT include hooks, captions, or CTAs
-- Ensure the intent mix roughly follows the strategy principles
-- Every post must have a clear strategic reason to exist
+Exactly ${count} posts. No titles. No hashtags unless present in voice samples. No emojis unless present in voice samples.
 
-QUALITY BAR (NON-NEGOTIABLE)
+---
 
-Before finalizing, ensure:
-- A credible founder would actually post this
-- The topics ladder logically across the week
-- The voice matches the provided samples
-- The calendar serves the stated goal clearly
-- YOU HAVE GENERATED EXACTLY ${totalTarget} TEXT POSTS AND ${platforms.includes('linkedin') ? '2' : '0'} CAROUSEL IDEAS.
+CONTENT PLAN — WRITE FOR THESE SPECIFIC TOPICS (MANDATORY)
+${JSON.stringify(batchSchedule.map(p => ({ day: p.day, platform: p.platform, topic: p.topic, length: p.format, pillar: p.pillar, hook_type: p.hook_type })), null, 2)}
 
-If any required input is missing, make strong, reasonable assumptions and proceed.
+For each post:
+- Match the assigned pillar
+- Use the assigned hook type
+- Honor the weekly throughline — every post is a chapter of one idea from a different angle`;
 
-Output the JSON. Nothing else.`;
-
-    const result = await provider.complete({
-        messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: 'Generate schedule.' }],
-        temperature: 0.7,
-        responseFormat: { type: 'json_object' },
-    });
-
-    try {
-        const cleanContent = extractJson(result.content);
-        const parsed = JSON.parse(cleanContent);
-
-        // Strict Platform Enforcement
-        // The AI sometimes hallucinates platforms even when instructed otherwise.
-        // We force the platform field to match the request.
-
-        if (parsed.posts && Array.isArray(parsed.posts)) {
-            parsed.posts = parsed.posts.map((post: any) => {
-                // If only X requested, force X
-                if (targetX > 0 && targetLi === 0) {
-                    return { ...post, platform: 'x' };
-                }
-                // If only LinkedIn requested, force LinkedIn
-                if (targetLi > 0 && targetX === 0) {
-                    return { ...post, platform: 'linkedin' };
-                }
-
-                // If both, ensure it's one of them, default to X if invalid
-                if (!['x', 'linkedin'].includes(post.platform?.toLowerCase())) {
-                    return { ...post, platform: 'x' }; // Default fallback
-                }
-
-                return post;
+        try {
+            console.log(`[Batch] Generating ${count} posts...`);
+            const result = await provider.complete({
+                messages: [
+                    {
+                        role: 'system',
+                        content: systemPrompt,
+                        cache_control: { type: 'ephemeral' }
+                    },
+                    { role: 'user', content: 'Generate the posts according to the content plan.' }
+                ],
+                temperature: 0.4,
+                maxTokens: 8192,
+                responseFormat: { type: 'json_object' },
             });
 
-            // Double check counts? 
-            // If we have mixed request, we might want to ensure distribution, but for now 
-            // let's trust the AI's count if it matches totalTarget. 
-            // The main issue is single-platform requests getting mixed results.
-        }
+            const cleanContent = extractJson(result.content);
+            let parsed;
+            try {
+                parsed = robustJsonParse(cleanContent);
+            } catch (err) {
+                console.error('[Batch] Failed to parse JSON:', err);
+                console.log('[Batch] Raw content that failed parse:', result.content);
+                return [];
+            }
 
-        return parsed;
-    } catch (e) {
-        console.error('Strategy JSON Parse Failed. Content:', result.content);
-        throw new Error('Failed to parse strategy JSON');
+            // Handle both { "posts": [...] } and direct [...] formats
+            if (Array.isArray(parsed)) return parsed;
+            if (parsed && typeof parsed === 'object' && Array.isArray(parsed.posts)) {
+                return parsed.posts;
+            }
+
+            console.warn('[Batch] Unexpected JSON structure:', parsed);
+            return [];
+        } catch (e) {
+            console.error('[Batch] Generation failed:', e);
+            throw e;
+        }
+    };
+
+    // Split into chunks of 3 to prevent truncation and improve quality
+    const CHUNK_SIZE = 3;
+    const allGeneratedPosts: any[] = [];
+
+    for (let i = 0; i < schedule.length; i += CHUNK_SIZE) {
+        const chunk = schedule.slice(i, i + CHUNK_SIZE);
+        const batchResults = await generateBatch(chunk);
+        allGeneratedPosts.push(...batchResults);
+    }
+
+    return schedule.map((item, i) => {
+        const gen = allGeneratedPosts[i];
+        return {
+            ...item,
+            content: gen?.content || 'Content generation failed (likely truncation or parse error).'
+        };
+    });
+}
+
+function robustJsonParse(jsonStr: string): any {
+    try {
+        return JSON.parse(jsonStr);
+    } catch (e1) {
+        const fixedContent = jsonStr
+            .replace(/(?<="[^"]*?)\n(?=[^"]*?")/g, '\\n')
+            .replace(/(?<="[^"]*?)\t(?=[^"]*?")/g, '\\t');
+        try {
+            return JSON.parse(fixedContent);
+        } catch (e2) {
+            try {
+                return dJSON.parse(jsonStr);
+            } catch (e3) {
+                throw new Error('All JSON parse attempts failed: ' + (e3 as Error).message);
+            }
+        }
     }
 }
 
 function extractJson(text: string): string {
-    // Remove code fences
-    let cleaned = text.replace(/```json\n?|\n?```/g, '').trim();
-    // Smart quotes → normal quotes
-    cleaned = cleaned.replace(/[\u201C\u201D]/g, '"').replace(/[\u2018\u2019]/g, "'");
+    try {
+        // Remove code fences and leading/trailing whitespace
+        let cleaned = text.replace(/```json\n?|\n?```/g, '').trim();
 
-    // Fix: Double double-quote issue seen in logs (""posts")
-    // Use specific replacement for known keys to avoid breaking empty strings in values
-    cleaned = cleaned.replace(/""(posts|carousels)":/g, '"$1":');
+        // Try to find an array first (as it's often used for lists)
+        const arrayStart = cleaned.indexOf('[');
+        const arrayEnd = cleaned.lastIndexOf(']');
 
-    // Strip control chars except newline/tab
-    cleaned = cleaned.replace(/[\x00-\x1F\x7F]/g, (ch: string) =>
-        ch === '\n' || ch === '\t' ? ch : ''
-    );
-    // Extract JSON object
-    const start = cleaned.indexOf('{');
-    const end = cleaned.lastIndexOf('}');
-    if (start === -1 || end === -1) return text;
-    cleaned = cleaned.substring(start, end + 1);
-    // Fix trailing commas before } or ]
-    cleaned = cleaned.replace(/,\s*([\]}])/g, '$1');
-    return cleaned;
+        // Then try to find an object
+        const objectStart = cleaned.indexOf('{');
+        const objectEnd = cleaned.lastIndexOf('}');
+
+        // Determine which one to use (prioritize the outer structure)
+        let start = -1;
+        let end = -1;
+
+        if (arrayStart !== -1 && (objectStart === -1 || arrayStart < objectStart)) {
+            start = arrayStart;
+            end = arrayEnd;
+        } else if (objectStart !== -1) {
+            start = objectStart;
+            end = objectEnd;
+        }
+
+        if (start === -1) {
+            console.warn('[extractJson] No JSON structures ([ or {) found in text');
+            return text;
+        }
+
+        if (end > start) {
+            cleaned = cleaned.substring(start, end + 1);
+        } else {
+            cleaned = cleaned.substring(start);
+        }
+
+        // Smart quotes → normal quotes
+        cleaned = cleaned.replace(/[\u201C\u201D]/g, '"').replace(/[\u2018\u2019]/g, "'");
+
+        // Fix: Double double-quote issue seen in logs (""posts")
+        cleaned = cleaned.replace(/""(posts|carousels|primary|background|accent)":/g, '"$1":');
+
+        // Strip control chars except newline/tab
+        cleaned = cleaned.replace(/[\x00-\x1F\x7F]/g, (ch: string) =>
+            ch === '\n' || ch === '\t' ? ch : ''
+        );
+
+        // Fix trailing commas before } or ]
+        cleaned = cleaned.replace(/,\s*([\]}])/g, '$1');
+
+        return cleaned;
+    } catch (e) {
+        console.error('[extractJson] Error during cleaning:', e);
+        return text;
+    }
 }
 
 function getArchetypeDesc(type: string): string {
@@ -451,202 +637,6 @@ function getArchetypeDesc(type: string): string {
         case 'contrarian': return 'Challenge the status quo. Say what others won\'t.';
         case 'executive': return 'High-level vision, culture, leadership, and industry trends.';
         default: return 'Professional and authoritative.';
-    }
-}
-
-
-async function generatePostsBatched(
-    schedule: ScheduledPost[],
-    data: OnboardingData
-): Promise<Array<ScheduledPost & GeneratedPost>> {
-    const provider = await getProvider();
-
-
-
-    // Helper function to generate all posts in one go
-    const generateBatch = async (batchSchedule: ScheduledPost[]): Promise<GeneratedPost[]> => {
-        if (batchSchedule.length === 0) return [];
-
-        const count = batchSchedule.length;
-        const systemPrompt = `You are an elite ghostwriter for top founders.
-
-You write from lived experience, not theory. Your work sounds like a real operator speaking to intelligent peers.
-
-PERSONA (NON-NEGOTIABLE)
-- Archetype: ${data.archetype.toUpperCase()}.
-- Description: ${getArchetypeDesc(data.archetype)}.
-
-Your voice must match this persona exactly — tone, cadence, confidence, and worldview.
-
-VOICE SAMPLES (MIMIC — DO NOT COPY)
-Use the samples below to match:
-- Sentence length and rhythm
-- Level of directness and conviction
-- Use of contrast, framing, and clarity
-
-VOICE SAMPLES:
-${data.voiceSamples.map((s, i) => `Sample ${i + 1}: ${s.content}`).join('\n\n')}
-
-Do NOT reuse phrases, metaphors, or structure verbatim.
-Do NOT introduce jargon not present in the samples.
-
-CONTEXT (WRITE FROM THIS POV)
-- Name: ${data.name}
-- Role: ${data.role}
-- Company: ${data.companyName}
-- Core Expertise: ${data.expertise}
-- Target Audience: ${data.targetAudience}
-
-Assume the audience is smart, busy, skeptical, and already past surface-level advice.
-
-MISSION
-Generate high-conviction, platform-native content that builds authority, trust, and thoughtful engagement.
-
-Your task is to write content for the following CONTENT PLAN:
-${JSON.stringify(batchSchedule.map(p => ({ platform: p.platform, topic: p.topic, length: p.format })), null, 2)}
-
-PLATFORMS & FORMAT CONSTRAINTS (STRICT — NON-NEGOTIABLE)
-
-X (Twitter):
-- Short post: MAX 280 characters (hard cap)
-- Long post: TARGET ~2,400 characters (±5% tolerance)
-- Single post only
-- NO threads under any circumstance
-
-LinkedIn:
-- Short post: TARGET ~1,000 characters (±10% tolerance)
-- Long post: TARGET ~3,000 characters (±10% tolerance)
-- Single post only
-- NO threads under any circumstance
-
-GLOBAL RULES:
-- One post = one standalone update
-- NO threads
-- NO hashtags unless explicitly requested
-- Do NOT include numbered parts, continuations, or “Part 1/2” language
-- Respect character limits precisely for the selected platform and length
-
-GLOBAL WRITING RULES
-
-- Open with a scroll-stopping hook in the first 1–2 lines
-- No fluff, no filler, no corporate jargon
-- Write like you’re talking to a respected peer
-- Bold means conviction, not exaggeration
-- One clear idea per post
-
-HOOKS & CTA
-- Open with a strong hook (first line)
-- End with a natural CTA (final line)
-- Do NOT separate them into different fields. Just write the post.
-
-OUTPUT REQUIREMENTS (STRICT — READ CAREFULLY)
-
-You MUST generate EXACTLY ${count} complete posts matching the CONTENT PLAN above.
-
-Return ONLY a valid JSON object with this structure:
-
-{
-  "posts": [
-    {
-      "platform": "x" | "linkedin",
-      "content": "Full post content"
-    }
-  ]
-}
-
-RULES:
-- The "posts" array MUST contain exactly ${count} items
-- Content must respect the character limits for its platform and length
-- Do NOT include titles, hashtags, emojis, explanations, or alternatives
-- Output JSON only — nothing before or after
-
-QUALITY BAR (NON-NEGOTIABLE)
-
-Before finalizing, ensure:
-- All posts sound like they were written by the same founder
-- The hook stops the scroll
-- The post has one clear, memorable idea
-- CTAs feel natural and non-pushy
-- No repetition across the generated posts
-
-If any required inputs are missing, make strong assumptions and proceed.
-
-Return the JSON. Nothing else.`;
-
-        // Strip heavy context for the AI input
-        const simplifiedSchedule = batchSchedule.map(p => ({
-            platform: p.platform,
-            format: p.format,
-            topic: p.topic
-        }));
-
-        try {
-            console.log(`[Batch] Generating ${count} posts in single request...`);
-            const result = await provider.complete({
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: 'Generate the posts according to the content plan.' }
-                ],
-                temperature: 0.4,
-                maxTokens: 8192,
-                responseFormat: { type: 'json_object' },
-            });
-
-            const cleanContent = extractJson(result.content);
-            try {
-                const parsed = JSON.parse(cleanContent);
-                return parsed.posts || [];
-            } catch (parseErr) {
-                console.warn('[Batch] First JSON parse failed, attempting dirty-json fix...', parseErr);
-                try {
-                    const parsed = dJSON.parse(cleanContent);
-                    return parsed.posts || [];
-                } catch (dirtyErr) {
-                    console.error('[Batch] dirty-json failed:', dirtyErr);
-                    // Last resort: try the regex fix if dirty-json also fails (unlikely for simple escapes but possible)
-                    const fixedContent = cleanContent
-                        .replace(/(?<="[^"]*?)\n(?=[^"]*?")/g, '\\n')
-                        .replace(/(?<="[^"]*?)\t(?=[^"]*?")/g, '\\t');
-                    try {
-                        const parsed = JSON.parse(fixedContent);
-                        return parsed.posts || [];
-                    } catch (finalErr) {
-                        throw finalErr;
-                    }
-                }
-            }
-
-        } catch (e) {
-            console.error(`*** BATCH FAILED ***`, e);
-            throw e;
-        }
-    };
-
-    // Execute single batch
-    try {
-        const results = await generateBatch(schedule);
-
-        return schedule.map((post, index) => {
-            const generated = results[index];
-            return {
-                ...post,
-                content: generated?.content || `Generation failed: Missing content`,
-                hooks: [],
-                cta: null
-            };
-        });
-
-    } catch (e) {
-        console.error('*** OVERALL GENERATION FAILED ***', e);
-        const errorMessage = e instanceof Error ? e.message : String(e);
-
-        // Fallback
-        return schedule.map(post => ({
-            ...post,
-            content: `Generation failed: ${errorMessage}. Please edit.`,
-            hooks: [],
-            cta: null
-        }));
     }
 }
 
@@ -692,7 +682,24 @@ async function generateCarousels(
         return { index: i, topic: c.topic, day: c.day, slideCount };
     });
 
-    let systemPrompt = style.prompt;
+    const brandColors = data.brandColors || {
+        primary: '#10B981',
+        background: '#09090B',
+        accent: '#F59E0B'
+    };
+
+    const brandColorsInstruction = `BRAND COLORS (CRITICAL):
+Primary Color: ${brandColors.primary} (Use for buttons, main icons, key highlights)
+Background Color: ${brandColors.background} (Use for the main slide canvas background)
+Accent Color: ${brandColors.accent} (Use for secondary highlights, checks, small pops of color)
+
+When generating the HTML/Tailwind:
+1. Always set the main container's background to ${brandColors.background} using inline style: style="background-color: ${brandColors.background}"
+2. Use ${brandColors.primary} for the most important visual elements.
+3. Use ${brandColors.accent} for decoration.
+4. Ensure text remains readable (use white or black text depending on ${brandColors.background} brightness).`;
+
+    let systemPrompt = style.prompt.replace('[BRAND_COLORS_INSTRUCTION]', brandColorsInstruction);
     systemPrompt += `\n\nMULTI-CAROUSEL INSTRUCTIONS:\nYou must generate ${carouselIdeas.length} separate carousels in one response.\n`;
     systemPrompt += carouselSpecs.map(c =>
         `Carousel ${c.index}: "${c.topic}" — ${c.slideCount} slides`
@@ -707,7 +714,11 @@ async function generateCarousels(
         console.log(`[Carousels] Generating ${carouselIdeas.length} carousels in a single request...`);
         const result = await provider.complete({
             messages: [
-                { role: 'system', content: systemPrompt },
+                {
+                    role: 'system',
+                    content: systemPrompt,
+                    cache_control: { type: 'ephemeral' }
+                },
                 { role: 'user', content: `Create these carousels:\n${userMessage}` }
             ],
             temperature: 0.7,
@@ -720,18 +731,10 @@ async function generateCarousels(
         let data_parsed: any;
 
         try {
-            data_parsed = dJSON.parse(jsonStr);
-        } catch (dirtyErr) {
-            console.warn('[Carousels] dirty-json failed, attempting regex fix...', dirtyErr);
-            const fixedContent = jsonStr
-                .replace(/(?<="[^"]*?)\n(?=[^"]*?")/g, '\\n')
-                .replace(/(?<="[^"]*?)\t(?=[^"]*?")/g, '\\t');
-            try {
-                data_parsed = JSON.parse(fixedContent);
-            } catch (finalErr) {
-                console.error('[Carousels] All JSON parse attempts failed.');
-                throw finalErr;
-            }
+            data_parsed = robustJsonParse(jsonStr);
+        } catch (err) {
+            console.error('[Carousels] All JSON parse attempts failed.', err);
+            throw err;
         }
 
         const generatedCarousels: Array<{ index: number; slides: string[] }> = data_parsed.carousels || [];
@@ -798,6 +801,13 @@ async function saveToSupabase(
                 // We should probably save archetype in metadata or repurpose a column, but for now let's stick to existing
                 role: data.role,
                 company_name: data.companyName,
+                brand_colors: data.brandColors || {
+                    primary: '#000000',
+                    background: '#ffffff',
+                    accent: '#000000'
+                },
+                // we'd probably save these too if we had columns for them, but legacy DB might not have them.
+                // assuming migration was run to add brand_colors
                 company_website: data.companyWebsite,
                 business_description: data.businessDescription,
                 expertise: data.expertise,
@@ -809,7 +819,23 @@ async function saveToSupabase(
                 },
                 updated_at: new Date().toISOString(),
 
-                // New Fields (Pricing & Visuals)
+                // Strategy Fields (NEW)
+                archetype_primary: (data as any)._archetypeResult?.primary || data.archetype,
+                archetype_secondary: (data as any)._archetypeResult?.secondary || null,
+                archetype_flavor: (data as any)._archetypeResult?.flavor || null,
+                archetype_discovery: data.archetypeDiscovery || null,
+                positioning_statement: data.positioningStatement || null,
+                pov_statement: data.povStatement || null,
+                identity_gap: data.identityGap || null,
+                competitor_context: {
+                    names: (data.competitors || []).filter((c: string) => c.trim() !== ''),
+                    analysis: (data as any)._competitorAnalysis || null,
+                },
+                content_pillars: data.contentPillars || null,
+                voice_analysis: (data as any)._voiceAnalysis || null,
+                strategy_brief: (data as any)._strategyBrief || null,
+
+                // Pricing & Visuals
                 subscription_tier: data.subscriptionTier || 'starter',
                 visual_mode: data.visualMode || 'none',
                 style_faceless: data.style_faceless,
@@ -818,6 +844,8 @@ async function saveToSupabase(
                 avatar_urls: data.avatar_urls,
                 visual_training_status: data.avatar_urls && data.avatar_urls.length > 0 ? 'completed' : 'not_started',
                 visual_lora_id: data.avatar_urls && data.avatar_urls.length > 0 ? data.avatar_urls[0] : null,
+                onboarding_status: 'complete',
+                onboarding_step: 10,
             })
             .eq('id', existingProfiles[0].id)
             .select()
@@ -863,10 +891,26 @@ async function saveToSupabase(
                 // Rolling schedule fields
                 next_generation_date: nextGenerationDate.toISOString(),
                 generation_day_of_week: generationDayOfWeek,
-                generation_count: 1, // This is their first week
+                generation_count: 1,
                 timezone: 'UTC',
 
-                // New Fields (Pricing & Visuals)
+                // Strategy Fields (NEW)
+                archetype_primary: (data as any)._archetypeResult?.primary || data.archetype,
+                archetype_secondary: (data as any)._archetypeResult?.secondary || null,
+                archetype_flavor: (data as any)._archetypeResult?.flavor || null,
+                archetype_discovery: data.archetypeDiscovery || null,
+                positioning_statement: data.positioningStatement || null,
+                pov_statement: data.povStatement || null,
+                identity_gap: data.identityGap || null,
+                competitor_context: {
+                    names: (data.competitors || []).filter((c: string) => c.trim() !== ''),
+                    analysis: (data as any)._competitorAnalysis || null,
+                },
+                content_pillars: data.contentPillars || null,
+                voice_analysis: (data as any)._voiceAnalysis || null,
+                strategy_brief: (data as any)._strategyBrief || null,
+
+                // Pricing & Visuals
                 subscription_tier: data.subscriptionTier || 'starter',
                 visual_mode: data.visualMode || 'none',
                 style_faceless: data.style_faceless,
@@ -875,6 +919,8 @@ async function saveToSupabase(
                 avatar_urls: data.avatar_urls,
                 visual_training_status: data.avatar_urls && data.avatar_urls.length > 0 ? 'completed' : 'not_started',
                 visual_lora_id: data.avatar_urls && data.avatar_urls.length > 0 ? data.avatar_urls[0] : null,
+                onboarding_status: 'complete',
+                onboarding_step: 10,
             })
             .select()
             .single();
@@ -910,7 +956,7 @@ async function saveToSupabase(
         'Thursday': 4, 'Friday': 5, 'Saturday': 6,
     };
 
-    const validFormats = ['single', 'thread', 'long_form', 'video_script'];
+    const validFormats = ['single', 'thread', 'long_form', 'video_script', 'long', 'short'];
     const validPlatforms = ['x', 'linkedin'];
 
     const postsData = posts.map(post => {
@@ -936,6 +982,8 @@ async function saveToSupabase(
 
         // Normalize format
         let format = post.format?.toLowerCase().replace('-', '_').replace(' ', '_') || 'single';
+        if (format === 'long') format = 'long_form';
+        if (format === 'short') format = 'single';
         if (!validFormats.includes(format)) format = 'single';
 
         // Normalize platform

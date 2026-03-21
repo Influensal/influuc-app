@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Sparkles, AlertTriangle, Bell, Zap } from 'lucide-react';
+
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
 
@@ -64,13 +64,13 @@ export function NotificationBanner() {
     const getIcon = () => {
         switch (current.type) {
             case 'week_ready':
-                return <Sparkles className="w-5 h-5" />;
+                return <i className={`fi fi-sr-magic-wand flex items-center justify-center ${"w-5 h-5"}`}  ></i>;
             case 'subscription_expired':
-                return <AlertTriangle className="w-5 h-5" />;
+                return <i className={`fi fi-sr-triangle-warning flex items-center justify-center ${"w-5 h-5"}`}  ></i>;
             case 'trial_ending':
-                return <Zap className="w-5 h-5" />;
+                return <i className={`fi fi-sr-bolt flex items-center justify-center ${"w-5 h-5"}`}  ></i>;
             default:
-                return <Bell className="w-5 h-5" />;
+                return <i className={`fi fi-sr-bell flex items-center justify-center ${"w-5 h-5"}`}  ></i>;
         }
     };
 
@@ -145,7 +145,7 @@ export function NotificationBanner() {
                             onClick={() => dismissNotification(current.id)}
                             className="p-1.5 rounded-lg text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--background)] transition-colors"
                         >
-                            <X className="w-4 h-4" />
+                            <i className={`fi fi-sr-cross-small flex items-center justify-center ${"w-4 h-4"}`}  ></i>
                         </button>
                     </div>
                 </div>

@@ -6,7 +6,7 @@ import { CarouselData, Slide } from './types';
 import TemplateSwiss from './templates/TemplateSwiss';
 import TemplateLuxury from './templates/TemplateLuxury';
 import TemplateNoir from './templates/TemplateNoir';
-import { ChevronLeft, ChevronRight, Download, Plus, Trash2, Save, GripVertical, Settings, Sparkles } from 'lucide-react';
+
 import { cn } from '@/lib/utils';
 import { generatePDF } from '@/lib/pdf-export';
 import { useRouter } from 'next/navigation';
@@ -117,11 +117,11 @@ export default function CarouselEditor({ initialData, postId, onSave }: Carousel
                     <h2 className="font-bold text-lg">Edit Slide {currentSlideIndex + 1}</h2>
                     <div className="flex gap-2">
                         <button onClick={handleSave} className="flex items-center gap-2 p-2 px-3 text-sm font-bold bg-green-50 text-green-700 rounded-lg hover:bg-green-100 disabled:opacity-50 transition-colors">
-                            {isSaving ? <Sparkles className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                            {isSaving ? <i className={`fi fi-sr-magic-wand flex items-center justify-center ${"w-4 h-4 animate-spin"}`}  ></i> : <i className={`fi fi-sr-disk flex items-center justify-center ${"w-4 h-4"}`}  ></i>}
                             {isSaving ? 'Saving...' : 'Save'}
                         </button>
                         <button onClick={deleteSlide} className="p-2 text-red-500 hover:bg-red-50 rounded-lg">
-                            <Trash2 className="w-4 h-4" />
+                            <i className={`fi fi-sr-trash flex items-center justify-center ${"w-4 h-4"}`}  ></i>
                         </button>
                     </div>
                 </div>
@@ -224,7 +224,7 @@ export default function CarouselEditor({ initialData, postId, onSave }: Carousel
                             className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-xl hover:bg-gray-800 transition-colors font-medium text-sm disabled:opacity-50"
                             disabled={isExporting}
                         >
-                            {isExporting ? <LoaderWheel /> : <Download className="w-4 h-4" />}
+                            {isExporting ? <LoaderWheel /> : <i className={`fi fi-sr-download flex items-center justify-center ${"w-4 h-4"}`}  ></i>}
                             {isExporting ? 'Generating PDF...' : 'Download PDF'}
                         </button>
                     </div>
@@ -251,7 +251,7 @@ export default function CarouselEditor({ initialData, postId, onSave }: Carousel
                         disabled={currentSlideIndex === 0}
                         className="p-3 rounded-full hover:bg-gray-100 disabled:opacity-30 transition-colors"
                     >
-                        <ChevronLeft className="w-6 h-6" />
+                        <i className={`fi fi-sr-angle-left flex items-center justify-center ${"w-6 h-6"}`}  ></i>
                     </button>
 
                     <div className="flex gap-3 overflow-x-auto max-w-2xl px-2 py-4 scrollbar-hide">
@@ -273,7 +273,7 @@ export default function CarouselEditor({ initialData, postId, onSave }: Carousel
                             onClick={addSlide}
                             className="w-12 h-16 border border-dashed border-gray-300 rounded hover:border-black hover:bg-gray-50 flex items-center justify-center text-gray-400 hover:text-black transition-colors"
                         >
-                            <Plus className="w-4 h-4" />
+                            <i className={`fi fi-sr-plus-small flex items-center justify-center ${"w-4 h-4"}`}  ></i>
                         </button>
                     </div>
 
@@ -282,7 +282,7 @@ export default function CarouselEditor({ initialData, postId, onSave }: Carousel
                         disabled={currentSlideIndex === data.slides.length - 1}
                         className="p-3 rounded-full hover:bg-gray-100 disabled:opacity-30 transition-colors"
                     >
-                        <ChevronRight className="w-6 h-6" />
+                        <i className={`fi fi-sr-angle-right flex items-center justify-center ${"w-6 h-6"}`}  ></i>
                     </button>
                 </div>
             </div>
@@ -303,5 +303,5 @@ export default function CarouselEditor({ initialData, postId, onSave }: Carousel
 }
 
 function LoaderWheel() {
-    return <Sparkles className="w-4 h-4 animate-spin" />;
+    return <i className={`fi fi-sr-magic-wand flex items-center justify-center ${"w-4 h-4 animate-spin"}`}  ></i>;
 }

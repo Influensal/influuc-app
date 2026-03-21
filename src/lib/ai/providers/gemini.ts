@@ -28,7 +28,20 @@ export class GeminiProvider implements AIProviderInterface {
             .filter(m => m.role !== 'system')
             .map(m => ({
                 role: m.role === 'assistant' ? 'model' : 'user',
-                parts: [{ text: m.content }],
+                parts: typeof m.content === 'string'
+                    ? [{ text: m.content }]
+                    : m.content.map(part => {
+                        if (part.type === 'image') {
+                            const base64Data = part.image?.replace(/^data:image\/\w+;base64,/, "");
+                            return {
+                                inline_data: {
+                                    mime_type: 'image/jpeg', // Defaulting to jpeg
+                                    data: base64Data
+                                }
+                            };
+                        }
+                        return { text: part.text || '' };
+                    }),
             }));
 
         const response = await fetch(

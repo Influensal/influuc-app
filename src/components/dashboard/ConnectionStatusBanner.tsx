@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertTriangle, X, ExternalLink, RefreshCw } from 'lucide-react';
+
 
 interface ExpiredConnection {
     platform: 'x' | 'linkedin';
@@ -63,7 +63,7 @@ export default function ConnectionStatusBanner() {
                 >
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
-                            <AlertTriangle className="w-5 h-5 text-amber-500" />
+                            <i className={`fi fi-sr-triangle-warning flex items-center justify-center ${"w-5 h-5 text-amber-500"}`}  ></i>
                         </div>
                         <div>
                             <p className="font-medium text-amber-600 dark:text-amber-400">
@@ -80,14 +80,14 @@ export default function ConnectionStatusBanner() {
                             onClick={() => handleReconnect(connection.platform)}
                             className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 transition-colors"
                         >
-                            <RefreshCw className="w-4 h-4" />
+                            <i className={`fi fi-sr-rotate-right flex items-center justify-center ${"w-4 h-4"}`}  ></i>
                             Reconnect
                         </button>
                         <button
                             onClick={() => handleDismiss(connection.platform)}
                             className="p-2 hover:bg-[var(--background-secondary)] rounded-lg transition-colors"
                         >
-                            <X className="w-5 h-5 text-[var(--foreground-muted)]" />
+                            <i className={`fi fi-sr-cross-small flex items-center justify-center ${"w-5 h-5 text-[var(--foreground-muted)]"}`}  ></i>
                         </button>
                     </div>
                 </motion.div>

@@ -1,79 +1,61 @@
-
 import React from 'react';
-import {
-    TrendingUp, DollarSign, Users, AlertTriangle, Lightbulb, Lock, Clock,
-    Target, Zap, BarChart, PieChart, Activity, Award, Briefcase,
-    Calendar, CheckCircle, XCircle, Cloud, Code, Database, Globe,
-    Heart, Home, Image, Key, Link, MapPin, MessageCircle, Music,
-    Package, Phone, Play, Search, Settings, ShoppingCart, Star,
-    Tag, Wrench, Truck, Unlock, Upload, Video, Wifi, Book,
-    Camera, Coffee, Compass, Cpu, CreditCard, Flag, Gift,
-    Layers, Layout, LifeBuoy, Monitor, Moon, Sun, Shield,
-    Smartphone, Speaker, Terminal, ThumbsUp, Trash, User,
-    Volume2, Watch, Youtube, Twitter, Linkedin, Facebook, Instagram
-} from 'lucide-react';
 
-const ICON_MAP: Record<string, React.ElementType> = {
+const ICON_MAP: Record<string, string> = {
     // Growth & Data
-    growth: TrendingUp, chart: BarChart, graph: Activity, data: Database,
-    analysis: PieChart, metric: Target, kpi: Target, stats: BarChart,
+    growth: 'fi-sr-arrow-trend-up', chart: 'fi-sr-chart-histogram', graph: 'fi-sr-pulse', data: 'fi-sr-database',
+    analysis: 'fi-sr-chart-pie', metric: 'fi-sr-bullseye', kpi: 'fi-sr-bullseye', stats: 'fi-sr-chart-histogram',
 
     // Money & Business
-    money: DollarSign, cash: DollarSign, profit: DollarSign, cost: DollarSign,
-    dollar: DollarSign, business: Briefcase, work: Briefcase, job: Briefcase,
-    price: Tag, sale: ShoppingCart, buy: ShoppingCart,
+    money: 'fi-sr-dollar', cash: 'fi-sr-dollar', profit: 'fi-sr-dollar', cost: 'fi-sr-dollar',
+    dollar: 'fi-sr-dollar', business: 'fi-sr-briefcase', work: 'fi-sr-briefcase', job: 'fi-sr-briefcase',
+    price: 'fi-sr-tag', sale: 'fi-sr-shopping-cart', buy: 'fi-sr-shopping-cart',
 
     // People & Social
-    people: Users, team: Users, user: User, community: Users,
-    social: MessageCircle, message: MessageCircle, chat: MessageCircle,
-    contact: Phone, email: MessageCircle,
+    people: 'fi-sr-users', team: 'fi-sr-users', user: 'fi-sr-user', community: 'fi-sr-users',
+    social: 'fi-sr-comment', message: 'fi-sr-comment', chat: 'fi-sr-comment',
+    contact: 'fi-sr-phone', email: 'fi-sr-comment',
 
     // Status & Alerts
-    warning: AlertTriangle, error: AlertTriangle, danger: AlertTriangle,
-    stop: XCircle, success: CheckCircle, check: CheckCircle, done: CheckCircle,
-    fail: XCircle, wrong: XCircle, info: LifeBuoy, help: LifeBuoy,
+    warning: 'fi-sr-triangle-warning', error: 'fi-sr-triangle-warning', danger: 'fi-sr-triangle-warning',
+    stop: 'fi-sr-cross-circle', success: 'fi-sr-check-circle', check: 'fi-sr-check-circle', done: 'fi-sr-check-circle',
+    fail: 'fi-sr-cross-circle', wrong: 'fi-sr-cross-circle', info: 'fi-sr-life-ring', help: 'fi-sr-life-ring',
 
     // Concepts
-    idea: Lightbulb, tip: Lightbulb, innovation: Lightbulb, creative: Lightbulb,
-    time: Clock, date: Calendar, deadline: Clock, schedule: Calendar,
-    goal: Target, aim: Target, focus: Target,
-    security: Shield, lock: Lock, secure: Shield, safe: Shield,
-    tech: Cpu, code: Code, web: Globe, internet: Globe, cloud: Cloud,
-    love: Heart, like: Heart, favorite: Star, star: Star,
-    home: Home, house: Home, location: MapPin, place: MapPin,
-    image: Image, photo: Camera, video: Video, media: Play,
-    music: Music, sound: Volume2, audio: Speaker,
+    idea: 'fi-sr-bulb', tip: 'fi-sr-bulb', innovation: 'fi-sr-bulb', creative: 'fi-sr-bulb',
+    time: 'fi-sr-clock', date: 'fi-sr-calendar', deadline: 'fi-sr-clock', schedule: 'fi-sr-calendar',
+    goal: 'fi-sr-bullseye', aim: 'fi-sr-bullseye', focus: 'fi-sr-bullseye',
+    security: 'fi-sr-shield', lock: 'fi-sr-lock', secure: 'fi-sr-shield', safe: 'fi-sr-shield',
+    tech: 'fi-sr-microchip', code: 'fi-sr-code-simple', web: 'fi-sr-globe', internet: 'fi-sr-globe', cloud: 'fi-sr-cloud',
+    love: 'fi-sr-heart', like: 'fi-sr-heart', favorite: 'fi-sr-star', star: 'fi-sr-star',
+    home: 'fi-sr-home', house: 'fi-sr-home', location: 'fi-sr-marker', place: 'fi-sr-marker',
+    image: 'fi-sr-picture', photo: 'fi-sr-camera', video: 'fi-sr-video-camera', media: 'fi-sr-play',
+    music: 'fi-sr-music', sound: 'fi-sr-volume', audio: 'fi-sr-megaphone',
 
     // Tools
-    tool: Wrench, settings: Settings, gear: Settings, config: Settings,
-    search: Search, find: Search, zoom: Search,
-    link: Link, url: Link, connect: Link,
+    tool: 'fi-sr-settings-sliders', settings: 'fi-sr-settings', gear: 'fi-sr-settings', config: 'fi-sr-settings',
+    search: 'fi-sr-search', find: 'fi-sr-search', zoom: 'fi-sr-search',
+    link: 'fi-sr-link', url: 'fi-sr-link', connect: 'fi-sr-link',
 
     // Brands
-    twitter: Twitter, x: Twitter, linkedin: Linkedin, facebook: Facebook, instagram: Instagram, youtube: Youtube,
+    twitter: 'fi-brands-twitter', x: 'fi-brands-twitter', linkedin: 'fi-brands-linkedin', facebook: 'fi-brands-facebook', instagram: 'fi-brands-instagram', youtube: 'fi-brands-youtube',
 
     // Misc
-    gift: Gift, reward: Award, winner: Award, trophy: Award,
-    coffee: Coffee, break: Coffee, food: Coffee,
-    travel: PlaneIcon, flight: PlaneIcon,
-    list: ListIcon, menu: MenuIcon
+    gift: 'fi-sr-gift', reward: 'fi-sr-badge', winner: 'fi-sr-badge', trophy: 'fi-sr-badge',
+    coffee: 'fi-sr-mug-hot', break: 'fi-sr-mug-hot', food: 'fi-sr-mug-hot',
+    travel: 'fi-sr-paper-plane', flight: 'fi-sr-paper-plane',
+    list: 'fi-sr-list', menu: 'fi-sr-menu-burger'
 };
 
-// Fallback icon
-const DefaultIcon = SparklesIcon;
+const DefaultIcon = 'fi-sr-magic-wand';
 
-import { Plane as PlaneIcon, List as ListIcon, Menu as MenuIcon, Sparkles as SparklesIcon } from 'lucide-react';
-
-// Common visual cue keywords mapping
-export function getIconForCue(cue: string): React.ElementType {
+export function getIconForCue(cue: string): string {
     if (!cue) return DefaultIcon;
 
     const lowerCue = cue.toLowerCase();
 
-    // Check for direct matches or includes
-    for (const [key, Icon] of Object.entries(ICON_MAP)) {
+    for (const [key, iconClass] of Object.entries(ICON_MAP)) {
         if (lowerCue.includes(key)) {
-            return Icon;
+            return iconClass;
         }
     }
 
@@ -81,6 +63,6 @@ export function getIconForCue(cue: string): React.ElementType {
 }
 
 export function SuggestionIcon({ cue, className }: { cue: string, className?: string }) {
-    const Icon = getIconForCue(cue);
-    return <Icon className={className} />;
+    const iconClass = getIconForCue(cue);
+    return <i className={`fi ${iconClass} flex items-center justify-center ${className || ''}`}></i>;
 }

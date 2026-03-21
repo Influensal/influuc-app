@@ -2,28 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { usePosts, useAuth } from '@/contexts';
-import {
-    Twitter,
-    Linkedin,
-    CheckCircle2,
-    AlertCircle,
-    Loader2,
-    LogOut,
-    User,
-    Building2,
-    Settings as SettingsIcon,
-    ChevronRight,
-    Globe,
-    CreditCard,
-    Zap,
-    Layout,
-    Save,
-    Link as LinkIcon,
-    Type,
-    Upload,
-    X,
-    Plus
-} from 'lucide-react';
+
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@/utils/supabase/client';
@@ -57,13 +36,13 @@ function ContextItem({
                             }}
                             className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-2 ${activeTab === tab ? 'bg-[var(--card)] shadow-sm text-[var(--foreground)]' : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'}`}
                         >
-                            {tab === 'url' ? <Globe className="w-3 h-3" /> : tab === 'text' ? <Type className="w-3 h-3" /> : <Upload className="w-3 h-3" />}
+                            {tab === 'url' ? <i className={`fi fi-sr-globe flex items-center justify-center ${"w-3 h-3"}`}  ></i> : tab === 'text' ? <i className={`fi fi-sr-font flex items-center justify-center ${"w-3 h-3"}`}  ></i> : <i className={`fi fi-sr-upload flex items-center justify-center ${"w-3 h-3"}`}  ></i>}
                             {tab === 'url' ? 'Website' : tab === 'text' ? 'Text' : 'File'}
                         </button>
                     ))}
                 </div>
                 <button onClick={onRemove} className="text-[var(--foreground-muted)] hover:text-red-500 transition-colors p-1">
-                    <X className="w-4 h-4" />
+                    <i className={`fi fi-sr-cross-small flex items-center justify-center ${"w-4 h-4"}`}  ></i>
                 </button>
             </div>
 
@@ -78,7 +57,7 @@ function ContextItem({
 
                 {activeTab === 'url' && (
                     <div className="relative">
-                        <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--foreground-muted)]" />
+                        <i className={`fi fi-sr-link-alt flex items-center justify-center ${"absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--foreground-muted)]"}`}  ></i>
                         <input
                             type="text"
                             value={item.value}
@@ -101,7 +80,7 @@ function ContextItem({
                 {activeTab === 'file' && (
                     <div className="relative border-2 border-dashed border-[var(--border)] rounded-xl p-6 text-center hover:bg-[var(--background-secondary)] transition-colors cursor-pointer group/file">
                         <div className="w-8 h-8 bg-[var(--background)] rounded-full flex items-center justify-center mx-auto mb-2 text-[var(--foreground-muted)]">
-                            <Upload className="w-4 h-4" />
+                            <i className={`fi fi-sr-upload flex items-center justify-center ${"w-4 h-4"}`}  ></i>
                         </div>
                         <p className="text-xs text-[var(--foreground-muted)]">Click to upload PDF/TXT</p>
                         <input
@@ -273,16 +252,16 @@ export default function SettingsPage() {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
-                <Loader2 className="w-8 h-8 animate-spin text-[var(--primary)]" />
+                <i className={`fi fi-sr-spinner flex items-center justify-center ${"w-8 h-8 animate-spin text-[var(--primary)]"}`}  ></i>
             </div>
         );
     }
 
     const tabs = [
-        { id: 'general', label: 'General', icon: User },
-        { id: 'context', label: 'Context', icon: Building2 },
-        { id: 'integrations', label: 'Integrations', icon: Globe },
-        { id: 'billing', label: 'Billing', icon: CreditCard },
+        { id: 'general', label: 'General', icon: 'fi-sr-user' },
+        { id: 'context', label: 'Context', icon: 'fi-sr-building' },
+        { id: 'integrations', label: 'Integrations', icon: 'fi-sr-globe' },
+        { id: 'billing', label: 'Billing', icon: 'fi-sr-credit-card' },
     ];
 
     return (
@@ -298,7 +277,7 @@ export default function SettingsPage() {
                     disabled={isSaving}
                     className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] transition-all font-semibold shadow-lg shadow-[var(--primary)]/20 disabled:opacity-70 disabled:cursor-not-allowed"
                 >
-                    {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+                    {isSaving ? <i className={`fi fi-sr-spinner flex items-center justify-center ${"w-5 h-5 animate-spin"}`}  ></i> : <i className={`fi fi-sr-disk flex items-center justify-center ${"w-5 h-5"}`}  ></i>}
                     Save Changes
                 </button>
             </div>
@@ -312,7 +291,7 @@ export default function SettingsPage() {
                         exit={{ opacity: 0, y: -10 }}
                         className="p-4 rounded-xl bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 flex items-center gap-3 font-medium"
                     >
-                        <CheckCircle2 className="w-5 h-5" />
+                        <i className={`fi fi-sr-check flex items-center justify-center ${"w-5 h-5"}`} Circle2  ></i>
                         {successMessage}
                     </motion.div>
                 )}
@@ -323,7 +302,7 @@ export default function SettingsPage() {
                         exit={{ opacity: 0, y: -10 }}
                         className="p-4 rounded-xl bg-red-500/10 text-red-600 border border-red-500/20 flex items-center gap-3 font-medium"
                     >
-                        <AlertCircle className="w-5 h-5" />
+                        <i className={`fi fi-sr-info flex items-center justify-center ${"w-5 h-5"}`}  ></i>
                         {error}
                     </motion.div>
                 )}
@@ -346,7 +325,7 @@ export default function SettingsPage() {
                                         : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--card-hover)]'}
                                 `}
                             >
-                                <Icon className={`w-5 h-5 ${isActive ? 'text-[var(--primary)]' : ''}`} />
+                                <i className={`fi ${Icon} flex items-center justify-center w-5 h-5 ${isActive ? 'text-[var(--primary)]' : ''}`}></i>
                                 {tab.label}
                             </button>
                         );
@@ -361,7 +340,7 @@ export default function SettingsPage() {
                         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
                             <section className="card p-6 border border-[var(--border)] bg-[var(--card)] rounded-2xl space-y-6">
                                 <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                                    <User className="w-5 h-5 text-[var(--primary)]" />
+                                    <i className={`fi fi-sr-user flex items-center justify-center ${"w-5 h-5 text-[var(--primary)]"}`}  ></i>
                                     Profile Information
                                 </h2>
                                 <div className="grid gap-6 md:grid-cols-2">
@@ -390,7 +369,7 @@ export default function SettingsPage() {
 
                             <section className="card p-6 border border-[var(--border)] bg-[var(--card)] rounded-2xl space-y-6">
                                 <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                                    <Building2 className="w-5 h-5 text-indigo-500" />
+                                    <i className={`fi fi-sr-building flex items-center justify-center ${"w-5 h-5 text-indigo-500"}`}  ></i>
                                     Company Basics
                                 </h2>
                                 <div className="grid gap-6 md:grid-cols-2">
@@ -442,7 +421,7 @@ export default function SettingsPage() {
                                     onClick={handleSignOut}
                                     className="flex items-center gap-2 text-red-500 hover:text-red-600 font-medium transition-colors px-4 py-2 rounded-lg hover:bg-red-500/5 ml-auto"
                                 >
-                                    <LogOut className="w-5 h-5" />
+                                    <i className={`fi fi-sr-sign-out-alt flex items-center justify-center ${"w-5 h-5"}`}  ></i>
                                     Sign Out of Influuc
                                 </button>
                             </section>
@@ -496,7 +475,7 @@ export default function SettingsPage() {
                                     onClick={() => addContextItem('personalContext')}
                                     className="flex items-center gap-2 text-sm font-medium text-[var(--primary)] hover:text-[var(--primary-hover)] transition-colors px-2 py-1"
                                 >
-                                    <Plus className="w-4 h-4" /> Add personal context
+                                    <i className={`fi fi-sr-plus-small flex items-center justify-center ${"w-4 h-4"}`}  ></i> Add personal context
                                 </button>
                             </section>
 
@@ -524,7 +503,7 @@ export default function SettingsPage() {
                                     onClick={() => addContextItem('productContext')}
                                     className="flex items-center gap-2 text-sm font-medium text-[var(--primary)] hover:text-[var(--primary-hover)] transition-colors px-2 py-1"
                                 >
-                                    <Plus className="w-4 h-4" /> Add product context
+                                    <i className={`fi fi-sr-plus-small flex items-center justify-center ${"w-4 h-4"}`}  ></i> Add product context
                                 </button>
                             </section>
                         </motion.div>
@@ -539,7 +518,7 @@ export default function SettingsPage() {
                             <div className="relative p-6 rounded-2xl border border-[var(--border)] bg-[var(--card)]/50 flex items-center justify-between gap-6">
                                 <div className="flex items-center gap-4">
                                     <div className="p-3 bg-black text-white dark:bg-white dark:text-black rounded-xl opacity-80">
-                                        <Twitter className="w-6 h-6" />
+                                        <i className={`fi fi-brands-twitter flex items-center justify-center ${"w-6 h-6"}`}  ></i>
                                     </div>
                                     <div>
                                         <h4 className="font-bold text-lg">X (Twitter)</h4>
@@ -562,7 +541,7 @@ export default function SettingsPage() {
                             `}>
                                 <div className="flex items-center gap-4">
                                     <div className="p-3 bg-[#0A66C2] text-white rounded-xl">
-                                        <Linkedin className="w-6 h-6" />
+                                        <i className={`fi fi-brands-linkedin flex items-center justify-center ${"w-6 h-6"}`}  ></i>
                                     </div>
                                     <div>
                                         <h4 className="font-bold text-lg">LinkedIn</h4>

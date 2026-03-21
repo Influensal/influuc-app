@@ -3,21 +3,8 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-    Archive,
-    Search,
-    Calendar,
-    ArrowUpDown,
-    Twitter,
-    Linkedin,
-    ChevronDown,
-    Eye,
-    CheckCircle,
-    Clock,
-    XCircle,
-    Copy,
-    Layout
-} from 'lucide-react';
+
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 
 interface Post {
@@ -37,6 +24,7 @@ type SortOption = 'newest' | 'oldest' | 'status';
 type StatusFilter = 'all' | 'posted' | 'scheduled' | 'archived' | 'skipped';
 
 export default function LibraryPage() {
+    const router = useRouter();
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedPlatform, setSelectedPlatform] = useState<'all' | 'x' | 'linkedin'>('all');
@@ -160,8 +148,8 @@ export default function LibraryPage() {
 
     const getPlatformIcon = (platform: 'x' | 'linkedin') => {
         return platform === 'x'
-            ? <Twitter className="w-4 h-4" />
-            : <Linkedin className="w-4 h-4" />;
+            ? <i className={`fi fi-brands-twitter flex items-center justify-center ${"w-4 h-4"}`}  ></i>
+            : <i className={`fi fi-brands-linkedin flex items-center justify-center ${"w-4 h-4"}`}  ></i>;
     };
 
     // Stats
@@ -185,7 +173,7 @@ export default function LibraryPage() {
             {/* Header */}
             <div className="mb-8">
                 <h1 className="text-2xl font-bold flex items-center gap-3">
-                    <Archive className="w-7 h-7" />
+                    <i className={`fi fi-sr-box flex items-center justify-center ${"w-7 h-7"}`}  ></i>
                     Content Library
                 </h1>
                 <p className="text-gray-500 mt-1">
@@ -198,7 +186,7 @@ export default function LibraryPage() {
                 <div className="flex flex-col md:flex-row gap-4">
                     {/* Search */}
                     <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <i className={`fi fi-sr-search flex items-center justify-center ${"absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"}`}  ></i>
                         <input
                             type="text"
                             placeholder="Search posts or topics..."
@@ -226,7 +214,7 @@ export default function LibraryPage() {
                                 : 'bg-[var(--background-secondary)] text-[var(--foreground-muted)] hover:bg-[var(--background-secondary)]/80'
                                 }`}
                         >
-                            <Linkedin className="w-4 h-4" />
+                            <i className={`fi fi-brands-linkedin flex items-center justify-center ${"w-4 h-4"}`}  ></i>
                             LinkedIn
                         </button>
                     </div>
@@ -243,7 +231,7 @@ export default function LibraryPage() {
                             <option value="scheduled">Scheduled</option>
                             <option value="archived">Archived</option>
                         </select>
-                        <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                        <i className={`fi fi-sr-angle-down flex items-center justify-center ${"absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"}`}  ></i>
                     </div>
                 </div>
             </div>
@@ -257,7 +245,7 @@ export default function LibraryPage() {
                             animate={{ opacity: 1 }}
                             className="text-center py-12 text-gray-400"
                         >
-                            <Archive className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                            <i className={`fi fi-sr-box flex items-center justify-center ${"w-12 h-12 mx-auto mb-4 opacity-50"}`}  ></i>
                             <p>No posts found matching your filters</p>
                         </motion.div>
                     ) : (
@@ -285,7 +273,13 @@ export default function LibraryPage() {
                                 >
                                     <div
                                         className="p-4 cursor-pointer"
-                                        onClick={() => setExpandedPostId(expandedPostId === post.id ? null : post.id)}
+                                        onClick={() => {
+                                            if (isCarousel) {
+                                                router.push(`/dashboard/carousels/${post.id}`);
+                                            } else {
+                                                setExpandedPostId(expandedPostId === post.id ? null : post.id);
+                                            }
+                                        }}
                                     >
                                         <div className="flex items-start gap-4">
                                             {/* Platform Icon */}
@@ -293,7 +287,7 @@ export default function LibraryPage() {
                                                 ? 'bg-[var(--foreground)] text-[var(--background)]'
                                                 : 'bg-[#0077b5] text-white'
                                                 }`}>
-                                                {isCarousel ? <Layout className="w-4 h-4" /> : getPlatformIcon(post.platform)}
+                                                {isCarousel ? <i className={`fi fi-sr-grid flex items-center justify-center ${"w-4 h-4"}`}  ></i> : getPlatformIcon(post.platform)}
                                             </div>
 
                                             {/* Content */}
@@ -322,7 +316,7 @@ export default function LibraryPage() {
 
                                             {/* Expand Icon */}
                                             <button className="p-2 text-gray-400 hover:text-black transition-colors">
-                                                {expandedPostId === post.id ? <ChevronDown className="w-4 h-4 rotate-180 transition-transform" /> : <ChevronDown className="w-4 h-4 transition-transform" />}
+                                                {expandedPostId === post.id ? <i className={`fi fi-sr-angle-down flex items-center justify-center ${"w-4 h-4 rotate-180 transition-transform"}`}  ></i> : <i className={`fi fi-sr-angle-down flex items-center justify-center ${"w-4 h-4 transition-transform"}`}  ></i>}
                                             </button>
                                         </div>
                                     </div>

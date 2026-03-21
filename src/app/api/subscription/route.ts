@@ -30,29 +30,39 @@ export async function GET(req: Request) {
 
         // 4. Determine Tier & Status
         let tier = 'starter';
-        let status = 'active'; // Default for free/starter
+        let status = 'active';
         let currentPeriodEnd = null;
         let stripeCustomerId = null;
+        let stripeSubscriptionId = null;
+        let cancelAtPeriodEnd = false;
+        let plan = 'starter';
+        let cancelOfferClaimed = false;
 
         if (subscription) {
             status = subscription.status;
             currentPeriodEnd = subscription.current_period_end;
             stripeCustomerId = subscription.stripe_customer_id;
-
-            // Use plan value directly (canonical: starter, creator, authority)
-            tier = subscription.plan || 'starter';
+            stripeSubscriptionId = subscription.stripe_subscription_id;
+            cancelAtPeriodEnd = subscription.cancel_at_period_end || false;
+            cancelOfferClaimed = subscription.cancel_offer_claimed || false;
+            plan = subscription.plan || 'starter';
+            tier = plan;
         } else if (profile?.subscription_tier) {
-            // Fallback to profile tier if no subscription record (e.g. manual grant)
             tier = profile.subscription_tier;
+            plan = tier;
         }
 
         // Return structured data for UI
         return NextResponse.json({
             subscription: {
-                tier: tier,
-                status: status,
-                currentPeriodEnd: currentPeriodEnd,
-                stripeCustomerId: stripeCustomerId
+                tier,
+                plan,
+                status,
+                currentPeriodEnd,
+                stripeCustomerId,
+                stripeSubscriptionId,
+                cancelAtPeriodEnd,
+                cancelOfferClaimed,
             }
         });
 

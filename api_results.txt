@@ -1,0 +1,7 @@
+7 | AI,Open Source | OpenCode – Open source AI coding agent
+7 | SaaS,Compliance | Delve – Fake Compliance as a Service
+7 | SaaS,Web3 | Molly Guard
+5 | AI,Software Development | Parallel Perl – Autoparallelizing interpreter with JIT
+5 | SaaS,Finance | VisiCalc Reconstructed
+5 | AI,Web3 | Attention Residuals
+4 | Web3,Entertainment | Cryptography in Home Entertainment (2004)

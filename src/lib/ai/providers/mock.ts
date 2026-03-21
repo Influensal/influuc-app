@@ -17,9 +17,12 @@ export class MockProvider implements AIProviderInterface {
         await new Promise(resolve => setTimeout(resolve, 500 + Math.random() * 1000));
 
         const userMessage = options.messages.find(m => m.role === 'user')?.content || '';
+        const promptString = typeof userMessage === 'string'
+            ? userMessage
+            : userMessage.find(p => p.type === 'text')?.text || '';
 
         // Generate contextual mock responses based on the prompt
-        const content = this.generateMockResponse(userMessage);
+        const content = this.generateMockResponse(promptString);
 
         return {
             content,
@@ -89,6 +92,15 @@ What's your reset ritual when you hit a wall?`;
         }
 
 
+
+        // Color extraction mock
+        if (lowerPrompt.includes('brand palette') || lowerPrompt.includes('colors') || lowerPrompt.includes('extract')) {
+            return JSON.stringify({
+                primary: '#10B981',
+                background: '#09090B',
+                accent: '#F59E0B'
+            });
+        }
 
         // Default mock response
         return "This is mock-generated content. Connect an AI provider (OpenAI, Anthropic, or Gemini) for real content generation.";

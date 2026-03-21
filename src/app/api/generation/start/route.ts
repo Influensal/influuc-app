@@ -119,26 +119,50 @@ export async function POST(request: NextRequest) {
         const weekNumber = await getUserWeekNumber(user.id);
 
         if (weekNumber > 1) {
-            // Check subscriptions table first
+            // Check subscriptions table
             const { data: subscription } = await supabase
                 .from('subscriptions')
-                .select('status')
+                .select('status, current_period_end, cancel_at_period_end')
                 .eq('account_id', user.id)
                 .single();
 
-            const hasActiveSubscription = subscription && ['active', 'trialing'].includes(subscription.status);
+            let hasAccess = false;
+
+            if (subscription) {
+                // Active or trialing = full access
+                if (['active', 'trialing'].includes(subscription.status)) {
+                    hasAccess = true;
+                }
+                // Canceled but period hasn't ended yet = still has access
+                else if (subscription.status === 'canceled' && subscription.current_period_end) {
+                    const periodEnd = new Date(subscription.current_period_end);
+                    if (periodEnd > new Date()) {
+                        hasAccess = true;
+                    }
+                }
+                // Cancel pending at period end = still active
+                else if (subscription.cancel_at_period_end && subscription.current_period_end) {
+                    const periodEnd = new Date(subscription.current_period_end);
+                    if (periodEnd > new Date()) {
+                        hasAccess = true;
+                    }
+                }
+            }
 
             // Fallback: check founder_profiles.subscription_tier
-            if (!hasActiveSubscription) {
+            if (!hasAccess) {
                 const profileTier = (profile as any).subscription_tier;
                 const hasPaidTier = profileTier && profileTier !== 'starter' && profileTier !== 'free';
-
-                if (!hasPaidTier) {
-                    return NextResponse.json({
-                        error: 'Active subscription required for Week 2+',
-                        weekNumber
-                    }, { status: 402 });
+                if (hasPaidTier) {
+                    hasAccess = true;
                 }
+            }
+
+            if (!hasAccess) {
+                return NextResponse.json({
+                    error: 'Active subscription required for Week 2+',
+                    weekNumber
+                }, { status: 402 });
             }
         }
 

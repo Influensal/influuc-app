@@ -2,34 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import {
-    Search,
-    Plus,
-    Bell,
-    Layout,
-    CheckCircle,
-    FileText,
-    Clock,
-    ChevronRight,
-    MoreHorizontal,
-    Play,
-    Pause,
-    Sparkles,
-    Calendar as CalendarIcon,
-    RefreshCw,
-    Target,
-    AlertTriangle,
-    Copy,
-    Flame,
-    PenTool,
-    Lightbulb,
-    Loader2,
-    Calendar,
-    ArrowRight,
-    TrendingUp,
-    Zap,
-} from 'lucide-react';
+
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { usePosts } from '@/contexts';
 import { format, addDays, isAfter, isBefore, startOfDay, endOfDay, nextMonday, differenceInDays, startOfWeek, endOfWeek, isWithinInterval, isToday } from 'date-fns';
 import { NotificationBanner } from '@/components/dashboard/NotificationBanner';
@@ -49,6 +24,7 @@ export default function DashboardPage() {
         show: { opacity: 1, y: 0 },
     };
 
+    const router = useRouter();
     const { getPostsForToday, getMetricCounts, loading, profile, refreshPosts, posts } = usePosts();
 
     // State for modals and actions
@@ -112,7 +88,7 @@ export default function DashboardPage() {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
-                <Loader2 className="w-8 h-8 animate-spin text-[var(--primary)]" />
+                <i className={`fi fi-sr-spinner flex items-center justify-center ${"w-8 h-8 animate-spin text-[var(--primary)]"}`}  ></i>
             </div>
         );
     }
@@ -194,6 +170,14 @@ export default function DashboardPage() {
     // 3. Strategy / Goal Data
     const currentGoal = profile?.contentGoal || "General consistency";
 
+    // Handle post click - Direct navigation for carousels
+    const handlePostClick = (post: any) => {
+        if (post.format === 'carousel' || post.type === 'Carousel') {
+            router.push(`/dashboard/carousels/${post.id}`);
+        } else {
+            setPreviewPost(post);
+        }
+    };
 
     const handlePublish = async () => {
         if (!previewPost) return;
@@ -255,7 +239,7 @@ export default function DashboardPage() {
                         disabled={isRefreshing}
                         className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-[var(--foreground-secondary)] bg-[var(--background-secondary)]/50 hover:bg-[var(--background-secondary)] hover:text-[var(--foreground)] rounded-lg transition-all"
                     >
-                        <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                        <i className={`fi fi-sr-rotate-right flex items-center justify-center ${""}`} className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} ></i>
                         Refresh
                     </button>
                 </div>
@@ -275,14 +259,14 @@ export default function DashboardPage() {
                     {/* Card 1: Strategy Pulse (Focus) */}
                     <motion.div variants={itemVariants} className="card p-6 flex flex-col justify-between min-h-[180px] relative overflow-hidden group">
                         <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
-                            <Target className="w-32 h-32 text-[var(--primary)]" />
+                            <i className={`fi fi-sr-bullseye flex items-center justify-center ${"w-32 h-32 text-[var(--primary)]"}`}  ></i>
                         </div>
 
                         <div className="z-10 h-full flex flex-col justify-between">
                             <div>
                                 <div className="flex items-center gap-2 mb-3">
                                     <div className="p-2 rounded-xl bg-[var(--primary)]/10 text-[var(--primary)]">
-                                        <Zap className="w-5 h-5" />
+                                        <i className={`fi fi-sr-bolt flex items-center justify-center ${"w-5 h-5"}`}  ></i>
                                     </div>
                                     <span className="text-xs font-bold uppercase tracking-wider text-[var(--foreground-muted)]">Strategy Pulse</span>
                                 </div>
@@ -312,14 +296,14 @@ export default function DashboardPage() {
                     {/* Card 2: Consistency Streak (Gamification) */}
                     <motion.div variants={itemVariants} className="card p-6 flex flex-col justify-between min-h-[180px] relative overflow-hidden group">
                         <div className="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
-                            <Flame className="w-32 h-32 text-orange-500" />
+                            <i className={`fi fi-sr-flame flex items-center justify-center ${"w-32 h-32 text-orange-500"}`}  ></i>
                         </div>
 
                         <div className="z-10 h-full flex flex-col justify-between">
                             <div>
                                 <div className="flex items-center gap-2 mb-3">
                                     <div className="p-2 rounded-xl bg-orange-500/10 text-orange-600 dark:text-orange-400">
-                                        <Flame className="w-5 h-5" />
+                                        <i className={`fi fi-sr-flame flex items-center justify-center ${"w-5 h-5"}`}  ></i>
                                     </div>
                                     <span className="text-xs font-bold uppercase tracking-wider text-[var(--foreground-muted)]">Posting Streak</span>
                                 </div>
@@ -356,14 +340,14 @@ export default function DashboardPage() {
                     {/* Card 3: Content Runway (Peace of Mind) */}
                     <motion.div variants={itemVariants} className="card p-6 flex flex-col justify-between min-h-[180px] relative overflow-hidden group">
                         <div className="absolute -bottom-4 -right-4 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
-                            <CalendarIcon className="w-32 h-32 text-[var(--foreground)]" />
+                            <i className={`fi fi-sr-calendar flex items-center justify-center ${"w-32 h-32 text-[var(--foreground)]"}`}  ></i>
                         </div>
 
                         <div className="z-10 h-full flex flex-col justify-between">
                             <div>
                                 <div className="flex items-center gap-2 mb-3">
                                     <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                                        <TrendingUp className="w-5 h-5" />
+                                        <i className={`fi fi-sr-arrow-trend-up flex items-center justify-center ${"w-5 h-5"}`}  ></i>
                                     </div>
                                     <span className="text-xs font-bold uppercase tracking-wider text-[var(--foreground-muted)]">Content Runway</span>
                                 </div>
@@ -422,7 +406,7 @@ export default function DashboardPage() {
                                     todaysPosts.map((post) => (
                                         <tr
                                             key={post.id}
-                                            onClick={() => setPreviewPost(post)}
+                                            onClick={() => handlePostClick(post)}
                                             className="group hover:bg-[var(--background-secondary)]/30 transition-colors cursor-pointer"
                                         >
                                             <td className="py-4 px-6 text-sm font-medium text-[var(--foreground)]">{format(post.scheduledTime, 'h:mm a')}</td>
@@ -487,7 +471,7 @@ export default function DashboardPage() {
                             href="/dashboard/ideas"
                             className="flex items-center gap-2 text-xs font-bold text-[var(--foreground-muted)] hover:text-[var(--primary)] transition-colors py-2"
                         >
-                            <Plus className="w-3 h-3" />
+                            <i className={`fi fi-sr-plus-small flex items-center justify-center ${"w-3 h-3"}`}  ></i>
                             Schedule Another Post
                         </Link>
                     </div>
@@ -525,7 +509,7 @@ export default function DashboardPage() {
                                     upcomingPosts.map((post) => (
                                         <tr
                                             key={post.id}
-                                            onClick={() => setPreviewPost(post)} // Allow verify for upcoming too? Why not.
+                                            onClick={() => handlePostClick(post)} // Allow verify for upcoming too? Why not.
                                             className="group hover:bg-[var(--background-secondary)]/30 transition-colors cursor-pointer"
                                         >
                                             <td className="py-4 px-6 text-sm font-medium text-[var(--foreground)]">{format(post.scheduledTime, 'EEE, MMM d')}</td>
@@ -553,7 +537,7 @@ export default function DashboardPage() {
                                             </td>
                                             <td className="py-4 px-6 text-right">
                                                 <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-bold bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
-                                                    <Clock className="w-3 h-3" />
+                                                    <i className={`fi fi-sr-clock flex items-center justify-center ${"w-3 h-3"}`}  ></i>
                                                     Scheduled
                                                 </span>
                                             </td>
@@ -602,13 +586,13 @@ export default function DashboardPage() {
                                     className="absolute top-2 right-2 p-1.5 rounded-lg bg-[var(--background)]/50 hover:bg-[var(--background)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] opacity-0 group-hover:opacity-100 transition-all border border-[var(--border)]"
                                     title="Copy content"
                                 >
-                                    <Copy className="w-3.5 h-3.5" />
+                                    <i className={`fi fi-sr-copy flex items-center justify-center ${"w-3.5 h-3.5"}`}  ></i>
                                 </button>
                             </div>
 
                             {previewPost.platform === 'X' && (
                                 <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl flex gap-3 text-sm text-yellow-700 dark:text-yellow-400">
-                                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                                    <i className={`fi fi-sr-triangle-warning flex items-center justify-center ${"w-4 h-4 shrink-0 mt-0.5"}`}  ></i>
                                     <div>
                                         <p className="font-bold mb-0.5">Auto-posting Unavailable</p>
                                         <p className="opacity-90 text-xs">
@@ -635,7 +619,7 @@ export default function DashboardPage() {
                                     }}
                                     className="px-6 py-2 rounded-xl font-medium text-white bg-black hover:bg-black/80 dark:bg-white dark:text-black hover:dark:bg-white/90 transition-colors flex items-center gap-2"
                                 >
-                                    <Copy className="w-4 h-4" />
+                                    <i className={`fi fi-sr-copy flex items-center justify-center ${"w-4 h-4"}`}  ></i>
                                     Copy & Close
                                 </button>
                             ) : (
@@ -646,12 +630,12 @@ export default function DashboardPage() {
                                 >
                                     {isPublishing ? (
                                         <>
-                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            <i className={`fi fi-sr-spinner flex items-center justify-center ${"w-4 h-4 animate-spin"}`}  ></i>
                                             Publishing...
                                         </>
                                     ) : (
                                         <>
-                                            <Sparkles className="w-4 h-4" />
+                                            <i className={`fi fi-sr-magic-wand flex items-center justify-center ${"w-4 h-4"}`}  ></i>
                                             Confirm & Post
                                         </>
                                     )}

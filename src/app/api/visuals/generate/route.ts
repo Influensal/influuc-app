@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
+import { getFacelessStyle, getFaceStyle, compileVisualPrompt } from '@/lib/ai/visual-styles';
 import { fal } from '@fal-ai/client';
 
 export const runtime = 'nodejs'; // Fal client uses node events
@@ -7,7 +8,7 @@ export const runtime = 'nodejs'; // Fal client uses node events
 export async function POST(req: Request) {
     try {
         const body = await req.json();
-        const { prompt, mode = 'faceless', aspectRatio = '1:1', imageBase64 } = body;
+        const { prompt, mode = 'faceless', aspectRatio = '16:9', imageBase64 } = body;
 
         if (!prompt) {
             return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
@@ -44,8 +45,14 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Upgrade to Authority to use Digital Twin Face Clones.' }, { status: 403 });
         }
 
+        const brandColors = profile.brand_colors || {
+            primary: '#10B981',
+            background: '#09090B',
+            accent: '#F59E0B'
+        };
+
         // Nano Banana / Gemini models accept standard aspect ratio formats (e.g., '16:9', '1:1')
-        const nanoAspectRatio = aspectRatio || '1:1';
+        const nanoAspectRatio = aspectRatio || '16:9';
 
         let result: any;
 
@@ -64,11 +71,16 @@ export async function POST(req: Request) {
                 return NextResponse.json({ error: 'No Neural Face Map found and no image provided.' }, { status: 400 });
             }
 
+            // Get the user's selected face style or use 'studio' as default
+            const styleId = profile.style_face || 'studio';
+            const style = getFaceStyle(styleId) || getFaceStyle('studio')!;
+            const styledPrompt = compileVisualPrompt(prompt, style, brandColors);
+
             // Call Fal.ai using the Gemini 2.5 Flash Image Edit model
             // Pass the user's reference selfie URL in the image_urls array
             result = await fal.subscribe("fal-ai/gemini-25-flash-image/edit", {
                 input: {
-                    prompt: `generate an image of this exact person. ${prompt}`,
+                    prompt: styledPrompt,
                     aspect_ratio: nanoAspectRatio,
                     image_urls: [referenceUrl], // The uploaded selfie
                     output_format: "png"
@@ -78,24 +90,14 @@ export async function POST(req: Request) {
 
         } else {
             // mode === 'faceless'
-            // Use standard Gemini 2.5 Flash for abstract/scenery/faceless images
-            const stylePrompt = `High-end cinematic technology advertisement still, photorealistic, 8K quality, designed for thought-leadership social media.
-Scene: A vast, modern, architectural workspace — not an office, not sci-fi — timeless and elevated. Polished concrete floor, soft fog in the air, tall shadowed structures fading into darkness.
-Center frame: A single human silhouette (gender-neutral, no facial detail), standing calm and upright. Not working — overseeing. Hands relaxed at their sides.
-Around the human, abstract, luminous forms made of light, geometry, and flowing data representing: ${prompt}
-The human is not interacting directly — no keyboard, no screen — clearly in a supervisory role, embodying judgment and intent rather than execution.
-In the environment: Subtle holographic pathways representing workflows, clean data streams flowing end-to-end, occasional secure locks, checkmarks, and transaction nodes (minimal, symbolic, premium).
-Typography (cinematic title-card style, minimal): Include a very short, punchy main headline and a restrained subline derived from the concept. Optional micro-credit style text.
-Lighting: soft, motivated top light, cool whites and cloud blues, deep shadows, gentle volumetric rays.
-Camera: anamorphic lens look, shallow depth of field, elegant composition, cinematic contrast.
-Color palette: Google-cloud adjacent but restrained — whites, blues, steel, soft cyan highlights.
-Mood: calm inevitability, trust, maturity, post-hype realism.
-Style references: luxury tech ad, future-of-work manifesto, restrained sci-fi realism.
-Negative prompts: busy UI screens, dashboards, bullet points, cartoon robots, glowing eyes, cheap sci-fi tropes, clutter, stock imagery, exaggerated cyberpunk, blur, watermark spam.`;
+            // Get the user's selected faceless style or use 'abstract' as default
+            const styleId = profile.style_faceless || 'abstract';
+            const style = getFacelessStyle(styleId) || getFacelessStyle('abstract')!;
+            const styledPrompt = compileVisualPrompt(prompt, style, brandColors);
 
             result = await fal.subscribe("fal-ai/gemini-25-flash-image", {
                 input: {
-                    prompt: stylePrompt,
+                    prompt: styledPrompt,
                     aspect_ratio: nanoAspectRatio,
                     output_format: "png"
                 },

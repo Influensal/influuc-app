@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Check, Camera, Image as ImageIcon, LayoutTemplate, ArrowRight, Loader2, X, Upload } from 'lucide-react';
+
 
 interface StepVisualForkProps {
     data: any;
@@ -15,17 +15,26 @@ import { CAROUSEL_STYLES } from '@/lib/ai/carousel-styles';
 
 // --- Mini Slide Preview Component ---
 const facelessStyles = [
-    { id: 'abstract', title: 'Abstract' },
-    { id: 'neon', title: 'Neon' },
-    { id: 'minimal', title: 'Minimal' },
-    { id: 'noir', title: 'Noir' },
+    { id: 'abstract', title: 'Abstract', preview: '/previews/abstract.png' },
+    { id: 'neon', title: 'Neon', preview: '/previews/neon.png' },
+    { id: 'minimal', title: 'Minimal', preview: '/previews/minimal.png' },
+    { id: 'noir', title: 'Noir', preview: '/previews/noir.png' },
+    { id: 'journal', title: 'Journal', preview: '/previews/journal.png' },
+    { id: 'hypercinematic', title: 'Hypercinematic', preview: '/previews/hypercinematic.png' },
+    { id: 'architectural', title: 'Architectural', preview: '/previews/architectural.png' },
+    { id: 'glassmorphism', title: 'Glassmorphism', preview: '/previews/glassmorphism.png' },
+    { id: 'paper-craft', title: 'Paper-Craft', preview: '/previews/paper-craft.png' },
+    { id: 'dark-terminal', title: 'Dark Terminal', preview: '/previews/dark-terminal.png' },
 ];
 
 const faceStyles = [
-    { id: 'ted', title: 'TED Talk' },
-    { id: 'office', title: 'Office' },
-    { id: 'lifestyle', title: 'Lifestyle' },
-    { id: 'studio', title: 'Studio' },
+    { id: 'photorealistic', title: 'Photorealistic', preview: '/previews/photorealistic.png' },
+    { id: 'authority', title: 'Authority', preview: '/previews/authority.png' },
+    { id: 'viral', title: 'Viral', preview: '/previews/viral.png' },
+    { id: 'candid-cinematic', title: 'Candid Cinematic', preview: '/previews/candid-cinematic.png' },
+    { id: 'masterclass', title: 'Masterclass', preview: '/previews/masterclass.png' },
+    { id: 'pov-lifestyle', title: 'POV Lifestyle', preview: '/previews/pov-lifestyle.png' },
+    { id: 'analog-loft', title: 'Analog Loft', preview: '/previews/analog-loft.png' },
 ];
 
 const MiniSlide = ({ styleId }: { styleId: string }) => {
@@ -67,7 +76,7 @@ const MiniSlide = ({ styleId }: { styleId: string }) => {
         default:
             return (
                 <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-                    <LayoutTemplate className="w-8 h-8 text-gray-400" />
+                    <i className={`fi fi-sr-apps flex items-center justify-center ${"w-8 h-8 text-gray-400"}`}  ></i>
                 </div>
             );
     }
@@ -211,7 +220,7 @@ export default function StepVisualFork({ data, updateData, onComplete }: StepVis
 
             {/* STYLE SELECTION UI */}
             {(currentType === 'faceless' || currentType === 'face' || currentType === 'carousel') && (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
                     {options.map(opt => (
                         <div
                             key={opt.id}
@@ -221,21 +230,27 @@ export default function StepVisualFork({ data, updateData, onComplete }: StepVis
                                 ${data[`style_${currentType}`] === opt.id ? 'border-[var(--primary)] ring-2 ring-[var(--primary)]/20' : 'border-transparent hover:border-[var(--border)]'}
                             `}
                         >
-                            <div className="aspect-square bg-[var(--background-secondary)] flex items-center justify-center text-[var(--foreground-muted)] overflow-hidden">
+                            <div className="aspect-video bg-[var(--background-secondary)] flex items-center justify-center text-[var(--foreground-muted)] overflow-hidden">
                                 {currentType === 'carousel' ? (
                                     <MiniSlide styleId={opt.id} />
+                                ) : (opt as any).preview ? (
+                                    <img src={(opt as any).preview} alt={opt.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                                 ) : (
-                                    <ImageIcon className="w-8 h-8" />
+                                    <i className={`fi fi-sr-picture flex items-center justify-center ${"w-8 h-8"}`}  ></i>
                                 )}
                             </div>
                             <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/80 to-transparent text-white font-medium">
                                 {opt.title}
                             </div>
-                            {data[`style_${currentType}`] === opt.id && (
-                                <div className="absolute top-2 right-2 bg-[var(--primary)] text-white p-1 rounded-full shadow-lg">
-                                    <Check className="w-4 h-4" />
-                                </div>
-                            )}
+                            {(() => {
+                                const isSelected = data[`style_${currentType}`] === opt.id ||
+                                    (opt.id === 'photorealistic' && ['ted', 'office', 'lifestyle', 'studio'].includes(data[`style_${currentType}`]));
+                                return isSelected && (
+                                    <div className="absolute top-2 right-2 bg-[var(--primary)] text-white p-1 rounded-full shadow-lg">
+                                        <i className={`fi fi-sr-check flex items-center justify-center ${"w-4 h-4"}`}  ></i>
+                                    </div>
+                                );
+                            })()}
                         </div>
                     ))}
                 </div>
@@ -254,14 +269,14 @@ export default function StepVisualFork({ data, updateData, onComplete }: StepVis
                                         <img src={url} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
                                     ) : (
                                         <div className="w-full h-full flex items-center justify-center text-[var(--foreground-muted)]">
-                                            <Camera className="w-6 h-6" />
+                                            <i className={`fi fi-sr-camera flex items-center justify-center ${"w-6 h-6"}`}  ></i>
                                         </div>
                                     )}
                                     <button
                                         onClick={() => removePhoto(idx)}
                                         className="absolute top-1 right-1 p-1 bg-black/60 rounded-full hover:bg-black/80 transition-colors"
                                     >
-                                        <X className="w-3 h-3 text-white" />
+                                        <i className={`fi fi-sr-cross-small flex items-center justify-center ${"w-3 h-3 text-white"}`}  ></i>
                                     </button>
                                 </div>
                             ))}
@@ -281,9 +296,9 @@ export default function StepVisualFork({ data, updateData, onComplete }: StepVis
                         />
                         <div className="w-14 h-14 bg-[var(--background)] rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm">
                             {uploading ? (
-                                <Loader2 className="w-7 h-7 text-[var(--primary)] animate-spin" />
+                                <i className={`fi fi-sr-spinner flex items-center justify-center ${"w-7 h-7 text-[var(--primary)] animate-spin"}`}  ></i>
                             ) : (
-                                <Upload className="w-7 h-7 text-[var(--foreground-muted)]" />
+                                <i className={`fi fi-sr-upload flex items-center justify-center ${"w-7 h-7 text-[var(--foreground-muted)]"}`}  ></i>
                             )}
                         </div>
                         <h3 className="text-lg font-bold mb-1">
@@ -299,12 +314,12 @@ export default function StepVisualFork({ data, updateData, onComplete }: StepVis
                                 }`}>
                                 {canProceedFromPhotos ? (
                                     <>
-                                        <Check className="w-4 h-4" />
+                                        <i className={`fi fi-sr-check flex items-center justify-center ${"w-4 h-4"}`}  ></i>
                                         {photoCount} photos uploaded - Ready!
                                     </>
                                 ) : (
                                     <>
-                                        <Camera className="w-4 h-4" />
+                                        <i className={`fi fi-sr-camera flex items-center justify-center ${"w-4 h-4"}`}  ></i>
                                         {photoCount}/3 minimum photos
                                     </>
                                 )}
@@ -326,7 +341,7 @@ export default function StepVisualFork({ data, updateData, onComplete }: StepVis
                 disabled={currentType === 'photos' && !canProceedFromPhotos}
                 className="w-full py-4 mt-8 bg-[var(--primary)] text-white rounded-xl font-bold text-lg hover:bg-[var(--primary-hover)] transition-all flex items-center justify-center gap-2 shadow-lg shadow-[var(--primary)]/20 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-                Continue <ArrowRight className="w-5 h-5" />
+                Continue <i className={`fi fi-sr-angle-right flex items-center justify-center ${"w-5 h-5"}`}  ></i>
             </button>
         </motion.div>
     );

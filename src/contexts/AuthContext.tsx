@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import { Account, FounderProfile } from '@/lib/supabase'; // Keep types from lib
@@ -57,11 +57,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 .order('created_at', { ascending: true });
 
             if (profilesData && profilesData.length > 0) {
+                console.log(`[Auth] found ${profilesData.length} profiles for user ${userId}`);
                 setProfiles(profilesData as FounderProfile[]);
 
                 // Set first profile as active if none selected
                 const savedProfileId = localStorage.getItem('influuc-active-profile');
-                const savedProfile = profilesData.find(p => p.id === savedProfileId);
+                const savedProfile = profilesData.find((p: any) => p.id === savedProfileId);
                 setActiveProfileState(savedProfile || profilesData[0]);
             }
         } catch (error) {
@@ -120,27 +121,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem('influuc-active-profile', profile.id);
     };
 
+    const initInProgressRef = useRef(false);
+
     // Initialize auth state
     useEffect(() => {
+        let isMounted = true;
+        
         const initAuth = async () => {
-            setIsLoading(true);
+            if (initInProgressRef.current) return;
+            initInProgressRef.current = true;
+            
+            if (isMounted) setIsLoading(true);
 
-            // Get initial session
-            const { data: { session } } = await supabase.auth.getSession();
+            // Fail-safe timeout: Force stop loading after 15s if hung
+            const timeoutId = setTimeout(() => {
+                if (isMounted) {
+                    console.warn('initAuth took too long, forcing stop.');
+                    setIsLoading(false);
+                }
+            }, 10000);
 
-            if (session?.user) {
-                setUser({ id: session.user.id, email: session.user.email || '' });
-                await fetchUserData(session.user.id);
+            try {
+                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+                if (sessionError) throw sessionError;
+
+                if (session?.user) {
+                    console.log('[Auth] session found, fetching user data...');
+                    if (isMounted) setUser({ id: session.user.id, email: session.user.email || '' });
+                    await fetchUserData(session.user.id);
+                } else {
+                    console.log('[Auth] no active session.');
+                }
+            } catch (err: any) {
+                console.error('initAuth error:', err);
+            } finally {
+                clearTimeout(timeoutId);
+                if (isMounted) setIsLoading(false);
             }
-
-            setIsLoading(false);
         };
 
         initAuth();
 
         // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            async (event, session) => {
+            async (event: any, session: any) => {
                 if (session?.user) {
                     setUser({ id: session.user.id, email: session.user.email || '' });
                     // Only fetch data if we didn't have a user before (avoid double fetch on initial load)
@@ -157,8 +182,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
         );
 
-        return () => subscription.unsubscribe();
-    }, [supabase, router]); // Added dependencies
+        return () => {
+            isMounted = false;
+            initInProgressRef.current = false; // allow it to run again if remounted
+            subscription.unsubscribe();
+        };
+    }, []); // Only run once on mount now that supabase client is a stable singleton
 
     return (
         <AuthContext.Provider

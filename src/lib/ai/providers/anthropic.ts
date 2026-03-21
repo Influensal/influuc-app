@@ -33,15 +33,56 @@ export class AnthropicProvider implements AIProviderInterface {
         const requestBody: Record<string, unknown> = {
             model: CLAUDE_MODEL,
             max_tokens: options.maxTokens ?? 8192,
-            messages: otherMessages.map(m => ({
-                role: m.role === 'assistant' ? 'assistant' : 'user',
-                content: m.content,
-            })),
+            messages: otherMessages.map(m => {
+                const contentBlocks = typeof m.content === 'string'
+                    ? [{ type: 'text' as const, text: m.content }]
+                    : m.content.map(part => {
+                        if (part.type === 'image') {
+                            const match = part.image?.match(/^data:(image\/\w+);base64,(.+)$/);
+                            if (match) {
+                                return {
+                                    type: 'image' as const,
+                                    source: {
+                                        type: 'base64' as const,
+                                        media_type: match[1],
+                                        data: match[2],
+                                    },
+                                };
+                            }
+                            return {
+                                type: 'image' as const,
+                                source: {
+                                    type: 'base64' as const,
+                                    media_type: 'image/jpeg',
+                                    data: part.image || '',
+                                },
+                            };
+                        }
+                        return { type: 'text' as const, text: part.text || '' };
+                    });
+
+                // Attach cache_control to the LAST block if present
+                if (m.cache_control && contentBlocks.length > 0) {
+                    (contentBlocks[contentBlocks.length - 1] as any).cache_control = m.cache_control;
+                }
+
+                return {
+                    role: m.role === 'assistant' ? 'assistant' : 'user',
+                    content: contentBlocks,
+                };
+            }),
         };
 
         // Add system prompt if present
         if (systemMessage) {
-            requestBody.system = systemMessage;
+            const systemMsgObj = options.messages.find(m => m.role === 'system');
+            if (systemMsgObj?.cache_control) {
+                requestBody.system = [
+                    { type: 'text', text: systemMessage, cache_control: systemMsgObj.cache_control }
+                ];
+            } else {
+                requestBody.system = systemMessage;
+            }
         }
 
         // Add temperature if specified
@@ -66,8 +107,11 @@ export class AnthropicProvider implements AIProviderInterface {
                         'Content-Type': 'application/json',
                         'x-api-key': this.apiKey,
                         'anthropic-version': '2023-06-01',
+                        'anthropic-beta': 'prompt-caching-2024-07-31',
                     },
                     body: JSON.stringify(requestBody),
+                    signal: AbortSignal.timeout(300000), // 5 minute override to prevent Next.js automatic client aborts
+                    cache: 'no-store'
                 });
 
                 if (response.status === 529 || response.status >= 500) {

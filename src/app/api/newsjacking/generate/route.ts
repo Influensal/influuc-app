@@ -31,7 +31,16 @@ Instructions:
 5. Do NOT use emojis unless the user context specifies a very casual tone.
 6. Output raw text only, no JSON formatting.`;
 
-        const userPrompt = `News Article Headline: ${article.title}\nSource: ${article.url}\n\nArticle Content/Summary:\n${article.content}\n\nWrite the newsjacking post now:`;
+        const userPrompt = `News Article Headline: ${article.title}
+Source: ${article.url}
+${article.category ? `Categories: ${article.category.join(', ')}` : ''}
+
+${article.spiky_take ? `Initial AI Angle: "${article.spiky_take}"` : ''}
+
+Article Content/Summary:
+${article.tldr || article.summary || 'No summary available.'}
+
+Write the newsjacking post now based on the news event and the AI angle provided above:`;
 
         const result = await provider.complete({
             messages: [

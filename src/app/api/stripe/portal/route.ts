@@ -13,20 +13,20 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        // Get customer ID from DB
-        const { data: account } = await supabase
-            .from('accounts')
+        // Get customer ID from DB (it's stored in subscriptions table)
+        const { data: sub } = await supabase
+            .from('subscriptions')
             .select('stripe_customer_id')
-            .eq('id', user.id)
+            .eq('account_id', user.id)
             .single();
 
-        if (!account?.stripe_customer_id) {
+        if (!sub?.stripe_customer_id) {
             return NextResponse.json({ error: 'No billing account found' }, { status: 404 });
         }
 
         // Create Portal Session
         const session = await stripe.billingPortal.sessions.create({
-            customer: account.stripe_customer_id,
+            customer: sub.stripe_customer_id,
             return_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/settings?tab=billing`,
         });
 

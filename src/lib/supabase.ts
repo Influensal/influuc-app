@@ -50,6 +50,10 @@ export interface FounderProfile {
     visual_lora_id?: string | null;
     visual_training_status?: string | null;
     avatar_urls?: string[] | null;
+    business_description?: string;
+    context_data?: any;
+    onboarding_status?: 'incomplete' | 'payment_pending' | 'complete';
+    onboarding_step?: number;
     created_at: string;
 }
 

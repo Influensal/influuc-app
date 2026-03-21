@@ -86,18 +86,24 @@ export async function POST(req: NextRequest) {
 
                 if (sub) {
                     const userId = sub.account_id;
-                    console.log(`[Webhook] Subscription Updated. User: ${userId}, Status: ${subscription.status}, Tier: ${tier}`);
+                    const cancelAtPeriodEnd = subscription.cancel_at_period_end || false;
+                    console.log(`[Webhook] Subscription Updated. User: ${userId}, Status: ${subscription.status}, Tier: ${tier}, CancelPending: ${cancelAtPeriodEnd}`);
 
                     await adminClient.from('subscriptions').update({
                         plan: tier,
                         status: subscription.status,
                         current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
+                        cancel_at_period_end: cancelAtPeriodEnd,
                     }).eq('account_id', userId);
 
-                    await adminClient.from('founder_profiles').update({
-                        subscription_tier: tier,
-                        ...features,
-                    }).eq('account_id', userId);
+                    // Only update profile tier if subscription is NOT pending cancellation
+                    // When pending cancel, user keeps their current tier until period ends
+                    if (!cancelAtPeriodEnd) {
+                        await adminClient.from('founder_profiles').update({
+                            subscription_tier: tier,
+                            ...features,
+                        }).eq('account_id', userId);
+                    }
                 }
                 break;
             }

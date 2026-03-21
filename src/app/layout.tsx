@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Outfit, Playfair_Display } from "next/font/google";
 import "./globals.css";
+import "@flaticon/flaticon-uicons/css/solid/rounded.css";
+import "@flaticon/flaticon-uicons/css/brands/all.css";
 import { Providers } from "./providers";
 
 const outfit = Outfit({

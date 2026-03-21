@@ -1,0 +1,8 @@
+[2026-03-19T18:19:09.803Z] API Route HIT
+[2026-03-19T18:19:09.804Z] Topic parameter: test
+[2026-03-19T18:19:09.805Z] Fetching NewsAPI: q="(test) AND (launch OR startup OR tool OR update)" sort="relevancy"
+[2026-03-19T18:19:10.385Z] NewsAPI success: found 7 articles
+[2026-03-19T18:19:27.106Z] API Route HIT
+[2026-03-19T18:19:27.106Z] Topic parameter: test
+[2026-03-19T18:19:27.107Z] Fetching NewsAPI: q="(test) AND (launch OR startup OR tool OR update)" sort="relevancy"
+[2026-03-19T18:19:27.109Z] NewsAPI success: found 7 articles

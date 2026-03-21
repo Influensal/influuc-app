@@ -2,14 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import {
-    Linkedin,
-    Clock,
-    Loader2,
-    AlertCircle,
-    CheckCircle2,
-    Layers
-} from 'lucide-react';
+import { useRouter } from 'next/navigation';
+
 import { format, parseISO } from 'date-fns';
 import EditPublishModal from '@/components/dashboard/EditPublishModal';
 
@@ -22,11 +16,13 @@ interface Post {
     format: string;
     status: string;
     created_at: string;
-    is_liked?: boolean;
     regenerated?: boolean;
+    image_url?: string;
+    carousel_id?: string;
 }
 
 export default function LinkedInCalendarPage() {
+    const router = useRouter();
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -63,9 +59,7 @@ export default function LinkedInCalendarPage() {
     };
 
     const handleLikeUpdate = (postId: string, isLiked: boolean) => {
-        setPosts(posts.map(p =>
-            p.id === postId ? { ...p, is_liked: isLiked } : p
-        ));
+        // LinkedIn doesn't have likes yet
     };
 
     const handlePublishSuccess = (postId: string) => {
@@ -74,11 +68,21 @@ export default function LinkedInCalendarPage() {
         ));
     };
 
+    const handleImageUpdate = (postId: string, newImageUrl: string) => {
+        setPosts(posts.map(p =>
+            p.id === postId ? { ...p, image_url: newImageUrl } : p
+        ));
+        if (selectedPost?.id === postId) {
+            setSelectedPost({ ...selectedPost, image_url: newImageUrl });
+        }
+    };
+
     const formatPostFormat = (fmt: string) => {
         switch (fmt) {
-            case 'single': return 'Short-form';
-            case 'long_form': return 'Long-form';
+            case 'single': return 'Single Post';
             case 'thread': return 'Thread';
+            case 'long_form': return 'Long Form';
+            case 'video_script': return '🎬 Reel';
             case 'carousel': return '📊 Carousel';
             default: return fmt;
         }
@@ -87,7 +91,7 @@ export default function LinkedInCalendarPage() {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
-                <Loader2 className="w-8 h-8 animate-spin text-[var(--primary)]" />
+                <i className={`fi fi-sr-spinner flex items-center justify-center ${"w-8 h-8 animate-spin text-[var(--primary)]"}`}  ></i>
             </div>
         );
     }
@@ -95,7 +99,7 @@ export default function LinkedInCalendarPage() {
     if (error) {
         return (
             <div className="flex flex-col items-center justify-center h-64 text-center">
-                <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
+                <i className={`fi fi-sr-info flex items-center justify-center ${"w-12 h-12 text-red-500 mb-4"}`}  ></i>
                 <h2 className="text-xl font-semibold mb-2">Error Loading Posts</h2>
                 <p className="text-[var(--foreground-muted)]">{error}</p>
             </div>
@@ -105,7 +109,7 @@ export default function LinkedInCalendarPage() {
     if (posts.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center h-64 text-center">
-                <Linkedin className="w-12 h-12 text-[var(--foreground-muted)] mb-4" />
+                <i className={`fi fi-brands-linkedin flex items-center justify-center ${"w-12 h-12 text-[var(--foreground-muted)] mb-4"}`}  ></i>
                 <h2 className="text-xl font-semibold mb-2">No LinkedIn Posts Yet</h2>
                 <p className="text-[var(--foreground-muted)]">Complete onboarding to generate your first week of posts.</p>
             </div>
@@ -115,6 +119,14 @@ export default function LinkedInCalendarPage() {
     const scheduledPosts = posts.filter(p => p.status === 'scheduled' && new Date(p.scheduled_date) >= new Date());
     const postedPosts = posts.filter(p => p.status === 'posted');
 
+    const handlePostClick = (post: Post) => {
+        if (post.format === 'carousel') {
+            router.push(`/dashboard/carousels/${post.id}`);
+        } else {
+            setSelectedPost(post);
+        }
+    };
+
     return (
         <div className="space-y-8">
             {/* Header */}
@@ -122,7 +134,7 @@ export default function LinkedInCalendarPage() {
                 <div>
                     <div className="flex items-center gap-3 mb-2">
                         <div className="w-10 h-10 rounded-xl bg-[#0A66C2] text-white flex items-center justify-center">
-                            <Linkedin className="w-5 h-5" />
+                            <i className={`fi fi-brands-linkedin flex items-center justify-center ${"w-5 h-5"}`}  ></i>
                         </div>
                         <h1 className="text-2xl font-bold">LinkedIn Calendar</h1>
                     </div>
@@ -144,7 +156,7 @@ export default function LinkedInCalendarPage() {
                                 key={post.id}
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                onClick={() => setSelectedPost(post)}
+                                onClick={() => handlePostClick(post)}
                                 className="card p-6 cursor-pointer hover:border-[var(--primary)] transition-all"
                             >
                                 <div className="flex items-start justify-between mb-4">
@@ -155,7 +167,7 @@ export default function LinkedInCalendarPage() {
                                         </div>
                                         <div>
                                             <div className="flex items-center gap-2 text-sm text-[var(--foreground-muted)]">
-                                                <Clock className="w-3 h-3" />
+                                                <i className={`fi fi-sr-clock flex items-center justify-center ${"w-3 h-3"}`}  ></i>
                                                 {format(scheduledDate, 'h:mm a')}
                                             </div>
                                             <span className="text-xs text-[var(--foreground-muted)]">{formatPostFormat(post.format)}</span>
@@ -169,7 +181,7 @@ export default function LinkedInCalendarPage() {
                                 </div>
                                 {post.format === 'carousel' ? (
                                     <div className="flex items-center gap-3 p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl">
-                                        <Layers className="w-5 h-5 text-emerald-600" />
+                                        <i className={`fi fi-sr-layers flex items-center justify-center ${"w-5 h-5 text-emerald-600"}`}  ></i>
                                         <div>
                                             <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Carousel Post</p>
                                             <p className="text-xs text-[var(--foreground-muted)]">Click to view & edit slides</p>
@@ -198,7 +210,7 @@ export default function LinkedInCalendarPage() {
                                 key={post.id}
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                onClick={() => setSelectedPost(post)}
+                                onClick={() => handlePostClick(post)}
                                 className="card p-6 cursor-pointer hover:border-[var(--primary)] transition-all opacity-60"
                             >
                                 <div className="flex items-start justify-between mb-4">
@@ -209,14 +221,14 @@ export default function LinkedInCalendarPage() {
                                         </div>
                                         <div>
                                             <div className="flex items-center gap-2 text-sm text-[var(--foreground-muted)]">
-                                                <Clock className="w-3 h-3" />
+                                                <i className={`fi fi-sr-clock flex items-center justify-center ${"w-3 h-3"}`}  ></i>
                                                 {format(scheduledDate, 'h:mm a')}
                                             </div>
                                             <span className="text-xs text-[var(--foreground-muted)]">{formatPostFormat(post.format)}</span>
                                         </div>
                                     </div>
                                     <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
-                                        <CheckCircle2 className="w-4 h-4" />
+                                        <i className={`fi fi-sr-check flex items-center justify-center ${"w-4 h-4"}`} Circle2  ></i>
                                         Posted
                                     </span>
                                 </div>
@@ -237,6 +249,7 @@ export default function LinkedInCalendarPage() {
                     onContentUpdate={handleContentUpdate}
                     onLikeUpdate={handleLikeUpdate}
                     onPublishSuccess={handlePublishSuccess}
+                    onImageUpdate={handleImageUpdate}
                 />
             )}
         </div>

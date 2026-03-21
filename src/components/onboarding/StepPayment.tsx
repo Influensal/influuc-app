@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Check, Sparkles, User, Zap, Star, Loader2, ShieldCheck } from 'lucide-react';
+
 
 interface StepPaymentProps {
     data: any;
@@ -27,7 +27,7 @@ export default function StepPayment({ data, updateData, onNext }: StepPaymentPro
             gradient: 'from-gray-500/20 to-gray-600/5',
             border: 'hover:border-gray-500/50',
             buttonGradient: 'hover:bg-gray-600',
-            icon: User,
+            icon: 'fi-sr-user',
         },
         {
             id: 'creator',
@@ -44,7 +44,7 @@ export default function StepPayment({ data, updateData, onNext }: StepPaymentPro
             gradient: 'from-blue-500/20 to-cyan-500/5',
             border: 'border-blue-500/50',
             buttonGradient: 'bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400',
-            icon: Zap,
+            icon: 'fi-sr-bolt',
         },
         {
             id: 'authority',
@@ -61,7 +61,7 @@ export default function StepPayment({ data, updateData, onNext }: StepPaymentPro
             gradient: 'from-purple-500/20 to-pink-500/5',
             border: 'hover:border-purple-500/50',
             buttonGradient: 'bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-500 hover:to-pink-400',
-            icon: Star,
+            icon: 'fi-sr-star',
         }
     ];
 
@@ -77,7 +77,11 @@ export default function StepPayment({ data, updateData, onNext }: StepPaymentPro
             const response = await fetch('/api/stripe/checkout', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ tier: planId }),
+                body: JSON.stringify({ 
+                    tier: planId,
+                    successUrl: `${window.location.origin}/onboarding?payment=success`,
+                    cancelUrl: `${window.location.origin}/onboarding?payment=cancelled`
+                }),
             });
 
             const result = await response.json();
@@ -113,7 +117,7 @@ export default function StepPayment({ data, updateData, onNext }: StepPaymentPro
                     transition={{ delay: 0.2 }}
                     className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[var(--foreground)]/5 border border-[var(--foreground)]/10 text-sm font-medium text-[var(--foreground-secondary)] backdrop-blur-md"
                 >
-                    <ShieldCheck className="w-4 h-4 text-green-400" />
+                    <i className={`fi fi-sr-shield-check flex items-center justify-center ${"w-4 h-4 text-green-400"}`}  ></i>
                     <span>7-Day Free Trial. Cancel Anytime.</span>
                 </motion.div>
 
@@ -180,7 +184,7 @@ export default function StepPayment({ data, updateData, onNext }: StepPaymentPro
                             {plan.features.map((feat, i) => (
                                 <li key={i} className="flex items-start gap-3 text-sm text-[var(--foreground-secondary)] group/item">
                                     <div className={`mt-0.5 w-5 h-5 rounded-full flex items-center justify-center bg-white/5 border border-white/10 ${plan.popular ? 'text-blue-400' : 'text-gray-400'} group-hover/item:bg-white/10 transition-colors`}>
-                                        <Check className="w-3 h-3" />
+                                        <i className={`fi fi-sr-check flex items-center justify-center ${"w-3 h-3"}`}  ></i>
                                     </div>
                                     <span className="leading-snug">{feat}</span>
                                 </li>
@@ -201,12 +205,12 @@ export default function StepPayment({ data, updateData, onNext }: StepPaymentPro
                         >
                             {isLoading === plan.id ? (
                                 <div className="flex items-center justify-center gap-2">
-                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    <i className={`fi fi-sr-spinner flex items-center justify-center ${"w-4 h-4 animate-spin"}`}  ></i>
                                     <span>Processing...</span>
                                 </div>
                             ) : (
                                 <span className="flex items-center justify-center gap-2">
-                                    {plan.popular && <Sparkles className="w-4 h-4 text-blue-500" />}
+                                    {plan.popular && <i className={`fi fi-sr-magic-wand flex items-center justify-center ${"w-4 h-4 text-blue-500"}`}  ></i>}
                                     Choose {plan.name}
                                 </span>
                             )}

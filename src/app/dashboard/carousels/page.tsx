@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Loader2, ChevronLeft, ChevronRight, Download, Wand2, Layers, RotateCcw, Check, X } from 'lucide-react';
+
 import { CAROUSEL_STYLES, CarouselStyle } from '@/lib/ai/carousel-styles';
 
 type GenerationStage = 'idle' | 'thinking' | 'creating' | 'polishing' | 'done';
@@ -157,7 +157,7 @@ export default function CarouselStudioPage() {
                                         >
                                             {selectedStyle.id === style.id && (
                                                 <div className="absolute -top-2 -right-2 w-6 h-6 bg-[var(--primary)] rounded-full flex items-center justify-center">
-                                                    <Check className="w-4 h-4 text-white" />
+                                                    <i className={`fi fi-sr-check flex items-center justify-center ${"w-4 h-4 text-white"}`}  ></i>
                                                 </div>
                                             )}
                                             <div className="text-sm font-bold text-[var(--foreground)] mb-1">{style.name}</div>
@@ -174,7 +174,7 @@ export default function CarouselStudioPage() {
                             >
                                 {isGenerating ? (
                                     <>
-                                        <Loader2 className="w-6 h-6 animate-spin" />
+                                        <i className={`fi fi-sr-spinner flex items-center justify-center ${"w-6 h-6 animate-spin"}`}  ></i>
                                         <span className="animate-pulse">
                                             {generationStage === 'thinking' && 'AI is thinking...'}
                                             {generationStage === 'creating' && 'Creating slides...'}
@@ -184,7 +184,7 @@ export default function CarouselStudioPage() {
                                     </>
                                 ) : (
                                     <>
-                                        <Wand2 className="w-6 h-6" />
+                                        <i className={`fi fi-sr-magic-wand flex items-center justify-center ${"w-6 h-6"}`}  ></i>
                                         Generate Carousel
                                     </>
                                 )}
@@ -245,14 +245,14 @@ export default function CarouselStudioPage() {
                                     onClick={handleReset}
                                     className="px-4 py-2 text-sm text-[var(--foreground-secondary)] bg-[var(--background-secondary)]/50 hover:bg-[var(--background-secondary)] hover:text-[var(--foreground)] rounded-lg font-medium flex items-center gap-2 transition-all"
                                 >
-                                    <RotateCcw className="w-4 h-4" />
+                                    <i className={`fi fi-sr-undo flex items-center justify-center ${"w-4 h-4"}`}  ></i>
                                     New Carousel
                                 </button>
                                 <button
                                     onClick={handleSave}
                                     className="px-4 py-2 bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)] rounded-lg text-sm font-medium flex items-center gap-2 transition-all shadow-sm"
                                 >
-                                    <Download className="w-4 h-4" />
+                                    <i className={`fi fi-sr-download flex items-center justify-center ${"w-4 h-4"}`}  ></i>
                                     Save & Export
                                 </button>
                             </div>
@@ -287,7 +287,7 @@ export default function CarouselStudioPage() {
                                                 disabled={currentSlideIndex === 0}
                                                 className="p-3 bg-white/90 hover:bg-white rounded-full shadow-lg disabled:opacity-30 transition-all"
                                             >
-                                                <ChevronLeft className="w-6 h-6 text-[var(--foreground)]" />
+                                                <i className={`fi fi-sr-angle-left flex items-center justify-center ${"w-6 h-6 text-[var(--foreground)]"}`}  ></i>
                                             </button>
                                             <div className="flex gap-2">
                                                 {currentSlides.map((_, i) => (
@@ -304,7 +304,7 @@ export default function CarouselStudioPage() {
                                                 disabled={currentSlideIndex === currentSlides.length - 1}
                                                 className="p-3 bg-white/90 hover:bg-white rounded-full shadow-lg disabled:opacity-30 transition-all"
                                             >
-                                                <ChevronRight className="w-6 h-6 text-[var(--foreground)]" />
+                                                <i className={`fi fi-sr-angle-right flex items-center justify-center ${"w-6 h-6 text-[var(--foreground)]"}`}  ></i>
                                             </button>
                                         </div>
                                     </div>
@@ -314,7 +314,7 @@ export default function CarouselStudioPage() {
                             {/* Slide Filmstrip */}
                             <div className="space-y-4">
                                 <div className="flex items-center gap-2 text-sm font-bold text-stone-600 uppercase tracking-wider">
-                                    <Layers className="w-4 h-4" />
+                                    <i className={`fi fi-sr-layers flex items-center justify-center ${"w-4 h-4"}`}  ></i>
                                     All Slides
                                 </div>
                                 <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">

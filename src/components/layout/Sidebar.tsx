@@ -3,67 +3,41 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { useState, useEffect } from 'react';
-import {
-    LayoutDashboard,
-    Twitter,
-    Linkedin,
-    Lightbulb,
-    Settings,
-    User,
-    LogOut,
-    Moon,
-    Sun,
-    Sparkles,
-    ChevronDown,
-    Archive,
-    Camera,
-} from 'lucide-react';
+import { useMemo } from 'react';
+
 import { useTheme, useAuth, usePosts } from '@/contexts';
-
-interface SidebarProps {
-    profileName?: string;
-}
-
-interface UserProfile {
-    name: string;
-    platforms: {
-        x: boolean;
-        linkedin: boolean;
-    };
-}
 
 // Group Account, Billing, and Settings into one navigation item to reduce clutter?
 // Or keep separate as requested ("Settings, Billings, Accounts and shit pages")
 const bottomNavItems = [
-    { href: '/dashboard/settings', label: 'Settings', icon: Settings },
+    { href: '/dashboard/settings', label: 'Settings', icon: 'fi-sr-settings' },
 ];
 
-export function Sidebar({ profileName = 'Demo Founder' }: SidebarProps) {
+export function Sidebar() {
     const pathname = usePathname();
     const { resolvedTheme, toggleTheme } = useTheme();
-    const { signOut, user } = useAuth(); // Use auth context
-    const { profile: userProfile } = usePosts(); // Use global profile to avoid flickering
+    const { signOut } = useAuth();
+    const { profile: userProfile } = usePosts();
 
     // Build navigation items based on user's selected platforms
     const mainNavItems = [
-        { href: '/dashboard', label: 'Overview', icon: LayoutDashboard, alwaysShow: true },
+        { href: '/dashboard', label: 'Overview', icon: 'fi-sr-apps', alwaysShow: true },
     ];
 
     // Only add platform links if user has selected them
     if (userProfile?.platforms?.x) {
-        mainNavItems.push({ href: '/dashboard/x', label: 'X', icon: Twitter, alwaysShow: false });
+        mainNavItems.push({ href: '/dashboard/x', label: 'X', icon: 'fi-brands-twitter', alwaysShow: false });
     }
     if (userProfile?.platforms?.linkedin) {
-        mainNavItems.push({ href: '/dashboard/linkedin', label: 'LinkedIn', icon: Linkedin, alwaysShow: false });
+        mainNavItems.push({ href: '/dashboard/linkedin', label: 'LinkedIn', icon: 'fi-brands-linkedin', alwaysShow: false });
     }
 
-    // Always show Ideas and Library
-    mainNavItems.push({ href: '/dashboard/ideas', label: 'Spontaneous Ideas', icon: Lightbulb, alwaysShow: true });
-    mainNavItems.push({ href: '/dashboard/carousels', label: 'Carousels', icon: Archive, alwaysShow: true });
-    mainNavItems.push({ href: '/dashboard/library', label: 'Content Library', icon: Archive, alwaysShow: true });
+    // Always show Ideas, Carousels and Library
+    mainNavItems.push({ href: '/dashboard/ideas', label: 'Spontaneous Ideas', icon: 'fi-sr-bulb', alwaysShow: true });
+    mainNavItems.push({ href: '/dashboard/carousels', label: 'Carousels', icon: 'fi-sr-layers', alwaysShow: true });
+    mainNavItems.push({ href: '/dashboard/library', label: 'Content Library', icon: 'fi-sr-folder', alwaysShow: true });
+    mainNavItems.push({ href: '/dashboard/newsjacking', label: 'Newsjacking', icon: 'fi-sr-newspaper', alwaysShow: true });
 
-    const displayName = userProfile?.name || profileName;
 
     return (
         <motion.aside
@@ -75,22 +49,9 @@ export function Sidebar({ profileName = 'Demo Founder' }: SidebarProps) {
             {/* Logo */}
             <div className="sidebar-logo">
                 <div className="sidebar-logo-icon">
-                    <Sparkles className="w-5 h-5" />
+                    <i className="fi fi-sr-magic-wand w-5 h-5 flex items-center justify-center"></i>
                 </div>
                 <span className="sidebar-logo-text">Influuc</span>
-            </div>
-
-            {/* User Profile - Static Display (No multiple profiles) */}
-            <div className="mb-8">
-                <div className="w-full flex items-center gap-3 p-3 rounded-2xl bg-[var(--background)] border border-[var(--border)]">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--primary)] to-[var(--secondary)] flex items-center justify-center text-white text-sm font-bold shadow-sm">
-                        {displayName.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="flex-1 text-left min-w-0">
-                        <p className="text-sm font-bold truncate">{displayName}</p>
-                        <p className="text-xs text-[var(--foreground-muted)] truncate">{user?.email || 'Founder Plan'}</p>
-                    </div>
-                </div>
             </div>
 
             {/* Main Navigation */}
@@ -98,7 +59,6 @@ export function Sidebar({ profileName = 'Demo Founder' }: SidebarProps) {
                 <p className="sidebar-section-title">Main Menu</p>
                 <nav className="sidebar-nav">
                     {mainNavItems.map((item) => {
-                        const Icon = item.icon;
                         const isActive = pathname === item.href;
 
                         return (
@@ -107,7 +67,7 @@ export function Sidebar({ profileName = 'Demo Founder' }: SidebarProps) {
                                 href={item.href}
                                 className={`sidebar-link ${isActive ? 'active' : ''}`}
                             >
-                                <Icon className="sidebar-link-icon" />
+                                <i className={`fi ${item.icon} sidebar-link-icon flex items-center justify-center`}></i>
                                 <span>{item.label}</span>
                             </Link>
                         );
@@ -120,7 +80,6 @@ export function Sidebar({ profileName = 'Demo Founder' }: SidebarProps) {
                 <p className="sidebar-section-title">System</p>
                 <nav className="sidebar-nav">
                     {bottomNavItems.map((item) => {
-                        const Icon = item.icon;
                         const isActive = pathname === item.href || pathname.startsWith(item.href);
 
                         return (
@@ -129,31 +88,18 @@ export function Sidebar({ profileName = 'Demo Founder' }: SidebarProps) {
                                 href={item.href}
                                 className={`sidebar-link ${isActive ? 'active' : ''}`}
                             >
-                                <Icon className="sidebar-link-icon" />
+                                <i className={`fi ${item.icon} sidebar-link-icon flex items-center justify-center`}></i>
                                 <span>{item.label}</span>
                             </Link>
                         );
                     })}
-
-                    {/* Theme Toggle */}
-                    <button
-                        onClick={toggleTheme}
-                        className="sidebar-link w-full"
-                    >
-                        {resolvedTheme === 'dark' ? (
-                            <Sun className="sidebar-link-icon" />
-                        ) : (
-                            <Moon className="sidebar-link-icon" />
-                        )}
-                        <span>{resolvedTheme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
-                    </button>
 
                     {/* Logout */}
                     <button
                         onClick={() => signOut()}
                         className="sidebar-link w-full text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
                     >
-                        <LogOut className="sidebar-link-icon" />
+                        <i className="fi fi-sr-sign-out-alt sidebar-link-icon flex items-center justify-center"></i>
                         <span>Sign Out</span>
                     </button>
                 </nav>

@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, useAnimation, useInView, useScroll, useTransform } from 'framer-motion';
-import { ArrowUpRight, Check, X, Code, Copy, LayoutDashboard, Share2, Target, Zap, Sparkles, Command, FileText, MessageSquare, CheckCircle2 } from 'lucide-react';
+
 import Lenis from '@studio-freight/lenis';
 
 const fadeIn: any = {
@@ -88,7 +88,7 @@ export default function HomePage() {
         NAVIGATION
         ============================================================
       */}
-      <nav className="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-[1000px] px-4">
+      <nav className="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-[1000px] px-6 sm:px-8">
         <div className="flex items-center justify-between bg-[#0A0614]/70 backdrop-blur-[20px] border border-white/[0.05] rounded-[32px] px-6 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.6)] w-full">
           {/* Logo */}
           <div className="flex items-center gap-2 cursor-pointer group shrink-0" onClick={() => router.push('/')}>
@@ -121,7 +121,7 @@ export default function HomePage() {
           SECTION 1: HERO
           ============================================================
         */}
-        <section id="home" className="relative min-h-[90vh] flex items-center pb-24 overflow-hidden">
+        <section id="home" className="relative min-h-[70vh] lg:min-h-[90vh] flex items-center pb-12 lg:pb-24 overflow-hidden">
           {/* Neural Lattice Backdrop (Section Level to avoid boxes) */}
           <div className="absolute inset-x-0 -top-40 h-[1000px] z-0 opacity-20 pointer-events-none">
             <svg width="100%" height="100%" viewBox="0 0 400 400" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
@@ -137,7 +137,7 @@ export default function HomePage() {
             <div className="absolute inset-0 bg-gradient-to-b from-[#030208] via-transparent to-[#030208] z-10" />
           </div>
 
-          <div className="w-full px-6 lg:pl-24 lg:pr-12 grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-0 items-center">
+          <div className="w-full px-8 lg:pl-24 lg:pr-12 grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-0 items-center">
             {/* Left Column: Copy & CTA */}
             <motion.div variants={stagger} initial="hidden" animate="visible" className="z-20 relative lg:ml-0 max-w-3xl">
               <motion.div variants={fadeIn} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/[0.05] border border-white/[0.1] text-neutral-200 text-sm font-bold tracking-[0.2em] uppercase mb-10 shadow-2xl backdrop-blur-xl">
@@ -148,7 +148,7 @@ export default function HomePage() {
               <div className="relative">
 
                 <motion.h1
-                  className="text-6xl md:text-8xl font-semibold tracking-[-0.04em] leading-[1.0] mb-8 relative z-10 flex flex-col items-start gap-1"
+                  className="text-5xl md:text-6xl lg:text-8xl font-semibold tracking-[-0.04em] leading-[1.1] md:leading-[1.0] mb-8 relative z-10 flex flex-col items-start gap-1"
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
@@ -176,7 +176,7 @@ export default function HomePage() {
                 </button>
               </motion.div>
 
-              <motion.div variants={fadeIn} className="flex items-center gap-4 text-base text-neutral-200 font-mono tracking-widest uppercase mb-20">
+              <motion.div variants={fadeIn} className="flex items-center gap-4 text-base text-neutral-200 font-mono tracking-widest uppercase mb-10 lg:mb-20">
                 <div className="w-2.5 h-2.5 rounded-full bg-violet-500 shadow-[0_0_12px_rgba(139,92,246,1)]" />
                 No More Blank Pages.
               </motion.div>
@@ -282,7 +282,7 @@ export default function HomePage() {
           1.5: VSL / Engine Placeholder
           ============================================================
         */}
-        <section className="py-[160px] px-6 relative overflow-hidden">
+        <section className="py-[var(--section-py)] px-8 sm:px-12 relative overflow-hidden">
 
 
           <div className="max-w-[1400px] mx-auto flex flex-col lg:flex-row items-center gap-16 relative z-10">
@@ -298,7 +298,7 @@ export default function HomePage() {
             </motion.div>
 
             <motion.div variants={stagger} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} className="lg:w-[450px]">
-              <motion.h2 variants={fadeIn} className="text-4xl md:text-5xl font-semibold tracking-tight leading-[1.1] mb-8">
+              <motion.h2 variants={fadeIn} className="text-3xl md:text-4xl lg:text-5xl font-semibold tracking-tight leading-[1.1] mb-8">
                 <span className="text-neutral-500">Content that converts, </span>
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-violet-700">zero effort required.</span>
               </motion.h2>
@@ -310,7 +310,7 @@ export default function HomePage() {
                 ].map((text, i) => (
                   <motion.li variants={fadeIn} key={i} className="flex items-start gap-4 flex-col sm:flex-row group">
                     <div className="mt-1 flex-shrink-0 w-6 h-6 rounded-full bg-white/[0.03] border border-white/[0.05] flex items-center justify-center transition-colors group-hover:border-violet-500/30 group-hover:bg-violet-500/10">
-                      <Check className="w-3.5 h-3.5 text-violet-400" />
+                      <i className={`fi fi-sr-check flex items-center justify-center ${"w-3.5 h-3.5 text-violet-400"}`}  ></i>
                     </div>
                     <span className="text-neutral-200 leading-relaxed text-xl group-hover:text-white transition-colors font-medium">{text}</span>
                   </motion.li>
@@ -325,7 +325,7 @@ export default function HomePage() {
           SECTION 2: PROBLEM
           ============================================================
         */}
-        <section className="py-[var(--section-py-lg)] px-6 relative overflow-hidden">
+        <section className="py-[var(--section-py-lg)] px-8 sm:px-12 relative overflow-hidden">
 
 
           <div className="absolute top-0 right-1/4 w-[800px] h-[800px] bg-violet-600/5 blur-[160px] rounded-full pointer-events-none" />
@@ -333,11 +333,11 @@ export default function HomePage() {
 
           <div className="max-w-[1200px] mx-auto relative z-10">
             {/* Header Content */}
-            <motion.div variants={stagger} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} className="mb-24">
+            <motion.div variants={stagger} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} className="mb-12 md:mb-24">
               <motion.div variants={fadeIn} className="inline-flex items-center px-5 py-2.5 rounded-full bg-white/[0.05] border border-white/[0.1] text-neutral-200 text-base font-bold tracking-[0.3em] uppercase mb-12 shadow-sm backdrop-blur-md">
                 The Problem
               </motion.div>
-              <motion.h2 variants={fadeIn} className="text-4xl md:text-6xl font-semibold tracking-[-0.04em] mb-12 leading-[1.1] max-w-4xl">
+              <motion.h2 variants={fadeIn} className="text-4xl md:text-5xl lg:text-6xl font-semibold tracking-[-0.04em] mb-12 leading-[1.1] max-w-4xl">
                 <span className="text-neutral-500">Creating content takes </span>
                 <span className="text-white">too much time and money.</span>
               </motion.h2>
@@ -429,7 +429,7 @@ export default function HomePage() {
                   whileInView="visible"
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.1 }}
-                  className="bg-white/[0.02] backdrop-blur-3xl border border-white/[0.04] p-12 rounded-[2.5rem] shadow-[var(--shadow-luxe)] relative group hover:border-violet-500/20 transition-all duration-700 min-h-[340px] flex flex-col items-center text-center"
+                  className="bg-white/[0.02] backdrop-blur-3xl border border-white/[0.04] p-8 md:p-12 rounded-[2.5rem] shadow-[var(--shadow-luxe)] relative group hover:border-violet-500/20 transition-all duration-700 min-h-[340px] flex flex-col items-center text-center"
                 >
                   {/* Subtle Glow Background */}
                   <div className="absolute inset-0 bg-gradient-to-b from-violet-600/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none rounded-[2.5rem]" />
@@ -462,8 +462,8 @@ export default function HomePage() {
 
 
           <div className="max-w-[1200px] mx-auto">
-            <motion.div variants={stagger} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} className="mb-24">
-              <motion.h2 variants={fadeIn} className="text-4xl md:text-6xl font-semibold tracking-[-0.04em] mb-12 leading-[1.1]">
+            <motion.div variants={stagger} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} className="mb-12 md:mb-24">
+              <motion.h2 variants={fadeIn} className="text-4xl md:text-5xl lg:text-6xl font-semibold tracking-[-0.04em] mb-12 leading-[1.1]">
                 <span className="text-neutral-500">Why standard AI </span>
                 <span className="text-white">tools aren't enough.</span>
               </motion.h2>
@@ -502,7 +502,7 @@ export default function HomePage() {
                   icon: (
                     <div className="relative w-full h-24 flex items-center justify-center">
                       <div className="absolute inset-0 flex items-center justify-center opacity-20">
-                        <Sparkles className="w-12 h-12 text-violet-500" />
+                        <i className={`fi fi-sr-magic-wand flex items-center justify-center ${"w-12 h-12 text-violet-500"}`}  ></i>
                       </div>
                       <motion.div
                         className="w-16 h-16 rounded-full border border-violet-500/20 flex items-center justify-center backdrop-blur-sm"
@@ -532,7 +532,7 @@ export default function HomePage() {
                             animate={{ borderColor: ['rgba(255,255,255,0.05)', 'rgba(139,92,246,0.5)', 'rgba(255,255,255,0.05)'] }}
                             transition={{ duration: 3, repeat: Infinity, delay: i * 0.5 }}
                           >
-                            <Share2 className="w-5 h-5 text-violet-400 opacity-40" />
+                            <i className={`fi fi-sr-share flex items-center justify-center ${"w-5 h-5 text-violet-400 opacity-40"}`}  ></i>
                           </motion.div>
                         ))}
                       </div>
@@ -576,7 +576,7 @@ export default function HomePage() {
                   whileInView="visible"
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.1 }}
-                  className="bg-white/[0.02] backdrop-blur-3xl border border-white/[0.04] px-10 pt-12 pb-10 rounded-[2.5rem] shadow-[var(--shadow-luxe)] relative group hover:border-violet-500/20 transition-all duration-700 flex flex-col items-center text-center overflow-hidden min-h-[320px]"
+                  className="bg-white/[0.02] backdrop-blur-3xl border border-white/[0.04] px-6 py-8 md:px-10 md:py-12 rounded-[2.5rem] shadow-[var(--shadow-luxe)] relative group hover:border-violet-500/20 transition-all duration-700 flex flex-col items-center text-center overflow-hidden min-h-[320px]"
                 >
                   {/* Subtle Glow Background */}
                   <div className="absolute inset-0 bg-gradient-to-br from-violet-600/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none rounded-[2.5rem]" />
@@ -603,7 +603,7 @@ export default function HomePage() {
       SECTION 4: THE SHIFT (PARADIGM SHIFT)
       ============================================================
     */}
-        <section className="h-[60vh] min-h-[500px] w-full relative flex items-center justify-center overflow-hidden">
+        <section className="h-[60vh] min-h-[400px] md:min-h-[500px] w-full relative flex items-center justify-center overflow-hidden">
           {/* Horizon Mask */}
           <div className="absolute top-0 left-1/4 right-1/4 h-px bg-gradient-to-r from-transparent via-violet-500/10 to-transparent z-10" />
 
@@ -625,7 +625,7 @@ export default function HomePage() {
           </div>
 
           <motion.div variants={stagger} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} className="relative z-10 flex flex-col items-center justify-center text-center px-6 max-w-4xl mx-auto mt-[-5vh]">
-            <motion.h2 variants={fadeIn} className="text-4xl md:text-5xl lg:text-[64px] font-semibold tracking-tight text-white mb-6 leading-[1.1] drop-shadow-[0_0_30px_rgba(255,255,255,0.2)]">
+            <motion.h2 variants={fadeIn} className="text-3xl md:text-5xl lg:text-[64px] font-semibold tracking-tight text-white mb-6 leading-[1.1] drop-shadow-[0_0_30px_rgba(255,255,255,0.2)]">
               Your entire content engine on autopilot.
             </motion.h2>
             <motion.p variants={fadeIn} className="text-xl md:text-3xl text-neutral-400 font-medium tracking-tight leading-tight">
@@ -656,32 +656,32 @@ export default function HomePage() {
               </motion.p>
             </motion.div>
 
-            <div className="relative space-y-32">
+            <div className="relative space-y-16 md:space-y-32">
               {/* Vertical Connecting Line */}
-              <div className="absolute left-1/2 top-12 bottom-12 w-px bg-gradient-to-b from-transparent via-white/10 to-transparent -translate-x-1/2 z-0" />
+              <div className="absolute left-10 md:left-1/2 top-12 bottom-12 w-px bg-gradient-to-b from-transparent via-white/10 to-transparent -translate-x-1/2 z-0" />
 
               {/* Step 1 */}
-              <motion.div variants={fadeIn} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} className="flex items-center w-full relative">
-                <div className="w-1/2 pr-12 md:pr-16 text-right relative">
+              <motion.div variants={fadeIn} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} className="flex flex-col md:flex-row items-start md:items-center w-full relative">
+                <div className="w-full md:w-1/2 pl-24 pr-6 md:pr-16 md:pl-0 text-left md:text-right relative mb-8 md:mb-0">
                   <div className="text-base font-mono tracking-widest text-violet-400 uppercase font-bold mb-4">Phase 1: Onboarding</div>
                   <h3 className="text-3xl md:text-5xl font-semibold text-white mb-5">Tell us about your brand</h3>
-                  <p className="text-xl text-neutral-200 leading-relaxed font-normal ml-auto max-w-[480px]">Spend 5 minutes answering questions about your expertise, target audience, and goals.</p>
+                  <p className="text-xl text-neutral-200 leading-relaxed font-normal md:ml-auto max-w-[480px]">Spend 5 minutes answering questions about your expertise, target audience, and goals.</p>
                 </div>
-                <div className="absolute left-1/2 -translate-x-1/2 w-24 h-24 rounded-full bg-[#0A0710] border border-violet-500/40 flex items-center justify-center font-mono text-2xl text-violet-300 shadow-[0_0_50px_rgba(139,92,246,0.3)] z-10 transition-transform hover:scale-110 duration-500 group">
+                <div className="absolute left-10 md:left-1/2 -translate-x-1/2 top-0 md:top-auto w-16 h-16 md:w-24 md:h-24 rounded-full bg-[#0A0710] border border-violet-500/40 flex items-center justify-center font-mono text-xl md:text-2xl text-violet-300 shadow-[0_0_50px_rgba(139,92,246,0.3)] z-10 transition-transform hover:scale-110 duration-500 group">
                   <div className="absolute inset-0 rounded-full bg-violet-600/20 blur-2xl pointer-events-none" />
                   01
                 </div>
-                <div className="w-1/2 pl-12 md:pl-16"></div>
+                <div className="hidden md:block w-1/2 pl-12 md:pl-16"></div>
               </motion.div>
 
               {/* Step 2 */}
-              <motion.div variants={fadeIn} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} className="flex items-center w-full relative">
-                <div className="w-1/2 pr-12 md:pr-16 text-right"></div>
-                <div className="absolute left-1/2 -translate-x-1/2 w-24 h-24 rounded-full bg-[#0A0710] border border-violet-500/40 flex items-center justify-center font-mono text-2xl text-violet-300 shadow-[0_0_50px_rgba(139,92,246,0.3)] z-10 transition-transform hover:scale-110 duration-500 group">
+              <motion.div variants={fadeIn} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} className="flex flex-col md:flex-row items-start md:items-center w-full relative">
+                <div className="hidden md:block w-1/2 pr-12 md:pr-16 text-right"></div>
+                <div className="absolute left-10 md:left-1/2 -translate-x-1/2 top-0 md:top-auto w-16 h-16 md:w-24 md:h-24 rounded-full bg-[#0A0710] border border-violet-500/40 flex items-center justify-center font-mono text-xl md:text-2xl text-violet-300 shadow-[0_0_50px_rgba(139,92,246,0.3)] z-10 transition-transform hover:scale-110 duration-500 group">
                   <div className="absolute inset-0 rounded-full bg-violet-600/20 blur-2xl pointer-events-none" />
                   02
                 </div>
-                <div className="w-1/2 pl-12 md:pl-16 text-left relative">
+                <div className="w-full md:w-1/2 pl-24 pr-6 md:pl-16 text-left relative mb-8 md:mb-0">
                   <div className="text-base font-mono tracking-widest text-violet-400 uppercase font-bold mb-4">Phase 2: Strategy</div>
                   <h3 className="text-3xl md:text-5xl font-semibold text-white mb-5">We build your content plan</h3>
                   <p className="text-xl text-neutral-200 leading-relaxed font-normal max-w-[480px]">Our AI instantly generates a tailored content strategy and starts drafting high-quality posts and carousels.</p>
@@ -689,17 +689,17 @@ export default function HomePage() {
               </motion.div>
 
               {/* Step 3 */}
-              <motion.div variants={fadeIn} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} className="flex items-center w-full relative">
-                <div className="w-1/2 pr-12 md:pr-16 text-right relative">
+              <motion.div variants={fadeIn} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} className="flex flex-col md:flex-row items-start md:items-center w-full relative">
+                <div className="w-full md:w-1/2 pl-24 pr-6 md:pr-16 md:pl-0 text-left md:text-right relative mb-8 md:mb-0">
                   <div className="text-base font-mono tracking-widest text-violet-400 uppercase font-bold mb-4">Phase 3: Execution</div>
                   <h3 className="text-3xl md:text-5xl font-semibold text-white mb-5">We post while you work</h3>
-                  <p className="text-xl text-neutral-200 leading-relaxed font-normal ml-auto max-w-[480px]">We automatically find the right images, format everything perfectly, and publish directly to your X and LinkedIn accounts.</p>
+                  <p className="text-xl text-neutral-200 leading-relaxed font-normal md:ml-auto max-w-[480px]">We automatically find the right images, format everything perfectly, and publish directly to your X and LinkedIn accounts.</p>
                 </div>
-                <div className="absolute left-1/2 -translate-x-1/2 w-24 h-24 rounded-full bg-[#0A0710] border border-violet-500/40 flex items-center justify-center font-mono text-2xl text-violet-300 shadow-[0_0_50px_rgba(139,92,246,0.3)] z-10 transition-transform hover:scale-110 duration-500 group">
+                <div className="absolute left-10 md:left-1/2 -translate-x-1/2 top-0 md:top-auto w-16 h-16 md:w-24 md:h-24 rounded-full bg-[#0A0710] border border-violet-500/40 flex items-center justify-center font-mono text-xl md:text-2xl text-violet-300 shadow-[0_0_50px_rgba(139,92,246,0.3)] z-10 transition-transform hover:scale-110 duration-500 group">
                   <div className="absolute inset-0 rounded-full bg-violet-600/20 blur-2xl pointer-events-none" />
                   03
                 </div>
-                <div className="w-1/2 pl-12 md:pl-16"></div>
+                <div className="hidden md:block w-1/2 pl-12 md:pl-16"></div>
               </motion.div>
             </div>
           </div>
@@ -718,7 +718,7 @@ export default function HomePage() {
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[1000px] bg-violet-600/5 blur-[160px] rounded-full pointer-events-none" />
 
           <div className="max-w-[1200px] mx-auto relative z-10">
-            <motion.div variants={stagger} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} className="text-center mb-24">
+            <motion.div variants={stagger} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} className="text-center mb-12 md:mb-24">
               <motion.div variants={fadeIn} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/[0.05] border border-white/[0.1] text-neutral-200 text-sm font-bold tracking-[0.1em] uppercase mb-6 backdrop-blur-md shadow-sm">
                 The Workflow
               </motion.div>
@@ -743,19 +743,19 @@ export default function HomePage() {
               </div>
 
               {/* Step 1: Open the App */}
-              <div className="relative flex flex-col md:flex-row items-center gap-12 md:gap-24 mb-32 md:mb-48 group">
+              <div className="relative flex flex-col md:flex-row items-center gap-12 md:gap-24 mb-20 md:mb-48 group">
                 <div className="absolute left-8 md:left-1/2 w-4 h-4 rounded-full bg-[#0A0710] border border-violet-500/50 shadow-[0_0_15px_rgba(139,92,246,0.5)] -translate-x-1/2 mt-8 md:mt-0 z-10 hidden md:block" />
 
                 {/* Text Content (Left) */}
                 <motion.div variants={fadeIn} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} className="w-full md:w-1/2 pl-24 md:pl-0 md:text-right md:pr-12">
-                  <div className="text-violet-400 font-mono text-7xl md:text-8xl font-black opacity-[0.05] absolute top-[-20px] left-24 md:-right-4 md:left-auto z-0 -tracking-[0.05em] pointer-events-none">01</div>
+                  <div className="text-violet-400 font-mono text-6xl md:text-8xl font-black opacity-[0.05] absolute top-[-20px] left-20 md:-right-4 md:left-auto z-0 -tracking-[0.05em] pointer-events-none">01</div>
                   <div className="relative z-10">
                     <h3 className="text-3xl md:text-5xl font-semibold text-white mb-6 tracking-tight">Open the App</h3>
                     <p className="text-neutral-200 text-2xl leading-relaxed font-normal mb-8 max-w-lg md:ml-auto">
                       Log in once a week. Influuc is waiting with a perfectly tailored strategy for the next 7 days, powered by billions of data points.
                     </p>
                     <div className="inline-flex items-center gap-3 text-violet-400 text-base font-bold tracking-wide">
-                      <LayoutDashboard className="w-5 h-5" /> <span>Unified Dashboard</span>
+                      <i className={`fi fi-sr-apps flex items-center justify-center ${"w-5 h-5"}`}  ></i> <span>Unified Dashboard</span>
                     </div>
                   </div>
                 </motion.div>
@@ -778,7 +778,7 @@ export default function HomePage() {
                     <div className="flex h-full">
                       {/* Nav Bar Mock */}
                       <div className="w-16 border-r border-white/[0.05] p-3 space-y-4">
-                        <div className="w-full aspect-square rounded-md bg-violet-500/20 border border-violet-500/30 flex items-center justify-center shadow-[0_0_15px_rgba(139,92,246,0.3)]"><LayoutDashboard className="w-4 h-4 text-violet-400" /></div>
+                        <div className="w-full aspect-square rounded-md bg-violet-500/20 border border-violet-500/30 flex items-center justify-center shadow-[0_0_15px_rgba(139,92,246,0.3)]"><i className={`fi fi-sr-apps flex items-center justify-center ${"w-4 h-4 text-violet-400"}`}  ></i></div>
                         <div className="w-full aspect-square rounded-md bg-white/[0.02]" />
                         <div className="w-full aspect-square rounded-md bg-white/[0.02]" />
                       </div>
@@ -789,7 +789,7 @@ export default function HomePage() {
 
                         <div className="flex gap-4 mt-4">
                           <div className="flex-1 h-32 rounded-xl bg-gradient-to-b from-white/[0.03] to-transparent border border-white/[0.05] p-4 flex flex-col justify-end">
-                            <div className="w-8 h-8 rounded-full bg-violet-500/20 mb-auto flex items-center justify-center"><ArrowUpRight className="w-4 h-4 text-violet-400" /></div>
+                            <div className="w-8 h-8 rounded-full bg-violet-500/20 mb-auto flex items-center justify-center"><i className={`fi fi-sr-arrow-up-right flex items-center justify-center ${"w-4 h-4 text-violet-400"}`}  ></i></div>
                             <div className="w-1/2 h-3 rounded-full bg-white/20 mb-2" />
                             <div className="w-full h-8 flex items-end gap-1">
                               {[40, 60, 30, 80, 50, 90, 70].map((h, i) => (
@@ -809,19 +809,19 @@ export default function HomePage() {
               </div>
 
               {/* Step 2: Tell us about your week */}
-              <div className="relative flex flex-col md:flex-row-reverse items-center gap-12 md:gap-24 mb-32 md:mb-48 group">
+              <div className="relative flex flex-col md:flex-row-reverse items-center gap-12 md:gap-24 mb-20 md:mb-48 group">
                 <div className="absolute left-8 md:left-1/2 w-4 h-4 rounded-full bg-[#0A0710] border border-violet-500/50 shadow-[0_0_15px_rgba(139,92,246,0.5)] -translate-x-1/2 mt-8 md:mt-0 z-10 hidden md:block" />
 
                 {/* Text Content (Right) */}
                 <motion.div variants={fadeIn} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} className="w-full md:w-1/2 pl-24 md:pl-12">
-                  <div className="text-violet-400 font-mono text-7xl md:text-8xl font-black opacity-[0.05] absolute top-[-20px] left-24 md:-left-4 md:left-auto z-0 -tracking-[0.05em] pointer-events-none">02</div>
+                  <div className="text-violet-400 font-mono text-6xl md:text-8xl font-black opacity-[0.05] absolute top-[-20px] left-20 md:-left-4 md:left-auto z-0 -tracking-[0.05em] pointer-events-none">02</div>
                   <div className="relative z-10">
                     <h3 className="text-3xl md:text-5xl font-semibold text-white mb-6 tracking-tight">Tell us about your week</h3>
                     <p className="text-neutral-200 text-2xl leading-relaxed font-normal mb-8 max-w-lg">
                       Answer a quick conversational prompt. Did you hit any milestones? What personal experiences happened? Any big events or launches?
                     </p>
                     <div className="inline-flex items-center gap-3 text-violet-400 text-base font-bold tracking-wide">
-                      <MessageSquare className="w-5 h-5" /> <span>Conversational Input</span>
+                      <i className={`fi fi-sr-comment flex items-center justify-center ${"w-5 h-5"}`}  ></i> <span>Conversational Input</span>
                     </div>
                   </div>
                 </motion.div>
@@ -834,7 +834,7 @@ export default function HomePage() {
                     {/* Chat Bubbles */}
                     <motion.div className="w-[85%] bg-white/[0.03] border border-white/5 rounded-2xl rounded-tl-none p-5 self-start shadow-sm" initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
                       <div className="flex items-center gap-3 mb-3">
-                        <div className="w-6 h-6 rounded-full bg-violet-500/20 flex items-center justify-center"><Sparkles className="w-3 h-3 text-violet-400" /></div>
+                        <div className="w-6 h-6 rounded-full bg-violet-500/20 flex items-center justify-center"><i className={`fi fi-sr-magic-wand flex items-center justify-center ${"w-3 h-3 text-violet-400"}`}  ></i></div>
                         <div className="h-2 w-24 bg-white/20 rounded-full" />
                       </div>
                       <div className="w-full h-2 bg-white/10 rounded-full mb-3" />
@@ -853,26 +853,26 @@ export default function HomePage() {
                     {/* Input Area */}
                     <div className="w-full mt-2 h-12 bg-white/[0.02] border border-white/[0.04] rounded-full flex items-center px-4 justify-between">
                       <div className="w-1/3 h-2 bg-white/5 rounded-full" />
-                      <div className="w-8 h-8 rounded-full bg-violet-500 flex items-center justify-center shadow-[0_0_15px_rgba(139,92,246,0.5)]"><ArrowUpRight className="w-4 h-4 text-white" /></div>
+                      <div className="w-8 h-8 rounded-full bg-violet-500 flex items-center justify-center shadow-[0_0_15px_rgba(139,92,246,0.5)]"><i className={`fi fi-sr-arrow-up-right flex items-center justify-center ${"w-4 h-4 text-white"}`}  ></i></div>
                     </div>
                   </div>
                 </motion.div>
               </div>
 
               {/* Step 3: Set your target */}
-              <div className="relative flex flex-col md:flex-row items-center gap-12 md:gap-24 mb-32 md:mb-48 group">
+              <div className="relative flex flex-col md:flex-row items-center gap-12 md:gap-24 mb-20 md:mb-48 group">
                 <div className="absolute left-8 md:left-1/2 w-4 h-4 rounded-full bg-[#0A0710] border border-violet-500/50 shadow-[0_0_15px_rgba(139,92,246,0.5)] -translate-x-1/2 mt-8 md:mt-0 z-10 hidden md:block" />
 
                 {/* Text Content (Left) */}
                 <motion.div variants={fadeIn} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} className="w-full md:w-1/2 pl-24 md:pl-0 md:text-right md:pr-12">
-                  <div className="text-violet-400 font-mono text-7xl md:text-8xl font-black opacity-[0.05] absolute top-[-20px] left-24 md:-right-4 md:left-auto z-0 -tracking-[0.05em] pointer-events-none">03</div>
+                  <div className="text-violet-400 font-mono text-6xl md:text-8xl font-black opacity-[0.05] absolute top-[-20px] left-20 md:-right-4 md:left-auto z-0 -tracking-[0.05em] pointer-events-none">03</div>
                   <div className="relative z-10">
                     <h3 className="text-3xl md:text-5xl font-semibold text-white mb-6 tracking-tight">Set your target</h3>
                     <p className="text-neutral-200 text-2xl leading-relaxed font-normal mb-8 max-w-lg md:ml-auto">
                       What's the absolute goal for this batch of content? Tell us if you want more followers, VC attention, or to drive specific signups.
                     </p>
                     <div className="inline-flex items-center gap-3 text-violet-400 text-base font-bold tracking-wide">
-                      <Target className="w-5 h-5" /> <span>Goal Alignment</span>
+                      <i className={`fi fi-sr-bullseye flex items-center justify-center ${"w-5 h-5"}`}  ></i> <span>Goal Alignment</span>
                     </div>
                   </div>
                 </motion.div>
@@ -886,7 +886,7 @@ export default function HomePage() {
                     <div className="flex justify-between items-center mb-8">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full border border-violet-500/40 flex items-center justify-center bg-violet-500/10">
-                          <Target className="w-5 h-5 text-violet-400" />
+                          <i className={`fi fi-sr-bullseye flex items-center justify-center ${"w-5 h-5 text-violet-400"}`}  ></i>
                         </div>
                         <div>
                           <div className="w-24 h-3 bg-white/20 rounded-full mb-2" />
@@ -930,19 +930,19 @@ export default function HomePage() {
               </div>
 
               {/* Step 4: Generate & Log Off */}
-              <div className="relative flex flex-col md:flex-row-reverse items-center gap-12 md:gap-24 mb-16 group">
+              <div className="relative flex flex-col md:flex-row-reverse items-center gap-12 md:gap-24 mb-16 md:mb-24 group">
                 <div className="absolute left-8 md:left-1/2 w-4 h-4 rounded-full bg-[#0A0710] border border-violet-500/50 shadow-[0_0_15px_rgba(139,92,246,0.5)] -translate-x-1/2 mt-8 md:mt-0 z-10 hidden md:block" />
 
                 {/* Text Content (Right) */}
                 <motion.div variants={fadeIn} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} className="w-full md:w-1/2 pl-24 md:pl-12">
-                  <div className="text-violet-400 font-mono text-7xl md:text-8xl font-black opacity-[0.05] absolute top-[-20px] left-24 md:-left-4 md:left-auto z-0 -tracking-[0.05em] pointer-events-none">04</div>
+                  <div className="text-violet-400 font-mono text-6xl md:text-8xl font-black opacity-[0.05] absolute top-[-20px] left-20 md:-left-4 md:left-auto z-0 -tracking-[0.05em] pointer-events-none">04</div>
                   <div className="relative z-10">
                     <h3 className="text-3xl md:text-4xl font-semibold text-white mb-6 tracking-tight">Generate & Log Off</h3>
                     <p className="text-neutral-400 text-lg leading-relaxed font-light mb-8 max-w-md">
                       Click one button. We instantly generate highly formatted posts, compelling carousels, and select images. Everything is published automatically for the next 7 days.
                     </p>
                     <div className="inline-flex items-center gap-2 text-violet-400 text-sm font-medium tracking-wide">
-                      <Sparkles className="w-4 h-4" /> <span>Autonomous Execution</span>
+                      <i className={`fi fi-sr-magic-wand flex items-center justify-center ${"w-4 h-4"}`}  ></i> <span>Autonomous Execution</span>
                     </div>
                   </div>
                 </motion.div>
@@ -968,7 +968,7 @@ export default function HomePage() {
                         transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
                         className="absolute z-30 w-[90%] h-20 bg-[#0A0710] border border-violet-500/40 rounded-xl shadow-[0_20px_40px_rgba(139,92,246,0.2)] translate-z-[30px] flex items-center px-6 gap-4"
                       >
-                        <div className="w-10 h-10 rounded-md bg-violet-500/20 flex items-center justify-center"><Check className="w-5 h-5 text-violet-400" /></div>
+                        <div className="w-10 h-10 rounded-md bg-violet-500/20 flex items-center justify-center"><i className={`fi fi-sr-check flex items-center justify-center ${"w-5 h-5 text-violet-400"}`}  ></i></div>
                         <div className="flex-1 space-y-2">
                           <div className="w-3/4 h-2 bg-white/30 rounded-full" />
                           <div className="w-1/2 h-2 bg-white/20 rounded-full" />
@@ -1002,7 +1002,7 @@ export default function HomePage() {
                     {/* Big Action Button */}
                     <div className="w-[80%] py-4 mt-auto rounded-xl bg-violet-500 hover:bg-violet-400 transition-colors cursor-pointer flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(139,92,246,0.3)] group/btn relative overflow-hidden text-black z-40">
                       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent translate-x-[-100%] group-hover/btn:translate-x-[100%] transition-transform duration-1000" />
-                      <Sparkles className="w-5 h-5 text-black" />
+                      <i className={`fi fi-sr-magic-wand flex items-center justify-center ${"w-5 h-5 text-black"}`}  ></i>
                       <span className="font-bold text-lg tracking-tight">Initiate Launch</span>
                     </div>
 
@@ -1043,9 +1043,9 @@ export default function HomePage() {
               {/* Feature 1: Post Orchestration (2x1) */}
               <motion.div variants={fadeIn} className="lg:col-span-2 group relative rounded-[var(--radius-luxe)] overflow-hidden bg-white/[0.02] border border-white/[0.04] backdrop-blur-md shadow-[var(--shadow-luxe)] hover:-translate-y-1 hover:border-violet-500/20 transition-all duration-500 min-h-[400px]">
                 <div className="absolute inset-0 bg-gradient-to-br from-violet-600/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
-                <div className="relative h-full w-full flex flex-col p-8 md:p-10">
+                <div className="relative h-full w-full flex flex-col p-6 md:p-10">
                   {/* High-Fidelity Composer Mock */}
-                  <div className="absolute top-10 right-10 left-[45%] bottom-[-40px] bg-[#0A0710] border border-white/[0.06] rounded-t-2xl overflow-hidden shadow-2xl flex flex-col transition-transform duration-500 group-hover:translate-y-[-12px]">
+                  <div className="absolute top-10 right-10 left-[25%] md:left-[45%] bottom-[-40px] bg-[#0A0710] border border-white/[0.06] rounded-t-2xl overflow-hidden shadow-2xl flex flex-col transition-transform duration-500 group-hover:translate-y-[-12px]">
                     <div className="h-12 border-b border-white/[0.06] flex items-center px-4 gap-6 bg-white/[0.01]">
                       <div className="flex gap-2">
                         <div className="w-2.5 h-2.5 rounded-full bg-white/10" />
@@ -1070,17 +1070,17 @@ export default function HomePage() {
                     </div>
                     {/* Platform Toggles */}
                     <div className="mt-auto border-t border-white/[0.06] p-4 flex items-center gap-4 bg-white/[0.01]">
-                      <div className="flex items-center gap-2 text-xs text-white"><LayoutDashboard className="w-4 h-4 text-violet-400" /> LinkedIn</div>
-                      <div className="flex items-center gap-2 text-xs text-neutral-500"><Share2 className="w-4 h-4" /> X Protocol</div>
+                      <div className="flex items-center gap-2 text-xs text-white"><i className={`fi fi-sr-apps flex items-center justify-center ${"w-4 h-4 text-violet-400"}`}  ></i> LinkedIn</div>
+                      <div className="flex items-center gap-2 text-xs text-neutral-500"><i className={`fi fi-sr-share flex items-center justify-center ${"w-4 h-4"}`}  ></i> X Protocol</div>
                     </div>
                   </div>
 
-                  <div className="relative z-10 w-[40%] pr-6 mt-auto">
+                  <div className="relative z-10 w-[70%] sm:w-[50%] md:w-[40%] pr-6 mt-auto">
                     <div className="mb-4 w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
-                      <FileText className="w-5 h-5 text-violet-400" />
+                      <i className={`fi fi-sr-document flex items-center justify-center ${"w-5 h-5 text-violet-400"}`}  ></i>
                     </div>
                     <h3 className="text-3xl font-medium text-white mb-3 tracking-tight">High-Quality Posts</h3>
-                    <p className="text-xl text-neutral-200 leading-relaxed font-normal">Automatically generated text formatted perfectly for LinkedIn and X, matched to your unique voice.</p>
+                    <p className="text-xl text-neutral-200 leading-relaxed font-normal">Automatically generated text formatted perfectly for LinkedIn and X.</p>
                   </div>
                 </div>
               </motion.div>
@@ -1088,7 +1088,7 @@ export default function HomePage() {
               {/* Feature 2: Dynamic Carousels (1x1) */}
               <motion.div variants={fadeIn} className="group relative rounded-[var(--radius-luxe)] overflow-hidden bg-white/[0.02] border border-white/[0.04] backdrop-blur-md shadow-[var(--shadow-luxe)] hover:-translate-y-1 hover:border-violet-500/20 transition-all duration-500">
                 <div className="absolute inset-0 bg-gradient-to-br from-violet-600/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
-                <div className="relative h-full w-full p-8 md:p-10 flex flex-col">
+                <div className="relative h-full w-full p-6 md:p-10 flex flex-col">
                   <div className="relative h-[280px] w-full mb-10 perspective-1000">
                     <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[85%] h-full bg-[#0A0710] border border-white/[0.08] rounded-2xl shadow-2xl z-30 transition-all duration-700 group-hover:-translate-y-4 group-hover:rotate-2 flex flex-col p-6">
                       <div className="w-full h-24 bg-gradient-to-br from-violet-600/20 to-violet-400/20 rounded-lg mb-4" />
@@ -1102,7 +1102,7 @@ export default function HomePage() {
 
                   <div className="mt-auto">
                     <div className="mb-4 w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
-                      <LayoutDashboard className="w-5 h-5 text-violet-400" />
+                      <i className={`fi fi-sr-apps flex items-center justify-center ${"w-5 h-5 text-violet-400"}`}  ></i>
                     </div>
                     <h3 className="text-3xl font-medium text-white mb-3 tracking-tight">Engaging Carousels</h3>
                     <p className="text-xl text-neutral-200 leading-relaxed font-normal">Automatically create high-retention, beautifully designed carousels that drive massive engagement.</p>
@@ -1113,10 +1113,10 @@ export default function HomePage() {
               {/* Feature 3: AI Image Generation (1x1) */}
               <motion.div variants={fadeIn} className="group relative rounded-[var(--radius-luxe)] overflow-hidden bg-white/[0.02] border border-white/[0.04] backdrop-blur-md shadow-[var(--shadow-luxe)] hover:-translate-y-1 hover:border-violet-500/20 transition-all duration-500 min-h-[340px]">
                 <div className="absolute inset-0 bg-gradient-to-br from-violet-600/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
-                <div className="relative h-full w-full p-8 flex flex-col">
+                <div className="relative h-full w-full p-6 md:p-8 flex flex-col">
                   <div className="bg-[#0A0710] border border-white/[0.08] rounded-xl p-4 mb-6 shadow-2xl relative overflow-hidden group-hover:scale-[1.02] transition-transform duration-500">
                     <div className="flex items-center gap-2 text-xs text-violet-400 font-bold mb-3 uppercase tracking-wider">
-                      <Sparkles className="w-3 h-3" /> GEN_PROTOCOL
+                      <i className={`fi fi-sr-magic-wand flex items-center justify-center ${"w-3 h-3"}`}  ></i> GEN_PROTOCOL
                     </div>
                     <div className="text-sm text-neutral-200 font-medium italic mb-4">"Futuristic glass architecture with violet refraction..."</div>
                     <div className="flex gap-2">
@@ -1133,7 +1133,7 @@ export default function HomePage() {
               {/* Feature 4: Newsjacking Engine (1x1) */}
               <motion.div variants={fadeIn} className="group relative rounded-[var(--radius-luxe)] overflow-hidden bg-white/[0.02] border border-white/[0.04] backdrop-blur-md shadow-[var(--shadow-luxe)] hover:-translate-y-1 hover:border-violet-500/20 transition-all duration-500 min-h-[340px]">
                 <div className="absolute inset-0 bg-gradient-to-br from-violet-600/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
-                <div className="relative h-full w-full p-8 flex flex-col">
+                <div className="relative h-full w-full p-6 md:p-8 flex flex-col">
                   <div className="flex-grow flex flex-col justify-center gap-4">
                     <div className="flex items-center gap-4 bg-white/[0.02] border border-white/[0.05] p-3 rounded-full overflow-hidden relative">
                       <div className="w-2.5 h-2.5 rounded-full bg-violet-500 animate-ping absolute left-4" />
@@ -1151,10 +1151,10 @@ export default function HomePage() {
               {/* Feature 5: Smart Auto-Publish (1x1) */}
               <motion.div variants={fadeIn} className="group relative rounded-[var(--radius-luxe)] overflow-hidden bg-white/[0.02] border border-white/[0.04] backdrop-blur-md shadow-[var(--shadow-luxe)] hover:-translate-y-1 hover:border-violet-500/20 transition-all duration-500 min-h-[340px]">
                 <div className="absolute inset-0 bg-gradient-to-br from-violet-600/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
-                <div className="relative h-full w-full p-8 flex flex-col">
+                <div className="relative h-full w-full p-6 md:p-8 flex flex-col">
                   <div className="flex-grow flex items-center justify-center relative">
                     <div className="w-12 h-12 rounded-xl bg-violet-500/20 border border-violet-500/40 flex items-center justify-center relative z-20">
-                      <Zap className="w-6 h-6 text-violet-400" />
+                      <i className={`fi fi-sr-bolt flex items-center justify-center ${"w-6 h-6 text-violet-400"}`}  ></i>
                     </div>
                   </div>
                   <div className="mt-auto">
@@ -1196,7 +1196,7 @@ export default function HomePage() {
                 </div>
 
                 {/* Window Body */}
-                <div className="p-8 md:p-16 lg:px-20 grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 relative overflow-hidden z-10 w-full flex-grow">
+                <div className="p-6 md:p-16 lg:px-20 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 relative overflow-hidden z-10 w-full flex-grow">
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-violet-600/10 blur-[150px] rounded-full pointer-events-none" />
 
                   {/* Left Column: Input */}
@@ -1205,9 +1205,9 @@ export default function HomePage() {
                       <div className="w-2 h-2 rounded-full bg-violet-500/40" />
                       Context Ingestion Point
                     </div>
-                    <div className="bg-white/[0.03] p-10 md:p-12 rounded-[32px] border border-white/[0.08] text-2xl md:text-3xl text-neutral-100 leading-relaxed shadow-2xl backdrop-blur-3xl hover:border-violet-500/20 transition-all duration-700 group/input font-medium">
+                    <div className="bg-white/[0.03] p-8 md:p-12 rounded-[32px] border border-white/[0.08] text-xl md:text-3xl text-neutral-100 leading-relaxed shadow-2xl backdrop-blur-3xl hover:border-violet-500/20 transition-all duration-700 group/input font-medium">
                       <div className="absolute top-0 right-0 p-4 opacity-0 group-hover/input:opacity-100 transition-opacity">
-                        <div className="px-3 py-1.5 rounded-md bg-white/5 border border-white/10 text-xs font-bold text-neutral-300 uppercase">Input Verified</div>
+                        <div className="px-3 py-1.5 rounded-md bg-white/5 border border-white/10 text-[10px] md:text-xs font-bold text-neutral-300 uppercase">Input Verified</div>
                       </div>
                       "I spent 10 years scaling B2B SaaS architecture. I want to talk about the hidden costs of monolithic databases versus microservices, and why founders over-engineer early."
                     </div>
@@ -1226,7 +1226,7 @@ export default function HomePage() {
                         <div className="absolute top-0 right-0 p-5 text-xs font-bold font-mono text-violet-400 opacity-60">INDEX: 0.98</div>
                         <div className="flex items-center gap-5 mb-6">
                           <div className="w-12 h-12 rounded-full bg-violet-500/10 flex items-center justify-center border border-violet-500/20">
-                            <Target className="w-6 h-6 text-violet-400" />
+                            <i className={`fi fi-sr-bullseye flex items-center justify-center ${"w-6 h-6 text-violet-400"}`}  ></i>
                           </div>
                           <div className="text-white text-2xl font-semibold tracking-tight">Authority Trajectory</div>
                         </div>
@@ -1241,7 +1241,7 @@ export default function HomePage() {
                       <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.4, duration: 0.8 }} viewport={{ once: true }} className="bg-white/[0.01] p-8 rounded-[24px] border border-white/[0.04] backdrop-blur-3xl opacity-60 hover:opacity-100 hover:border-violet-500/20 transition-all duration-500">
                         <div className="flex items-center gap-5 mb-6">
                           <div className="w-12 h-12 rounded-full bg-violet-500/10 flex items-center justify-center border border-violet-500/20">
-                            <Zap className="w-6 h-6 text-violet-400" />
+                            <i className={`fi fi-sr-bolt flex items-center justify-center ${"w-6 h-6 text-violet-400"}`}  ></i>
                           </div>
                           <div className="text-white text-2xl font-semibold tracking-tight">Pipeline Velocity</div>
                         </div>
@@ -1277,27 +1277,27 @@ export default function HomePage() {
               <motion.div variants={fadeIn} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/[0.05] border border-white/[0.1] text-neutral-200 text-sm font-bold tracking-[0.1em] uppercase mb-8 backdrop-blur-md shadow-sm">
                 Proven Results
               </motion.div>
-              <motion.h2 variants={fadeIn} className="text-4xl md:text-6xl font-semibold tracking-tight text-white leading-[1.1] max-w-4xl mx-auto">
+              <motion.h2 variants={fadeIn} className="text-4xl md:text-5xl lg:text-6xl font-semibold tracking-tight text-white leading-[1.1] max-w-4xl mx-auto">
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-violet-600">Grow</span> without the grind.
               </motion.h2>
             </motion.div>
 
             <motion.div variants={stagger} initial="hidden" whileInView="visible" viewport={{ once: true }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 relative">
               {[
-                { val: '300%', label: 'More Impressions', icon: <ArrowUpRight className="w-5 h-5 text-violet-400" /> },
-                { val: '15hrs', label: 'Saved Per Week', icon: <Zap className="w-5 h-5 text-violet-400" /> },
-                { val: '$0', label: 'Spent on Ghostwriters', icon: <Target className="w-5 h-5 text-violet-400" /> },
-                { val: '100%', label: 'Automated Posting', icon: <Check className="w-5 h-5 text-violet-400" /> }
+                { val: '300%', label: 'More Impressions', icon: <i className={`fi fi-sr-arrow-up-right flex items-center justify-center ${"w-5 h-5 text-violet-400"}`}  ></i> },
+                { val: '15hrs', label: 'Saved Per Week', icon: <i className={`fi fi-sr-bolt flex items-center justify-center ${"w-5 h-5 text-violet-400"}`}  ></i> },
+                { val: '$0', label: 'Spent on Ghostwriters', icon: <i className={`fi fi-sr-bullseye flex items-center justify-center ${"w-5 h-5 text-violet-400"}`}  ></i> },
+                { val: '100%', label: 'Automated Posting', icon: <i className={`fi fi-sr-check flex items-center justify-center ${"w-5 h-5 text-violet-400"}`}  ></i> }
               ].map((stat, i) => (
                 <motion.div
                   variants={fadeIn}
                   key={i}
-                  className="group relative bg-white/[0.02] rounded-[var(--radius-luxe)] p-8 md:p-10 border border-white/[0.04] backdrop-blur-2xl overflow-hidden hover:border-white/[0.1] transition-all duration-500 hover:-translate-y-2 hover:shadow-[var(--shadow-luxe)] flex flex-col items-center text-center"
+                  className="group relative bg-white/[0.02] rounded-[var(--radius-luxe)] p-6 md:p-10 border border-white/[0.04] backdrop-blur-2xl overflow-hidden hover:border-white/[0.1] transition-all duration-500 hover:-translate-y-2 hover:shadow-[var(--shadow-luxe)] flex flex-col items-center text-center"
                 >
-                  <div className="w-12 h-12 rounded-full bg-white/[0.03] border border-white/[0.05] flex items-center justify-center mb-8 relative z-10">
+                  <div className="w-12 h-12 rounded-full bg-white/[0.03] border border-white/[0.05] flex items-center justify-center mb-6 md:mb-8 relative z-10">
                     {stat.icon}
                   </div>
-                  <div className="text-5xl md:text-6xl font-bold text-white mb-4 tracking-tight relative z-10">
+                  <div className="text-4xl md:text-6xl font-bold text-white mb-4 tracking-tight relative z-10">
                     {stat.val}
                   </div>
                   <div className="text-xl font-bold text-neutral-200 leading-tight relative z-10 uppercase tracking-widest">
@@ -1324,26 +1324,26 @@ export default function HomePage() {
             <motion.h2 variants={fadeIn} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} className="text-5xl md:text-6xl font-semibold tracking-tight text-center mb-24 leading-[1.1]">
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-violet-600 drop-shadow-[0_0_30px_rgba(139,92,246,0.3)]">Why we beat standard AI.</span>
             </motion.h2>
-            <motion.div variants={fadeIn} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} className="bg-white/[0.02] border border-white/[0.04] rounded-[var(--radius-luxe)] shadow-[var(--shadow-luxe)] backdrop-blur-md overflow-hidden p-2">
+            <motion.div variants={fadeIn} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} className="bg-white/[0.02] border border-white/[0.04] rounded-[var(--radius-luxe)] shadow-[var(--shadow-luxe)] backdrop-blur-md overflow-hidden p-1 md:p-2">
               <div className="rounded-[var(--radius-luxe)] overflow-hidden bg-[#0A0710] border border-white/[0.04]">
-                <div className="grid grid-cols-3 border-b border-white/[0.08] p-8 bg-white/[0.02]">
-                  <div className="font-bold text-neutral-300 text-base tracking-[0.2em] uppercase">Feature</div>
-                  <div className="font-bold text-white text-center text-base tracking-[0.2em] uppercase">Influuc</div>
-                  <div className="font-bold text-neutral-500 text-center text-base tracking-[0.2em] uppercase">Standard AI</div>
+                <div className="grid grid-cols-3 border-b border-white/[0.08] p-4 md:p-8 bg-white/[0.02]">
+                  <div className="font-bold text-neutral-300 text-xs md:text-base tracking-[0.1em] md:tracking-[0.2em] uppercase">Feature</div>
+                  <div className="font-bold text-white text-center text-xs md:text-base tracking-[0.1em] md:tracking-[0.2em] uppercase">Influuc</div>
+                  <div className="font-bold text-neutral-500 text-center text-xs md:text-base tracking-[0.1em] md:tracking-[0.2em] uppercase">Standard AI</div>
                 </div>
                 {[
-                  { cap: "Content Quality", inf: "Matches Your Voice", basic: "Sounds like ChatGPT", icon: <Command className="w-4 h-4" /> },
-                  { cap: "Publishing", inf: "Fully Automated", basic: "You Do It Manually", icon: <Share2 className="w-4 h-4" /> },
-                  { cap: "Carousels", inf: "Auto-Generated", basic: "Not Included", icon: <Sparkles className="w-4 h-4" /> },
-                  { cap: "Newsjacking", inf: "Reacts to Trends", basic: "Outdated Output", icon: <Code className="w-4 h-4" /> }
+                  { cap: "Content Quality", inf: "Matches Your Voice", basic: "Sounds like ChatGPT", icon: <i className={`fi fi-sr-command flex items-center justify-center ${"w-4 h-4"}`}  ></i> },
+                  { cap: "Publishing", inf: "Fully Automated", basic: "You Do It Manually", icon: <i className={`fi fi-sr-share flex items-center justify-center ${"w-4 h-4"}`}  ></i> },
+                  { cap: "Carousels", inf: "Auto-Generated", basic: "Not Included", icon: <i className={`fi fi-sr-magic-wand flex items-center justify-center ${"w-4 h-4"}`}  ></i> },
+                  { cap: "Newsjacking", inf: "Reacts to Trends", basic: "Outdated Output", icon: <i className={`fi fi-sr-code-simple flex items-center justify-center ${"w-4 h-4"}`}  ></i> }
                 ].map((row, i) => (
-                  <div key={i} className="grid grid-cols-3 border-b border-white/[0.03] p-8 group transition-all duration-500 hover:bg-white/[0.02]">
-                    <div className="flex items-center gap-4 text-neutral-200 text-xl font-semibold group-hover:text-white transition-colors">
-                      <div className="w-10 h-10 rounded-lg bg-white/[0.02] border border-white/[0.05] flex items-center justify-center opacity-60 group-hover:opacity-100 group-hover:border-violet-500/30 transition-all">{row.icon}</div>
+                  <div key={i} className="grid grid-cols-3 border-b border-white/[0.03] p-4 md:p-8 group transition-all duration-500 hover:bg-white/[0.02]">
+                    <div className="flex items-center gap-2 md:gap-4 text-neutral-200 text-sm md:text-xl font-semibold group-hover:text-white transition-colors">
+                      <div className="hidden md:flex w-10 h-10 rounded-lg bg-white/[0.02] border border-white/[0.05] items-center justify-center opacity-60 group-hover:opacity-100 group-hover:border-violet-500/30 transition-all">{row.icon}</div>
                       {row.cap}
                     </div>
-                    <div className="flex items-center justify-center font-bold text-white text-2xl tracking-tight">{row.inf}</div>
-                    <div className="flex items-center justify-center text-neutral-500 text-xl font-normal">{row.basic}</div>
+                    <div className="flex items-center justify-center font-bold text-white text-base md:text-2xl tracking-tight text-center">{row.inf}</div>
+                    <div className="flex items-center justify-center text-neutral-500 text-sm md:text-xl font-normal text-center">{row.basic}</div>
                   </div>
                 ))}
               </div>
@@ -1370,7 +1370,7 @@ export default function HomePage() {
 
             <motion.div variants={stagger} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} className="grid grid-cols-1 lg:grid-cols-3 gap-8 relative z-10 items-stretch">
               {/* Plan 1: Starter */}
-              <motion.div variants={fadeIn} className="bg-white/[0.02] border border-white/[0.05] p-10 lg:p-12 rounded-[2.5rem] flex flex-col relative group transition-all duration-700 hover:border-white/[0.1] hover:bg-white/[0.03] backdrop-blur-3xl shadow-2xl">
+              <motion.div variants={fadeIn} className="bg-white/[0.02] border border-white/[0.05] p-6 md:p-10 lg:p-12 rounded-[2.5rem] flex flex-col relative group transition-all duration-700 hover:border-white/[0.1] hover:bg-white/[0.03] backdrop-blur-3xl shadow-2xl">
                 <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/[0.1] to-transparent" />
                 <div className="relative z-10 flex-grow flex flex-col">
                   <div className="text-neutral-400 font-mono text-sm font-bold uppercase tracking-[0.3em] mb-6">Starter</div>
@@ -1378,19 +1378,19 @@ export default function HomePage() {
                   <div className="text-6xl font-bold text-white tracking-tighter mb-12 leading-none">$19<span className="text-xl text-neutral-500 font-normal tracking-normal ml-2">/mo</span></div>
                   <div className="h-px w-full bg-white/[0.05] mb-12" />
                   <ul className="space-y-6 mb-12 flex-grow">
-                    <li className="flex items-start gap-4"><CheckCircle2 className="w-6 h-6 text-neutral-600 mt-0.5 flex-shrink-0" /> <span className="text-xl text-neutral-300 font-normal leading-relaxed">30 Ideas / Month</span></li>
-                    <li className="flex items-start gap-4"><CheckCircle2 className="w-6 h-6 text-neutral-600 mt-0.5 flex-shrink-0" /> <span className="text-xl text-neutral-300 font-normal leading-relaxed">Basic Text Posts</span></li>
-                    <li className="flex items-start gap-4"><CheckCircle2 className="w-6 h-6 text-neutral-600 mt-0.5 flex-shrink-0" /> <span className="text-xl text-neutral-300 font-normal leading-relaxed">Manual Scheduling</span></li>
+                    <li className="flex items-start gap-4"><i className={`fi fi-sr-check flex items-center justify-center ${"w-6 h-6 text-neutral-600 mt-0.5 flex-shrink-0"}`}></i> <span className="text-xl text-neutral-300 font-normal leading-relaxed">30 Ideas / Month</span></li>
+                    <li className="flex items-start gap-4"><i className={`fi fi-sr-check flex items-center justify-center ${"w-6 h-6 text-neutral-600 mt-0.5 flex-shrink-0"}`}></i> <span className="text-xl text-neutral-300 font-normal leading-relaxed">Basic Text Posts</span></li>
+                    <li className="flex items-start gap-4"><i className={`fi fi-sr-check flex items-center justify-center ${"w-6 h-6 text-neutral-600 mt-0.5 flex-shrink-0"}`}></i> <span className="text-xl text-neutral-300 font-normal leading-relaxed">Manual Scheduling</span></li>
                   </ul>
                   <button className="w-full py-6 rounded-2xl bg-white/[0.05] border border-white/20 text-white text-xl font-bold hover:bg-white/[0.08] transition-all duration-300 mt-auto hover:-translate-y-1">Initialize Starter Protocol</button>
                 </div>
               </motion.div>
 
               {/* Plan 2: Creator (Popular) */}
-              <motion.div variants={fadeIn} className="bg-[#0A0710] border border-violet-500/40 p-10 lg:p-12 rounded-[2.5rem] flex flex-col relative shadow-[0_30px_100px_rgba(139,92,246,0.25)] text-white group transition-all duration-700 hover:border-violet-500/60 z-20 scale-100 lg:scale-[1.05] backdrop-blur-3xl">
+              <motion.div variants={fadeIn} className="bg-[#0A0710] border border-violet-500/40 p-6 md:p-10 lg:p-12 rounded-[2.5rem] flex flex-col relative shadow-[0_30px_100px_rgba(139,92,246,0.25)] text-white group transition-all duration-700 hover:border-violet-500/60 z-20 scale-100 lg:scale-[1.05] backdrop-blur-3xl">
                 {/* Popular Badge */}
                 <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-violet-600 px-6 py-2.5 rounded-full text-white text-xs font-black uppercase tracking-[0.2em] shadow-[0_0_30px_rgba(139,92,246,0.5)] z-30 flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 fill-white" /> Popular Choice
+                  <i className={`fi fi-sr-magic-wand flex items-center justify-center ${"w-4 h-4 fill-white"}`}  ></i> Popular Choice
                 </div>
 
                 {/* Internal Glows */}
@@ -1403,10 +1403,10 @@ export default function HomePage() {
                   <div className="text-6xl font-bold mb-12 tracking-tighter text-white leading-none">$39<span className="text-xl text-violet-400/50 font-normal tracking-normal ml-2">/mo</span></div>
                   <div className="h-px w-full bg-violet-500/20 mb-12" />
                   <ul className="space-y-6 mb-12 flex-grow">
-                    <li className="flex items-start gap-4"><CheckCircle2 className="w-6 h-6 text-violet-400 mt-0.5 flex-shrink-0" /> <span className="text-xl font-bold text-white tracking-tight">Unlimited Ideas</span></li>
-                    <li className="flex items-start gap-4"><CheckCircle2 className="w-6 h-6 text-violet-400 mt-0.5 flex-shrink-0" /> <span className="text-xl font-bold text-white tracking-tight">2 Carousels / Week</span></li>
-                    <li className="flex items-start gap-4"><CheckCircle2 className="w-6 h-6 text-violet-400 mt-0.5 flex-shrink-0" /> <span className="text-xl font-bold text-white tracking-tight">Faceless AI Visuals</span></li>
-                    <li className="flex items-start gap-4"><CheckCircle2 className="w-6 h-6 text-violet-400 mt-0.5 flex-shrink-0" /> <span className="text-xl font-bold text-white tracking-tight">Priority Support</span></li>
+                    <li className="flex items-start gap-4"><i className={`fi fi-sr-check flex items-center justify-center ${"w-6 h-6 text-violet-400 mt-0.5 flex-shrink-0"}`}></i> <span className="text-xl font-bold text-white tracking-tight">Unlimited Ideas</span></li>
+                    <li className="flex items-start gap-4"><i className={`fi fi-sr-check flex items-center justify-center ${"w-6 h-6 text-violet-400 mt-0.5 flex-shrink-0"}`}></i> <span className="text-xl font-bold text-white tracking-tight">2 Carousels / Week</span></li>
+                    <li className="flex items-start gap-4"><i className={`fi fi-sr-check flex items-center justify-center ${"w-6 h-6 text-violet-400 mt-0.5 flex-shrink-0"}`}></i> <span className="text-xl font-bold text-white tracking-tight">Faceless AI Visuals</span></li>
+                    <li className="flex items-start gap-4"><i className={`fi fi-sr-check flex items-center justify-center ${"w-6 h-6 text-violet-400 mt-0.5 flex-shrink-0"}`}></i> <span className="text-xl font-bold text-white tracking-tight">Priority Support</span></li>
                   </ul>
                   <button className="relative w-full py-6 rounded-2xl bg-white text-black text-xl font-black hover:bg-neutral-100 transition-all duration-300 mt-auto shadow-[0_0_50px_rgba(255,255,255,0.3)] hover:-translate-y-1">
                     Initialize Creator Protocol
@@ -1415,7 +1415,7 @@ export default function HomePage() {
               </motion.div>
 
               {/* Plan 3: Authority */}
-              <motion.div variants={fadeIn} className="bg-white/[0.02] border border-white/[0.05] p-10 lg:p-12 rounded-[2.5rem] flex flex-col relative group transition-all duration-700 hover:border-white/[0.1] hover:bg-white/[0.03] backdrop-blur-3xl shadow-2xl">
+              <motion.div variants={fadeIn} className="bg-white/[0.02] border border-white/[0.05] p-6 md:p-10 lg:p-12 rounded-[2.5rem] flex flex-col relative group transition-all duration-700 hover:border-white/[0.1] hover:bg-white/[0.03] backdrop-blur-3xl shadow-2xl">
                 <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/[0.1] to-transparent" />
                 <div className="relative z-10 flex-grow flex flex-col">
                   <div className="text-neutral-400 font-mono text-sm font-bold uppercase tracking-[0.3em] mb-6">Authority</div>
@@ -1423,9 +1423,9 @@ export default function HomePage() {
                   <div className="text-6xl font-bold text-white tracking-tighter mb-12 leading-none">$49<span className="text-xl text-neutral-500 font-normal tracking-normal ml-2">/mo</span></div>
                   <div className="h-px w-full bg-white/[0.05] mb-12" />
                   <ul className="space-y-6 mb-12 flex-grow">
-                    <li className="flex items-start gap-4"><CheckCircle2 className="w-6 h-6 text-neutral-400 mt-0.5 flex-shrink-0" /> <span className="text-xl text-neutral-300 font-normal leading-relaxed">Everything in Creator</span></li>
-                    <li className="flex items-start gap-4"><CheckCircle2 className="w-6 h-6 text-neutral-400 mt-0.5 flex-shrink-0" /> <span className="text-xl text-neutral-300 font-normal leading-relaxed">AI Face Clone Integration</span></li>
-                    <li className="flex items-start gap-4"><CheckCircle2 className="w-6 h-6 text-neutral-400 mt-0.5 flex-shrink-0" /> <span className="text-xl text-neutral-300 font-normal leading-relaxed">NewsJacking Engine</span></li>
+                    <li className="flex items-start gap-4"><i className={`fi fi-sr-check flex items-center justify-center ${"w-6 h-6 text-neutral-400 mt-0.5 flex-shrink-0"}`}></i> <span className="text-xl text-neutral-300 font-normal leading-relaxed">Everything in Creator</span></li>
+                    <li className="flex items-start gap-4"><i className={`fi fi-sr-check flex items-center justify-center ${"w-6 h-6 text-neutral-400 mt-0.5 flex-shrink-0"}`}></i> <span className="text-xl text-neutral-300 font-normal leading-relaxed">AI Face Clone Integration</span></li>
+                    <li className="flex items-start gap-4"><i className={`fi fi-sr-check flex items-center justify-center ${"w-6 h-6 text-neutral-400 mt-0.5 flex-shrink-0"}`}></i> <span className="text-xl text-neutral-300 font-normal leading-relaxed">NewsJacking Engine</span></li>
                   </ul>
                   <button className="w-full py-6 rounded-2xl bg-white/[0.05] border border-white/20 text-white text-xl font-bold hover:bg-white/[0.08] transition-all duration-300 mt-auto hover:-translate-y-1">Initialize Authority Protocol</button>
                 </div>
@@ -1439,7 +1439,7 @@ export default function HomePage() {
           SECTION 12: FINAL CTA
           ============================================================
         */}
-        <section className="py-[var(--section-py)] px-6 relative overflow-hidden">
+        <section className="py-[var(--section-py)] px-8 sm:px-12 relative overflow-hidden">
           {/* Horizon Mask */}
           <div className="absolute top-0 left-1/4 right-1/4 h-px bg-gradient-to-r from-transparent via-violet-500/40 to-transparent z-10" />
 
@@ -1448,22 +1448,22 @@ export default function HomePage() {
           <div className="max-w-[1400px] mx-auto relative z-10">
             <motion.div variants={stagger} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }} className="flex flex-col items-center text-center">
               <motion.div variants={fadeIn} className="w-20 h-20 rounded-[2rem] bg-white/[0.03] border border-white/[0.08] flex items-center justify-center mb-12 shadow-2xl backdrop-blur-3xl">
-                <Command className="w-10 h-10 text-white opacity-80" />
+                <i className={`fi fi-sr-command flex items-center justify-center ${"w-10 h-10 text-white opacity-80"}`}  ></i>
               </motion.div>
 
-              <motion.h2 variants={fadeIn} className="text-5xl md:text-7xl font-semibold tracking-tight mb-12 leading-[1.0] text-reveal">
-                Ready to save time <br /> and grow?
+              <motion.h2 variants={fadeIn} className="text-4xl md:text-5xl lg:text-7xl font-semibold tracking-tight mb-8 md:mb-12 leading-[1.1] md:leading-[1.0] text-reveal">
+                Ready to save time <br className="hidden md:block" /> and grow?
               </motion.h2>
 
-              <motion.p variants={fadeIn} className="text-neutral-200 font-normal text-3xl mb-24 max-w-2xl mx-auto tracking-tight leading-relaxed">
+              <motion.p variants={fadeIn} className="text-neutral-200 font-normal text-xl md:text-3xl mb-16 md:mb-24 max-w-2xl mx-auto tracking-tight leading-relaxed">
                 Join founders who are saving 15+ hours a week and building massive audiences on autopilot.
               </motion.p>
 
-              <div className="flex flex-col sm:flex-row items-center gap-6">
-                <button onClick={() => router.push('/signup')} className="relative group px-16 py-7 rounded-full bg-white text-black text-lg font-bold transition-all hover:scale-[1.05] shadow-white/20 shadow-2xl">
+              <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 w-full sm:w-auto">
+                <button onClick={() => router.push('/signup')} className="w-full sm:w-auto relative group px-8 py-5 md:px-16 md:py-7 rounded-full bg-white text-black text-lg font-bold transition-all hover:scale-[1.05] shadow-white/20 shadow-2xl">
                   <span className="relative z-10">Start Saving Time</span>
                 </button>
-                <button className="px-12 py-7 rounded-full bg-white/[0.02] border border-white/[0.08] hover:bg-white/[0.05] text-white font-medium transition-all backdrop-blur-xl text-lg font-semibold">
+                <button className="w-full sm:w-auto px-8 py-5 md:px-12 md:py-7 rounded-full bg-white/[0.02] border border-white/[0.08] hover:bg-white/[0.05] text-white font-medium transition-all backdrop-blur-xl text-lg font-semibold">
                   See How It Works
                 </button>
               </div>
@@ -1476,19 +1476,19 @@ export default function HomePage() {
         </section>
 
         {/* FOOTER */}
-        <footer className="px-6 py-12 relative z-10">
+        <footer className="px-8 sm:px-12 py-12 relative z-10">
           {/* Horizon Mask */}
           <div className="absolute top-0 left-1/4 right-1/4 h-px bg-gradient-to-r from-transparent via-white/5 to-transparent z-10" />
 
 
-          <div className="max-w-[1400px] mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
+          <div className="max-w-[1400px] mx-auto flex flex-col md:flex-row justify-between items-center gap-6 md:gap-8">
             <div className="flex items-center gap-4 text-white opacity-90">
               <div className="w-10 h-10 rounded-lg bg-white/[0.03] flex items-center justify-center border border-white/10 backdrop-blur-md">
-                <Sparkles className="w-5 h-5 text-violet-400" />
+                <i className={`fi fi-sr-magic-wand flex items-center justify-center ${"w-5 h-5 text-violet-400"}`}  ></i>
               </div>
               <span className="font-bold text-xl tracking-tight">Influuc © 2026</span>
             </div>
-            <div className="flex gap-10 text-lg font-bold text-neutral-400">
+            <div className="flex flex-wrap justify-center gap-4 sm:gap-10 text-base md:text-lg font-bold text-neutral-400">
               <a href="#" className="hover:text-white transition-colors">Twitter</a>
               <a href="#" className="hover:text-white transition-colors">LinkedIn</a>
               <a href="#" className="hover:text-white transition-colors">Terms</a>

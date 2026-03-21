@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, X } from 'lucide-react';
+
 import StepVisualFork from '@/components/onboarding/StepVisualFork';
 
 export default function TierUpgradeModal() {
@@ -94,7 +94,7 @@ export default function TierUpgradeModal() {
                         onClick={() => setIsOpen(false)}
                         className="absolute top-4 right-4 p-2 rounded-full hover:bg-[var(--background-secondary)]"
                     >
-                        <X className="w-5 h-5 text-[var(--foreground-muted)]" />
+                        <i className={`fi fi-sr-cross-small flex items-center justify-center ${"w-5 h-5 text-[var(--foreground-muted)]"}`}  ></i>
                     </button>
 
                     <div className="p-8">

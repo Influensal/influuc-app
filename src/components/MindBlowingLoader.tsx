@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Brain, Zap, Sparkles } from 'lucide-react';
+
 
 const TIPS = [
     "Consistency beats virality 9 times out of 10.",
@@ -142,17 +142,17 @@ export default function MindBlowingLoader() {
                         <AnimatePresence mode="wait">
                             {phase === 0 && (
                                 <motion.div key="scan" initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.5 }}>
-                                    <Brain className="w-8 h-8 text-[var(--primary)]" />
+                                    <i className={`fi fi-sr-brain flex items-center justify-center ${"w-8 h-8 text-[var(--primary)]"}`}  ></i>
                                 </motion.div>
                             )}
                             {phase === 1 && (
                                 <motion.div key="strategy" initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.5 }}>
-                                    <Zap className="w-8 h-8 text-amber-300" />
+                                    <i className={`fi fi-sr-bolt flex items-center justify-center ${"w-8 h-8 text-amber-300"}`}  ></i>
                                 </motion.div>
                             )}
                             {phase === 2 && (
                                 <motion.div key="draft" initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.5 }}>
-                                    <Sparkles className="w-8 h-8 text-indigo-300" />
+                                    <i className={`fi fi-sr-magic-wand flex items-center justify-center ${"w-8 h-8 text-indigo-300"}`}  ></i>
                                 </motion.div>
                             )}
                         </AnimatePresence>

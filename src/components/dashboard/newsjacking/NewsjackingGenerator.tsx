@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Sparkles, Check, FileText, Settings2 } from 'lucide-react';
+
 import { useAuth } from '@/contexts';
 
 import { NewsArticle } from './ArticleCard';
@@ -88,7 +88,7 @@ export function NewsjackingGenerator({ article, onClose }: NewsjackingGeneratorP
                     <div className="flex items-center justify-between p-6 border-b border-[var(--border)] shrink-0">
                         <div>
                             <h2 className="text-xl font-bold text-[var(--foreground)] flex items-center gap-2">
-                                <Sparkles className="w-5 h-5 text-[var(--primary)]" />
+                                <i className={`fi fi-sr-magic-wand flex items-center justify-center ${"w-5 h-5 text-[var(--primary)]"}`}  ></i>
                                 Newsjacking Engine
                             </h2>
                             <p className="text-sm text-[var(--foreground-muted)] line-clamp-1 mt-1 font-medium">
@@ -96,7 +96,7 @@ export function NewsjackingGenerator({ article, onClose }: NewsjackingGeneratorP
                             </p>
                         </div>
                         <button onClick={onClose} className="p-2 text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--background-secondary)] rounded-full transition-colors">
-                            <X className="w-6 h-6" />
+                            <i className={`fi fi-sr-cross-small flex items-center justify-center ${"w-6 h-6"}`}  ></i>
                         </button>
                     </div>
 
@@ -105,17 +105,17 @@ export function NewsjackingGenerator({ article, onClose }: NewsjackingGeneratorP
                         {!generatedPost && !isGenerating ? (
                             <div className="text-center py-12 max-w-xl mx-auto">
                                 <div className="w-20 h-20 bg-[var(--primary-light)] rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-sm">
-                                    <Sparkles className="w-10 h-10 text-[var(--primary)]" />
+                                    <i className={`fi fi-sr-magic-wand flex items-center justify-center ${"w-10 h-10 text-[var(--primary)]"}`}  ></i>
                                 </div>
                                 <h3 className="text-3xl font-black text-[var(--foreground)] tracking-tight mb-4">Spin this breaking news</h3>
                                 <p className="text-lg text-[var(--foreground-muted)] mb-10 leading-relaxed">
                                     The AI will analyze this article and draft a highly-engaging thought-leadership essay tailored to your specific industry and voice.
                                 </p>
 
-                                {/* Tone Selector (Optional Config) */}
+                                 {/* Tone Selector (Optional Config) */}
                                 <div className="max-w-xs mx-auto mb-10 text-left">
                                     <label className="block text-sm font-bold text-[var(--foreground-muted)] uppercase tracking-wider mb-3 flex items-center gap-2">
-                                        <Settings2 className="w-4 h-4" />
+                                        <i className={`fi fi-sr-settings-sliders flex items-center justify-center ${"w-4 h-4"}`}  ></i>
                                         Angle / Tone
                                     </label>
                                     <select
@@ -129,6 +129,17 @@ export function NewsjackingGenerator({ article, onClose }: NewsjackingGeneratorP
                                         <option>Inspirational / Founder Journey</option>
                                     </select>
                                 </div>
+
+                                {article.spiky_take && (
+                                    <div className="max-w-xl mx-auto mb-10 p-4 bg-[var(--primary-light)]/30 border border-[var(--primary)]/20 rounded-2xl text-left relative group">
+                                         <div className="absolute -top-3 left-4 px-2 py-0.5 bg-[var(--primary)] text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-sm">
+                                            AI Angle
+                                        </div>
+                                        <p className="text-sm text-[var(--foreground)] italic font-medium leading-relaxed">
+                                            "{article.spiky_take}"
+                                        </p>
+                                    </div>
+                                )}
 
                                 <button
                                     onClick={handleGenerate}
@@ -153,7 +164,7 @@ export function NewsjackingGenerator({ article, onClose }: NewsjackingGeneratorP
                         ) : (
                             <div className="flex flex-col gap-4 h-full animate-in fade-in slide-in-from-bottom-4 duration-500">
                                 <label className="text-sm font-bold text-[var(--foreground-muted)] uppercase tracking-wider flex items-center gap-2">
-                                    <FileText className="w-4 h-4" />
+                                    <i className={`fi fi-sr-document flex items-center justify-center ${"w-4 h-4"}`}  ></i>
                                     Review & Edit Post
                                 </label>
                                 <textarea
@@ -180,7 +191,7 @@ export function NewsjackingGenerator({ article, onClose }: NewsjackingGeneratorP
                                 {isSaving ? (
                                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                                 ) : (
-                                    <Check className="w-5 h-5 flex-shrink-0" />
+                                    <i className={`fi fi-sr-check flex items-center justify-center ${"w-5 h-5 flex-shrink-0"}`}  ></i>
                                 )}
                                 Copy to Clipboard
                             </button>

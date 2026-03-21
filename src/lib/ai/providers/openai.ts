@@ -32,11 +32,25 @@ export class OpenAIProvider implements AIProviderInterface {
                 model: 'gpt-4o',
                 messages: options.messages.map(m => ({
                     role: m.role,
-                    content: m.content,
+                    content: typeof m.content === 'string'
+                        ? m.content
+                        : m.content.map(part => {
+                            if (part.type === 'image') {
+                                return {
+                                    type: 'image_url',
+                                    image_url: {
+                                        url: part.image || '',
+                                    },
+                                };
+                            }
+                            return { type: 'text', text: part.text || '' };
+                        }),
                 })),
                 temperature: options.temperature ?? 0.7,
                 max_tokens: options.maxTokens ?? 2000,
             }),
+            signal: AbortSignal.timeout(300000), // 5 minute override to prevent Next.js automatic client aborts
+            cache: 'no-store'
         });
 
         if (!response.ok) {

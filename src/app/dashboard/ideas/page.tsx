@@ -2,23 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-    Sparkles,
-    Send,
-    Loader2,
-    Twitter,
-    Linkedin,
-    Trash2,
-    Copy,
-    Check,
-    Plus,
-    MessageSquare,
-    Menu,
-    Image as ImageIcon,
-    Music,
-    Zap,
-    Compass
-} from 'lucide-react';
+
+import { useAuth } from '@/contexts';
 
 interface GeneratedContent {
     platform: 'x' | 'linkedin';
@@ -39,21 +24,8 @@ interface SavedChat {
     createdAt: string;
 }
 
-const SUGGESTION_PROMPTS = [
-    { text: "Create image", icon: ImageIcon, color: "text-[#F4B400]" },
-    { text: "Explore ideas", icon: Compass, color: "text-[#D96570]" },
-    { text: "Brainstorm content", icon: Zap, color: "text-[#A8C7FA]" },
-    { text: "Create music", icon: Music, color: "text-[#4285F4]" },
-];
-
-function getGreeting(): string {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning';
-    if (hour < 17) return 'Good Afternoon';
-    return 'Good Evening';
-}
-
 export default function SpontaneousIdeasPage() {
+    const { user } = useAuth();
     const [ideaInput, setIdeaInput] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
     const [optimisticPrompt, setOptimisticPrompt] = useState<string | null>(null);
@@ -61,7 +33,7 @@ export default function SpontaneousIdeasPage() {
     const [currentChatId, setCurrentChatId] = useState<string | null>(null);
     const [copied, setCopied] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
-    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    const [showHistory, setShowHistory] = useState(false);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -94,15 +66,13 @@ export default function SpontaneousIdeasPage() {
                             let messages: ChatMessage[] = [];
 
                             // Backwards compatibility check
-                            if (rawGenerated.length > 0 && Array.isArray(rawGenerated)) {
+                            if (rawGenerated && Array.isArray(rawGenerated) && rawGenerated.length > 0) {
                                 if (rawGenerated[0].role === undefined) {
-                                    // Legacy format: Array of PlatformOutputs
                                     messages = [
                                         { role: 'user', content: idea.input },
                                         { role: 'assistant', platformOutputs: rawGenerated }
                                     ];
                                 } else {
-                                    // New format: Array of ChatMessages
                                     messages = rawGenerated;
                                 }
                             }
@@ -141,7 +111,6 @@ export default function SpontaneousIdeasPage() {
         }
 
         try {
-            // Prepare history to send to AI (exclude the optimistic prompt)
             const historyToSent = activeMessages;
 
             const response = await fetch('/api/ai/generate-idea', {
@@ -166,7 +135,6 @@ export default function SpontaneousIdeasPage() {
             const updatedMessages = [...activeMessages, newUserMessage, newAssistantMessage];
 
             if (currentChatId) {
-                // PATCH existing thread
                 const res = await fetch(`/api/ideas/${currentChatId}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
@@ -179,7 +147,6 @@ export default function SpontaneousIdeasPage() {
                     ));
                 }
             } else {
-                // POST new thread
                 const res = await fetch('/api/ideas', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -215,14 +182,13 @@ export default function SpontaneousIdeasPage() {
         setTimeout(() => setCopied(null), 2000);
     };
 
-    const handleDelete = async (id: string, e: React.MouseEvent) => {
-        e.stopPropagation();
-        setSavedChats(savedChats.filter(chat => chat.id !== id));
+    const handleDeleteChat = async (id: string) => {
+        setSavedChats(prev => prev.filter(c => c.id !== id));
         if (currentChatId === id) setCurrentChatId(null);
         try {
             await fetch(`/api/ideas/${id}`, { method: 'DELETE' });
         } catch (err) {
-            console.error('Failed to delete idea:', err);
+            console.error('Delete failed:', err);
         }
     };
 
@@ -240,288 +206,238 @@ export default function SpontaneousIdeasPage() {
     };
 
     const renderPlatformIcon = (platform: string, className = "w-4 h-4") => {
-        return platform === 'x' ? <Twitter className={className} /> : <Linkedin className={className} />;
+        return platform === 'x' ? <i className={`fi fi-brands-twitter flex items-center justify-center ${""}`} className={className} ></i> : <i className={`fi fi-brands-linkedin flex items-center justify-center ${""}`} className={className} ></i>;
     };
 
     const isEmptyState = activeMessages.length === 0 && !isGenerating && !optimisticPrompt;
 
     return (
-        <div className="flex h-[100vh] overflow-hidden bg-[var(--gemini-bg)] text-[var(--gemini-text)] font-sans">
-            <style dangerouslySetInnerHTML={{
-                __html: `
-                #dashboard-content-wrapper { padding: 0 !important; max-width: none !important; }
-                
-                /* Override the global sidebar styling specifically for this page to create a seamless Gemini layout */
-                .sidebar {
-                    left: 0 !important;
-                    top: 0 !important;
-                    bottom: 0 !important;
-                    border-radius: 0 !important;
-                    box-shadow: none !important;
-                    border-right: 1px solid var(--gemini-border) !important;
-                    background: var(--gemini-bg) !important;
-                }
-                main.flex-1 {
-                    margin-left: 280px !important; /* Force flush with the 280px sidebar */
-                }
+        <div className="flex flex-col h-[calc(100vh-80px)] max-w-5xl mx-auto relative px-4 md:px-0">
+            {/* Header Area */}
+            <div className="flex items-center justify-between mb-8 shrink-0">
+                <div>
+                    <h1 className="text-3xl font-semibold tracking-tight text-[var(--foreground)] flex items-center gap-3">
+                        <i className={`fi fi-sr-magic-wand flex items-center justify-center ${"w-8 h-8 text-[var(--primary)]"}`}  ></i>
+                        Spontaneous Ideas
+                    </h1>
+                    <p className="text-[var(--foreground-muted)] text-sm font-medium mt-1">
+                        Turn raw thoughts into high-performing content instantly.
+                    </p>
+                </div>
 
-                .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-                .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-                .custom-scrollbar::-webkit-scrollbar-thumb { background-color: var(--gemini-hover); border-radius: 20px; }
-                .custom-scrollbar:hover::-webkit-scrollbar-thumb { background-color: var(--gemini-text-muted); }
-
-                :root {
-                  --gemini-bg: #FFFFFF;
-                  --gemini-card: #F0F4F9;
-                  --gemini-text: #1F1F1F;
-                  --gemini-text-muted: #444746;
-                  --gemini-hover: #E1E5EA;
-                  --gemini-border: #E1E5EA;
-                }
-                [data-theme="dark"] {
-                  --gemini-bg: #131314;
-                  --gemini-card: #1E1F20;
-                  --gemini-text: #E3E3E3;
-                  --gemini-text-muted: #C4C7C5;
-                  --gemini-hover: #333537;
-                  --gemini-border: #444746;
-                }
-             `}} />
-
-            {/* Inner Sidebar for Chat History */}
-            <div className={`
-                shrink-0 bg-[var(--gemini-card)] transition-all duration-300 flex flex-col z-20 
-                ${isSidebarOpen ? 'w-[280px] opacity-100' : 'w-0 opacity-0 overflow-hidden'}
-            `}>
-                <div className="p-4 flex items-center gap-3">
-                    <button onClick={() => setIsSidebarOpen(false)} className="p-2 hover:bg-[var(--gemini-hover)] rounded-full text-[var(--gemini-text-muted)] transition-colors">
-                        <Menu className="w-5 h-5" />
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => setShowHistory(!showHistory)}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--card)] border border-[var(--border)] text-sm font-semibold text-[var(--foreground-secondary)] hover:bg-[var(--background-secondary)] transition-all shadow-sm"
+                    >
+                        <i className="fi fi-sr-time-past flex items-center justify-center w-4 h-4"></i>
+                        History ({savedChats.length})
                     </button>
                     <button
-                        onClick={() => setCurrentChatId(null)}
-                        className="flex items-center gap-2 px-4 py-2 hover:bg-[var(--gemini-hover)] bg-[var(--gemini-bg)] text-[var(--gemini-text-muted)] rounded-full transition-all text-sm font-medium"
+                        onClick={() => {
+                            setCurrentChatId(null);
+                            setIdeaInput('');
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--foreground)] text-[var(--background)] text-sm font-semibold hover:scale-[1.02] transition-all active:scale-[0.98] shadow-lg"
                     >
-                        <Plus className="w-4 h-4" />
-                        New chat
+                        <i className={`fi fi-sr-plus-small flex items-center justify-center ${"w-4 h-4"}`}  ></i>
+                        New Thread
                     </button>
                 </div>
-
-                <div className="flex-1 overflow-y-auto px-3 py-2 space-y-0.5 custom-scrollbar">
-                    <div className="px-4 py-2 text-[13px] font-medium text-[var(--gemini-text-muted)] mt-2 mb-1">
-                        Recent
-                    </div>
-                    {savedChats.length === 0 ? (
-                        <div className="px-4 py-2 text-sm text-[var(--gemini-text-muted)]">No chats yet.</div>
-                    ) : (
-                        savedChats.map((chat) => (
-                            <div key={chat.id} className="group relative flex items-center mb-1">
-                                <button
-                                    onClick={() => setCurrentChatId(chat.id)}
-                                    className={`w-full text-left px-4 py-2.5 rounded-full text-[13px] flex items-center gap-3 transition-colors
-                                        ${currentChatId === chat.id
-                                            ? 'bg-[var(--gemini-active-bg)] text-[var(--gemini-active-text)]'
-                                            : 'hover:bg-[var(--gemini-hover)] text-[var(--gemini-text)]'}
-                                    `}
-                                >
-                                    <MessageSquare className="w-4 h-4 shrink-0 text-[var(--gemini-text-muted)]" />
-                                    <span className="truncate pr-6">{chat.input || "Untitled Idea"}</span>
-                                </button>
-                                <button
-                                    onClick={(e) => handleDelete(chat.id, e)}
-                                    className={`absolute right-2 p-1.5 text-[var(--gemini-text-muted)] hover:text-white hover:bg-[var(--gemini-border)] rounded-full opacity-0 group-hover:opacity-100 transition-all`}
-                                >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                            </div>
-                        ))
-                    )}
-                </div>
             </div>
 
-            {/* Main Content */}
-            <div className="flex-1 flex flex-col relative w-full h-full min-w-0 bg-[var(--gemini-bg)]">
-                {/* Header Navbar */}
-                <div className="h-16 flex items-center justify-between px-4 shrink-0">
-                    <div className="flex items-center gap-2">
-                        {!isSidebarOpen && (
-                            <button onClick={() => setIsSidebarOpen(true)} className="p-2 hover:bg-[var(--gemini-card)] bg-transparent rounded-full text-[var(--gemini-text-muted)] transition-colors md:mr-2">
-                                <Menu className="w-5 h-5" />
+            {/* History Overlay */}
+            <AnimatePresence>
+                {showHistory && (
+                    <motion.div
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 20 }}
+                        className="absolute right-0 top-16 w-80 max-h-[70vh] glass-premium z-50 p-6 flex flex-col overflow-hidden"
+                    >
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-sm font-semibold uppercase tracking-widest text-[var(--foreground-muted)]">Recent Threads</h3>
+                            <button onClick={() => setShowHistory(false)} className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
+                                <i className={`fi fi-sr-plus-small flex items-center justify-center ${"w-4 h-4 rotate-45"}`}  ></i>
                             </button>
-                        )}
-                        <span className="text-lg font-medium text-[var(--gemini-text)]">Gemini AI</span>
-                    </div>
-                </div>
-
-                <div className="flex-1 overflow-y-auto w-full scroll-smooth custom-scrollbar relative flex flex-col items-center">
-
-                    {isEmptyState ? (
-                        /* Empty State - Centered */
-                        <div className="flex-1 w-full max-w-[800px] flex flex-col justify-center px-4 md:px-8 pb-32">
-                            <div className="mb-10 text-left md:text-center w-full">
-                                <h1 className="text-4xl md:text-[56px] font-medium mb-3 bg-clip-text !text-transparent bg-gradient-to-r from-[#4285F4] via-[#D96570] to-[#F4B400] inline-block tracking-tight">
-                                    Hi there
-                                </h1>
-                                <h2 className="text-4xl md:text-[56px] font-medium text-[var(--gemini-text-muted)] tracking-tight mt-2">
-                                    Where should we start?
-                                </h2>
-                            </div>
-
-                            {/* Center Input Box */}
-                            <div className="relative w-full bg-[var(--gemini-card)] rounded-[32px] p-2 flex flex-col border border-transparent focus-within:bg-[#333537]/50 transition-colors shadow-sm">
-                                <textarea
-                                    ref={textareaRef}
-                                    value={ideaInput}
-                                    onChange={handleInput}
-                                    onKeyDown={handleKeyDown}
-                                    placeholder="Enter a prompt here"
-                                    rows={1}
-                                    className="w-full bg-transparent border-none outline-none resize-none text-[16px] text-[var(--gemini-text)] placeholder:text-[var(--gemini-text-muted)] px-5 pt-5 pb-14 max-h-[300px] custom-scrollbar"
-                                />
-                                <div className="absolute bottom-3 right-3 flex items-center gap-2">
+                        </div>
+                        <div className="flex-1 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                            {savedChats.map(chat => (
+                                <div key={chat.id} className="group relative">
                                     <button
-                                        onClick={handleGenerate}
-                                        disabled={!ideaInput.trim() || isGenerating}
-                                        className={`w-10 h-10 rounded-full transition-colors flex items-center justify-center ${ideaInput.trim() && !isGenerating ? 'bg-[#E3E3E3] text-[#131314] hover:bg-white' : 'text-[var(--gemini-text-muted)] bg-transparent cursor-not-allowed'}`}
+                                        onClick={() => {
+                                            setCurrentChatId(chat.id);
+                                            setShowHistory(false);
+                                        }}
+                                        className={`w-full text-left p-3 rounded-xl border transition-all flex flex-col gap-1 ${currentChatId === chat.id ? 'bg-[var(--primary)] border-[var(--primary)] text-white' : 'bg-[var(--background-secondary)]/50 border-[var(--border)] hover:border-[var(--primary)]/30 text-[var(--foreground)]'}`}
                                     >
-                                        <Send className="w-4 h-4 shrink-0" />
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <i className={`fi fi-sr-comment flex items-center justify-center ${""}`} className={`w-3 h-3 ${currentChatId === chat.id ? 'text-white' : 'text-[var(--primary)]'}`} ></i>
+                                            <span className="text-[10px] font-semibold opacity-70">{chat.createdAt}</span>
+                                        </div>
+                                        <span className="text-xs font-semibold line-clamp-1 opacity-90">{chat.input}</span>
+                                    </button>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); handleDeleteChat(chat.id); }}
+                                        className="absolute top-2 right-2 p-1.5 rounded-full bg-red-500/10 text-red-500 opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500 hover:text-white"
+                                    >
+                                        <i className={`fi fi-sr-trash flex items-center justify-center ${"w-3 h-3"}`}  ></i>
                                     </button>
                                 </div>
+                            ))}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Chat Content */}
+            <div className="flex-1 overflow-hidden relative glass-premium p-1 md:p-2 mb-4">
+                <div className="w-full h-full overflow-y-auto px-4 md:px-12 py-8 custom-scrollbar space-y-8 pb-32">
+                    {/* Landing View (Empty State) */}
+                    {isEmptyState ? (
+                        <div className="flex flex-col items-center justify-center h-full text-center space-y-8 pt-12">
+                            <motion.div
+                                initial={{ scale: 0.8, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                className="w-24 h-24 rounded-[32px] bg-gradient-to-br from-[var(--primary)] via-[#6366f1] to-[var(--secondary)] flex items-center justify-center shadow-2xl relative"
+                            >
+                                <div className="absolute inset-0 rounded-[32px] bg-white opacity-20 blur-xl animate-pulse" />
+                                <i className={`fi fi-sr-magic-wand flex items-center justify-center ${"w-12 h-12 text-white relative z-10"}`}  ></i>
+                            </motion.div>
+
+                            <div className="space-y-4 max-w-2xl">
+                                <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-[var(--foreground)]">
+                                    What's your next <span className="text-[var(--primary)]">big play?</span>
+                                </h2>
+                                <p className="text-[var(--foreground-muted)] text-lg font-medium">
+                                    I'm your strategic growth partner. Drop a raw thought below, and I'll forge it into high-impact content for all your platforms.
+                                </p>
                             </div>
 
-                            {/* Suggestion Pills */}
-                            <div className="grid grid-cols-2 lg:flex lg:flex-row flex-wrap gap-3 mt-8 justify-center">
-                                {SUGGESTION_PROMPTS.map((s, i) => (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl mt-8">
+                                {[
+                                    { icon: <i className={`fi fi-sr-bolt flex items-center justify-center ${"w-4 h-4"}`}  ></i>, text: "Refactor a complex concept into a simple analogy" },
+                                    { icon: <i className={`fi fi-brands-twitter flex items-center justify-center ${"w-4 h-4"}`}  ></i>, text: "Draft a controversial hot-take on industry trends" },
+                                    { icon: <i className={`fi fi-brands-linkedin flex items-center justify-center ${"w-4 h-4"}`}  ></i>, text: "Convert a project milestone into a leadership lesson" },
+                                    { icon: <i className={`fi fi-sr-comment flex items-center justify-center ${"w-4 h-4"}`}  ></i>, text: "Brainstorm 5 hook ideas for a viral thread" }
+                                ].map((prompt, i) => (
                                     <button
                                         key={i}
-                                        onClick={() => {
-                                            setIdeaInput(s.text);
-                                            if (textareaRef.current) {
-                                                textareaRef.current.focus();
-                                            }
-                                        }}
-                                        className="flex items-center gap-2 px-5 py-3.5 bg-[var(--gemini-card)] hover:bg-[var(--gemini-hover)] rounded-full text-[14px] font-medium text-[var(--gemini-text)] transition-colors whitespace-nowrap border border-transparent hover:border-[var(--gemini-border)]"
+                                        onClick={() => setIdeaInput(prompt.text)}
+                                        className="text-left p-5 rounded-2xl bg-[var(--card)] border border-[var(--border)] hover:border-[var(--primary)] hover:bg-[var(--primary)]/5 transition-all group shadow-sm flex flex-col gap-3"
                                     >
-                                        <s.icon className={`w-4 h-4 shrink-0 ${s.color}`} />
-                                        {s.text}
+                                        <div className="p-2 rounded-lg bg-[var(--background-secondary)]/50 w-fit text-[var(--primary)] group-hover:bg-[var(--primary)] group-hover:text-white transition-all shadow-inner">
+                                            {prompt.icon}
+                                        </div>
+                                        <p className="text-sm font-semibold text-[var(--foreground-secondary)] group-hover:text-[var(--foreground)] leading-snug">
+                                            {prompt.text}
+                                        </p>
                                     </button>
                                 ))}
                             </div>
                         </div>
                     ) : (
-                        /* Chat State */
-                        <div className="w-full max-w-[800px] flex flex-col space-y-6 px-4 md:px-8 pb-40 pt-6">
-                            <AnimatePresence initial={false}>
-                                {activeMessages.map((msg, idx) => (
-                                    <motion.div key={idx} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col w-full">
-                                        {msg.role === 'user' ? (
-                                            /* User Bubble - Gemini style (light gray/dark gray pill, right aligned) */
-                                            <div className="flex justify-end w-full mb-6 relative">
-                                                <div className="bg-[var(--gemini-card)] text-[var(--gemini-text)] px-6 py-4 rounded-3xl max-w-[85%] text-[15.5px] font-medium leading-[1.6] break-words">
-                                                    {msg.content}
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            /* AI Bubble - Gemini style (no bubble, left aligned with icon) */
-                                            <div className="flex justify-start w-full mb-6">
-                                                <div className="flex gap-4 w-full">
-                                                    {/* Sparkle Icon */}
-                                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#4285F4] via-[#D96570] to-[#F4B400] flex items-center justify-center shrink-0 mt-0.5">
-                                                        <Sparkles className="w-4 h-4 text-white" />
-                                                    </div>
-                                                    <div className="flex-1 mt-1 text-[var(--gemini-text)] space-y-4 overflow-hidden">
-                                                        {msg.content && (
-                                                            <p className="text-[15.5px] leading-[1.7] whitespace-pre-wrap">{msg.content}</p>
-                                                        )}
+                        activeMessages.map((msg, idx) => (
+                            <motion.div
+                                key={idx}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                            >
+                                <div className={`max-w-[85%] ${msg.role === 'user' ? 'bg-[var(--foreground)] text-[var(--background)]' : 'bg-[var(--card)] border border-[var(--border)]'} rounded-2xl px-6 py-5 shadow-sm`}>
+                                    {msg.content && (
+                                        <p className="text-[15px] leading-relaxed whitespace-pre-wrap font-medium">
+                                            {msg.content}
+                                        </p>
+                                    )}
 
-                                                        {msg.platformOutputs && msg.platformOutputs.length > 0 && (
-                                                            <div className="flex flex-col gap-4 mt-4 w-full max-w-2xl">
-                                                                {msg.platformOutputs.map((item, index) => (
-                                                                    <div key={index} className="bg-[var(--gemini-card)] rounded-2xl p-6 border border-[#333537] relative group">
-                                                                        <div className="flex items-center justify-between mb-5">
-                                                                            <span className="text-[12px] font-bold uppercase tracking-widest text-[var(--gemini-text)] bg-[#333537] px-3.5 py-1.5 rounded-full flex items-center gap-2">
-                                                                                {renderPlatformIcon(item.platform, "w-3 h-3")} {item.format}
-                                                                            </span>
-                                                                            <button
-                                                                                onClick={() => handleCopy(item.content, `${currentChatId}-${idx}-${index}`)}
-                                                                                className="text-[var(--gemini-text-muted)] hover:text-[var(--gemini-text)] transition-colors p-2 bg-[var(--gemini-bg)] rounded-full opacity-0 group-hover:opacity-100 shadow-sm border border-[#333537]"
-                                                                                title="Copy to clipboard"
-                                                                            >
-                                                                                {copied === `${currentChatId}-${idx}-${index}` ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
-                                                                            </button>
-                                                                        </div>
-                                                                        <p className="text-[15px] whitespace-pre-wrap leading-[1.7] text-[var(--gemini-text-muted)] group-hover:text-[var(--gemini-text)] transition-colors">{item.content}</p>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        )}
+                                    {msg.platformOutputs && msg.platformOutputs.length > 0 && (
+                                        <div className="flex flex-col gap-6 mt-6">
+                                            {msg.platformOutputs.map((item, pIdx) => (
+                                                <div key={pIdx} className="bg-[var(--background-secondary)]/30 rounded-xl p-5 border border-[var(--border)] group relative">
+                                                    <div className="flex items-center justify-between mb-4">
+                                                        <div className="flex items-center gap-2 px-3 py-1 bg-[var(--card)] border border-[var(--border)] rounded-full shadow-sm">
+                                                            {renderPlatformIcon(item.platform, "w-3 h-3 text-[var(--primary)]")}
+                                                            <span className="text-[10px] font-semibold uppercase tracking-tighter text-[var(--foreground-muted)]">{item.format}</span>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => handleCopy(item.content, `${currentChatId}-${idx}-${pIdx}`)}
+                                                            className="p-1.5 rounded-lg hover:bg-[var(--card)] transition-colors text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+                                                        >
+                                                            {copied === `${currentChatId}-${idx}-${pIdx}` ? <i className={`fi fi-sr-check flex items-center justify-center ${"w-4 h-4 text-green-500"}`}  ></i> : <i className={`fi fi-sr-copy flex items-center justify-center ${"w-4 h-4"}`}  ></i>}
+                                                        </button>
                                                     </div>
+                                                    <p className="text-[14px] leading-relaxed text-[var(--foreground-secondary)] font-medium">
+                                                        {item.content}
+                                                    </p>
                                                 </div>
-                                            </div>
-                                        )}
-                                    </motion.div>
-                                ))}
-
-                                {(optimisticPrompt || isGenerating) && (
-                                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col w-full">
-                                        {optimisticPrompt && (
-                                            <div className="flex justify-end w-full mb-6">
-                                                <div className="bg-[var(--gemini-card)] text-[var(--gemini-text)] px-6 py-4 rounded-3xl max-w-[85%] text-[15.5px] font-medium leading-[1.6] break-words opacity-60">
-                                                    {optimisticPrompt}
-                                                </div>
-                                            </div>
-                                        )}
-                                        {isGenerating && (
-                                            <div className="flex justify-start w-full mb-6">
-                                                <div className="flex gap-4 w-full">
-                                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#4285F4] via-[#D96570] to-[#F4B400] flex items-center justify-center shrink-0 mt-0.5 animate-pulse">
-                                                        <Sparkles className="w-4 h-4 text-white" />
-                                                    </div>
-                                                    <div className="flex-1 mt-1 text-[var(--gemini-text)]">
-                                                        <span className="text-[15px] bg-clip-text text-transparent bg-gradient-to-r from-[#4285F4] via-[#D96570] to-[#F4B400] font-medium animate-pulse">Generating...</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                            <div ref={messagesEndRef} className="h-4 w-full" />
-                        </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </motion.div>
+                        ))
                     )}
 
+                    {(optimisticPrompt || isGenerating) && (
+                        <div className="space-y-8">
+                            {optimisticPrompt && (
+                                <div className="flex justify-end">
+                                    <div className="max-w-[85%] bg-[var(--foreground)] text-[var(--background)] rounded-2xl px-6 py-5 shadow-sm opacity-60">
+                                        <p className="text-[15px] leading-relaxed font-medium">{optimisticPrompt}</p>
+                                    </div>
+                                </div>
+                            )}
+                            {isGenerating && (
+                                <div className="flex justify-start">
+                                    <div className="bg-[var(--card)] border border-[var(--border)] rounded-full px-6 py-3 flex items-center gap-3 shadow-md">
+                                        <i className={`fi fi-sr-spinner flex items-center justify-center ${"w-4 h-4 animate-spin text-[var(--primary)]"}`}  ></i>
+                                        <span className="text-sm font-semibold bg-clip-text text-transparent bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)]">Forging Response...</span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    <div ref={messagesEndRef} />
                 </div>
 
-                {/* Bottom Input Box for Chat State */}
-                {!isEmptyState && (
-                    <div className="absolute bottom-0 left-0 w-full px-4 md:px-8 bg-gradient-to-t from-[#131314] via-[#131314] to-transparent pt-16 pb-6 flex justify-center z-30 pointer-events-none">
-                        <div className="max-w-[800px] w-full relative pointer-events-auto">
-                            <div className="relative w-full bg-[var(--gemini-card)] rounded-[32px] p-2 flex flex-col border border-transparent focus-within:bg-[#333537]/50 transition-colors shadow-[0_8px_30px_rgba(0,0,0,0.4)]">
-                                <textarea
-                                    ref={textareaRef}
-                                    value={ideaInput}
-                                    onChange={handleInput}
-                                    onKeyDown={handleKeyDown}
-                                    placeholder="Enter a prompt here"
-                                    rows={1}
-                                    className="w-full bg-transparent border-none outline-none resize-none text-[16px] text-[var(--gemini-text)] placeholder:text-[var(--gemini-text-muted)] px-5 pt-4 pb-12 max-h-[300px] custom-scrollbar"
-                                />
-                                <div className="absolute bottom-3 right-3 flex items-center gap-2">
-                                    <button
-                                        onClick={handleGenerate}
-                                        disabled={!ideaInput.trim() || isGenerating}
-                                        className={`w-10 h-10 rounded-full transition-colors flex items-center justify-center ${ideaInput.trim() && !isGenerating ? 'bg-[#E3E3E3] text-[#131314] hover:bg-white' : 'text-[var(--gemini-text-muted)] bg-transparent cursor-not-allowed'}`}
-                                    >
-                                        <Send className="w-4 h-4 shrink-0" />
-                                    </button>
-                                </div>
-                            </div>
-                            <div className="text-center mt-3 text-[12px] opacity-70 text-[var(--gemini-text-muted)]">
-                                Influuc AI can make mistakes. Verify important information.
-                            </div>
+                {/* Bottom Input */}
+                <div className="absolute bottom-0 left-0 w-full p-4 md:p-8 bg-gradient-to-t from-[var(--card)] to-transparent pointer-events-none">
+                    <div className="max-w-3xl mx-auto relative pointer-events-auto">
+                        <div className="relative group">
+                            <textarea
+                                ref={textareaRef}
+                                value={ideaInput}
+                                onChange={handleInput}
+                                onKeyDown={handleKeyDown}
+                                placeholder="Whisper your idea..."
+                                rows={1}
+                                className="w-full bg-[var(--card)] border border-[var(--border)] rounded-2xl py-4 pl-6 pr-14 text-[15px] text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]/20 focus:border-[var(--primary)] transition-all shadow-xl resize-none min-h-[56px] font-medium"
+                            />
+                            <button
+                                onClick={handleGenerate}
+                                disabled={!ideaInput.trim() || isGenerating}
+                                className={`absolute right-2 top-2 w-10 h-10 rounded-xl flex items-center justify-center transition-all ${ideaInput.trim() && !isGenerating ? 'bg-[var(--primary)] text-white shadow-[0_4px_12px_rgba(124,58,237,0.3)] hover:scale-105 active:scale-95' : 'bg-[var(--background-secondary)] text-[var(--foreground-muted)] opacity-50 cursor-not-allowed'}`}
+                            >
+                                {isGenerating ? <i className={`fi fi-sr-spinner flex items-center justify-center ${"w-4 h-4 animate-spin"}`}  ></i> : <i className={`fi fi-sr-paper-plane flex items-center justify-center ${"w-4 h-4"}`}  ></i>}
+                            </button>
                         </div>
                     </div>
-                )}
+                </div>
             </div>
+
+            {error && (
+                <div className="absolute bottom-32 left-1/2 -translate-x-1/2 bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
+                    <i className={`fi fi-sr-bolt flex items-center justify-center ${"w-3 h-3"}`}  ></i>
+                    {error}
+                </div>
+            )}
+
+            <style jsx global>{`
+                .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+                .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+            `}</style>
         </div>
     );
 }

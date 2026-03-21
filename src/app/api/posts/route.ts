@@ -20,12 +20,16 @@ export async function GET(request: NextRequest) {
         const platform = searchParams.get('platform');
         const status = searchParams.get('status');
 
-        // Use RPC function for optimized single-query fetch
-        const { data: posts, error } = await supabase.rpc('get_user_posts', {
-            p_user_id: user.id,
-            p_platform: platform || null,
-            p_status: status || null
-        });
+        // Standard query to ensure all fields including image_url are returned correctly
+        let query = supabase
+            .from('posts')
+            .select('*, founder_profiles!inner(*)')
+            .eq('founder_profiles.account_id', user.id);
+
+        if (platform) query = query.eq('platform', platform);
+        if (status) query = query.eq('status', status);
+
+        const { data: posts, error } = await query.order('scheduled_date', { ascending: true });
 
         if (error) {
             logger.exception('Failed to fetch posts', error, { userId: user.id });

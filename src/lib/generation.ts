@@ -91,6 +91,12 @@ export interface UserProfile {
     expertise: string;
     auto_publish: boolean;
     timezone: string;
+    // Strategy fields (new)
+    strategy_brief?: string;
+    content_pillars?: { name: string; description: string; job: string }[];
+    positioning_statement?: string;
+    pov_statement?: string;
+    identity_gap?: string;
 }
 
 export interface ScheduledPost {
@@ -364,7 +370,58 @@ async function generateAllContentBatch(
             day: post.day,
         }));
 
-        const systemPrompt = `You are an elite ghostwriter for top founders.
+        const systemPrompt = profile.strategy_brief ? `You are a world-class ghostwriter executing a brand content strategy.
+
+You will generate ALL ${textSchedule.length} posts in a SINGLE response.
+
+=== STRATEGY BRIEF (MASTER SOURCE OF TRUTH) ===
+${profile.strategy_brief}
+=== END BRIEF ===
+
+MISSION:
+Generate high-conviction, platform-native content that builds authority, trust, and thoughtful engagement. Ground the content in the "EXPERTISE & RAW INTEL" section of the strategy brief. Mention specific products, features, or past roles where relevant.
+
+${likedExamples.length > 0 ? `PAST SUCCESSFUL POSTS (Emulate this style and tone):
+${likedExamples.map((ex, i) => `EXAMPLE ${i + 1} (${ex.platform} / ${ex.format}):
+"${ex.content}"`).join('\n\n')}` : ''}
+
+POSTS TO GENERATE:
+${postsSpec.map(p => `[${p.index}] ${p.platform} / ${p.format} — "${p.topic}"${(p as any).pillar ? ` [pillar: ${(p as any).pillar}]` : ''}${(p as any).hook_type ? ` [hook: ${(p as any).hook_type}]` : ''}${(p as any).cta_type ? ` [cta: ${(p as any).cta_type}]` : ''}`).join('\n')}
+
+PLATFORM AND FORMAT CONSTRAINTS:
+- Format "single" (X): Max 280 chars, punchy and sharp.
+- Format "single" (LinkedIn): TARGET ~1,000 chars, professional story or insight.
+- Format "long_form": TARGET ~2,500 chars, structured thinking, deep dive.
+- Platform X: No hashtags under any circumstances.
+- Platform LinkedIn: Professional formatting with line breaks.
+
+DIVERSE WRITING STRUCTURES (VARY THESE ACROSS THE BATCH):
+1. THE NARRATIVE STORY: Start with conflict/insight, show the build/raw process, end with a hard-won lesson.
+2. THE ATOMIC ESSAY: Punchy hook, 3-5 structural paragraphs on ONE specific mental model. No fluff.
+3. THE SPIKY POV: Challenge a common industry belief using the logic in the strategy brief. Propose a better way.
+4. THE TACTICAL CHECKLIST: High-value "How-to" with clear steps.
+
+RULES:
+- Write from the user's voice — not a brand voice, not a marketing voice.
+- Ground at least 40% of posts in specific facts from the "RAW INTEL" section of the brief.
+- CTAs must feel natural and match the audience temperature.
+- Do NOT use generic industry advice. Every post must pass the "would a real founder actually post this?" test.
+- Max 1-2 emojis per post. No emoji spam.
+
+Return ONLY a valid JSON object with this exact structure:
+{
+    "posts": [
+        {
+            "index": 0,
+            "content": "The full post text",
+            "hooks": ["Alternative hook 1", "Alternative hook 2"],
+            "cta": "Call to action or null"
+        }
+    ]
+}
+
+The "posts" array must have exactly ${textSchedule.length} items, one per post, in the same order as the input.`
+            : `You are an elite ghostwriter for top founders.
 
 You will generate ALL ${textSchedule.length} posts in a SINGLE response.
 
@@ -375,25 +432,24 @@ USER CONTEXT:
 - Expertise: ${profile.expertise}
 - Tone: ${profile.tone?.boldness || 'bold'} / ${profile.tone?.style || 'educational'}
 
-${likedExamples.length > 0 ? `PAST SUCCESSFUL POSTS (Emulate this style, structure, and tone):
-${likedExamples.map((ex, i) => `EXAMPLE ${i + 1} (${ex.platform} / ${ex.format}):
-"${ex.content}"`).join('\n\n')}` : ''}
+MISSION:
+Generate high-conviction content across 4 structures: Narrative Story, Atomic Essay, Spiky POV, and Tactical Checklist.
 
 POSTS TO GENERATE:
 ${postsSpec.map(p => `[${p.index}] ${p.platform} / ${p.format} — "${p.topic}"`).join('\n')}
 
 PLATFORM AND FORMAT CONSTRAINTS:
-- Format "single" (X): Max 280 chars, punchy and sharp.
-- Format "single" (LinkedIn): 800-1200 chars, professional story or insight.
-- Format "long_form": 1500-2000 chars, structured thinking, deep dive (ideal for Detailed LinkedIn posts).
-- Platform X: No hashtags under any circumstances
-- Platform LinkedIn: Professional formatting with line breaks
+- Format "single" (X): Max 280 chars.
+- Format "single" (LinkedIn): ~1,000 chars.
+- Format "long_form": ~2,500 chars (Detailed LinkedIn deep dive).
+- Platform X: No hashtags.
 
 RULES:
-- Each post must start with a strong hook
-- Be concise and authoritative
-- Every post should feel distinct — vary openings, structures, and angles
-- Write for intelligent peers, not beginners
+- Each post must start with a strong hook.
+- Ground content in the user's specific business context.
+- Every post should feel distinct — vary openings and structures.
+- Write for intelligent peers, not beginners.
+- Max 1-2 emojis. No corporate jargon.
 
 Return ONLY a valid JSON object with this exact structure:
 {
@@ -962,18 +1018,28 @@ export async function checkSubscriptionActive(accountId: string): Promise<boolea
 export async function getUserWeekNumber(accountId: string): Promise<number> {
     const supabase = createAdminClient();
 
+    // Source 1: Count completed content_generations rows
     const { count, error } = await supabase
         .from('content_generations')
         .select('*', { count: 'exact', head: true })
         .eq('account_id', accountId)
         .eq('status', 'completed');
 
-    if (error) {
-        console.error('[Generation] Error counting generations:', error);
-        return 1;
-    }
+    const generationsCount = error ? 0 : (count || 0);
 
-    return (count || 0) + 1;
+    // Source 2: Check profile's generation_count (set by onboarding flow)
+    const { data: profile } = await supabase
+        .from('founder_profiles')
+        .select('generation_count')
+        .eq('account_id', accountId)
+        .single();
+
+    const profileCount = (profile as any)?.generation_count || 0;
+
+    // Use whichever is higher — covers both onboarding and weekly generation paths
+    const totalGenerations = Math.max(generationsCount, profileCount);
+
+    return totalGenerations + 1;
 }
 // ============================================
 // SINGLE POST GENERATION (REQUIRED FOR API)

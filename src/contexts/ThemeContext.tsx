@@ -14,78 +14,39 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-    const [theme, setThemeState] = useState<Theme>('system');
+    const [theme, setThemeState] = useState<Theme>('dark');
     const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('dark');
-    const [mounted, setMounted] = useState(false);
 
-    // Get system preference
-    const getSystemTheme = (): 'light' | 'dark' => {
-        if (typeof window === 'undefined') return 'dark';
-        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    };
-
-    // Apply theme to document
-    const applyTheme = (newTheme: Theme) => {
-        const resolved = newTheme === 'system' ? getSystemTheme() : newTheme;
-        setResolvedTheme(resolved);
+    // Force application of dark theme regardless of system
+    const applyTheme = () => {
+        setResolvedTheme('dark');
+        setThemeState('dark');
 
         if (typeof document !== 'undefined') {
-            document.documentElement.setAttribute('data-theme', resolved);
+            document.documentElement.setAttribute('data-theme', 'dark');
+            document.documentElement.classList.add('dark');
 
-            // Also update meta theme-color for mobile browsers
             const metaThemeColor = document.querySelector('meta[name="theme-color"]');
             if (metaThemeColor) {
-                metaThemeColor.setAttribute('content', resolved === 'dark' ? '#0F0F0F' : '#F5F5F7');
+                metaThemeColor.setAttribute('content', '#030208');
             }
         }
     };
 
-    // Set theme and persist to localStorage
-    const setTheme = (newTheme: Theme) => {
-        setThemeState(newTheme);
-        if (typeof localStorage !== 'undefined') {
-            localStorage.setItem('influuc-theme', newTheme);
-        }
-        applyTheme(newTheme);
+    const setTheme = () => {
+        applyTheme();
     };
 
-    // Toggle between light and dark
     const toggleTheme = () => {
-        const newTheme = resolvedTheme === 'light' ? 'dark' : 'light';
-        setTheme(newTheme);
+        // No-op to prevent switching
     };
 
-    // Initialize theme on mount
     useEffect(() => {
-        const savedTheme = localStorage.getItem('influuc-theme') as Theme | null;
-        const initialTheme = savedTheme || 'system';
-        setThemeState(initialTheme);
-        applyTheme(initialTheme);
-        setMounted(true);
-
-        // Listen for system theme changes
-        const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-        const handleChange = () => {
-            if (theme === 'system') {
-                applyTheme('system');
-            }
-        };
-
-        mediaQuery.addEventListener('change', handleChange);
-        return () => mediaQuery.removeEventListener('change', handleChange);
+        applyTheme();
     }, []);
 
-    // Re-apply when theme preference changes
-    useEffect(() => {
-        if (mounted) {
-            applyTheme(theme);
-        }
-    }, [theme, mounted]);
-
-    // Always provide the context, even before mount.
-    // The values will update once useEffect runs.
     return (
-        <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme, toggleTheme }}>
+        <ThemeContext.Provider value={{ theme: 'dark', resolvedTheme: 'dark', setTheme, toggleTheme }}>
             {children}
         </ThemeContext.Provider>
     );

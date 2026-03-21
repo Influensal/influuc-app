@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { fal } from '@fal-ai/client';
+import { getFacelessStyle, getFaceStyle, compileVisualPrompt } from '@/lib/ai/visual-styles';
 
 export const runtime = 'nodejs'; // Fal client uses node events
 
@@ -8,7 +9,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     try {
         const { id: postId } = await params;
         const body = await request.json();
-        const { mode = 'faceless', aspectRatio = '1:1' } = body;
+        const { mode = 'faceless', aspectRatio = '16:9' } = body;
 
         const supabase = await createClient();
         const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -51,6 +52,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
         let result: any;
 
+        const brandColors = profile.brand_colors || {
+            primary: '#10B981',
+            background: '#09090B',
+            accent: '#F59E0B'
+        };
+
         if (mode === 'digital_twin') {
             const hasAvatarUrls = Array.isArray(profile.avatar_urls) && profile.avatar_urls.length > 0;
             const hasLoraId = !!profile.visual_lora_id;
@@ -66,10 +73,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
                 referenceUrls = [profile.visual_lora_id];
             }
 
+            // Get the user's selected face style
+            const styleId = profile.style_face || 'photorealistic';
+            const style = getFaceStyle(styleId) || getFaceStyle('photorealistic')!;
+            const styledPrompt = compileVisualPrompt(postContext, style, brandColors);
+
             // Call Fal.ai Digital Twin Edit
             result = await fal.subscribe("fal-ai/gemini-25-flash-image/edit", {
                 input: {
-                    prompt: `generate an image of this exact person representing this social media post concept: ${postContext}`,
+                    prompt: styledPrompt,
                     aspect_ratio: nanoAspectRatio,
                     image_urls: referenceUrls,
                     output_format: "png"
@@ -79,23 +91,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
         } else {
             // mode === 'faceless'
-            const stylePrompt = `High-end cinematic technology advertisement still, photorealistic, 8K quality, designed for thought-leadership social media.
-Scene: A vast, modern, architectural workspace — not an office, not sci-fi — timeless and elevated. Polished concrete floor, soft fog in the air, tall shadowed structures fading into darkness.
-Center frame: A single human silhouette (gender-neutral, no facial detail), standing calm and upright. Not working — overseeing. Hands relaxed at their sides.
-Around the human, abstract, luminous forms made of light, geometry, and flowing data representing: ${postContext}
-The human is not interacting directly — no keyboard, no screen — clearly in a supervisory role, embodying judgment and intent rather than execution.
-In the environment: Subtle holographic pathways representing workflows, clean data streams flowing end-to-end, occasional secure locks, checkmarks, and transaction nodes (minimal, symbolic, premium).
-Typography (cinematic title-card style, minimal): Include a very short, punchy main headline and a restrained subline derived from the concept. Optional micro-credit style text.
-Lighting: soft, motivated top light, cool whites and cloud blues, deep shadows, gentle volumetric rays.
-Camera: anamorphic lens look, shallow depth of field, elegant composition, cinematic contrast.
-Color palette: Google-cloud adjacent but restrained — whites, blues, steel, soft cyan highlights.
-Mood: calm inevitability, trust, maturity, post-hype realism.
-Style references: luxury tech ad, future-of-work manifesto, restrained sci-fi realism.
-Negative prompts: busy UI screens, dashboards, bullet points, cartoon robots, glowing eyes, cheap sci-fi tropes, clutter, stock imagery, exaggerated cyberpunk, blur, watermark spam.`;
+            const styleId = profile.style_faceless || 'abstract';
+            const style = getFacelessStyle(styleId) || getFacelessStyle('abstract')!;
+            const styledPrompt = compileVisualPrompt(postContext, style, brandColors);
 
             result = await fal.subscribe("fal-ai/gemini-25-flash-image", {
                 input: {
-                    prompt: stylePrompt,
+                    prompt: styledPrompt,
                     aspect_ratio: nanoAspectRatio,
                     output_format: "png"
                 },

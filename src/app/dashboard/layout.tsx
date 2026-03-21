@@ -31,7 +31,9 @@ export default async function DashboardLayout({
 
     return (
         <div className="flex h-screen bg-[var(--background)]">
-            <Sidebar />
+            <DashboardClientWrapper>
+                <Sidebar />
+            </DashboardClientWrapper>
             <main className="flex-1 overflow-y-auto ml-[320px]">
                 <div id="dashboard-content-wrapper" className="p-8 md:p-12 max-w-[1600px] mx-auto min-h-screen">
                     <DashboardClientWrapper>

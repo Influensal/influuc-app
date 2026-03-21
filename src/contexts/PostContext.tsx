@@ -5,7 +5,7 @@ import { isToday, parseISO, startOfWeek, endOfWeek, isWithinInterval } from 'dat
 
 // --- Types ---
 export type Platform = 'LinkedIn' | 'X';
-export type PostType = 'Single Post' | 'Thread' | 'Reel';
+export type PostType = 'Single Post' | 'Thread' | 'Reel' | 'Carousel';
 
 export interface Post {
     id: string;
@@ -14,6 +14,7 @@ export interface Post {
     title: string;
     content: string;
     type: PostType;
+    format: string;
     duration?: string;
     status: string;
 }
@@ -83,6 +84,7 @@ function convertDbPost(dbPost: {
         'thread': 'Thread',
         'long_form': 'Single Post',
         'video_script': 'Reel',
+        'carousel': 'Carousel',
     };
 
     const content = dbPost.content || '';
@@ -94,7 +96,8 @@ function convertDbPost(dbPost: {
         platform: platformMap[dbPost.platform.toLowerCase()] || 'LinkedIn',
         title: firstLine + (firstLine.length >= 60 ? '...' : ''),
         content: content.split('\n').slice(1).join('\n').substring(0, 100) || content.substring(0, 100),
-        type: typeMap[dbPost.format] || 'Single Post',
+        type: typeMap[dbPost.format.toLowerCase()] || 'Single Post',
+        format: dbPost.format.toLowerCase(),
         duration: dbPost.format === 'video_script' ? '0:30' : undefined,
         status: dbPost.status || 'scheduled',
     };

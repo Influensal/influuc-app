@@ -7,7 +7,8 @@ export type AIProvider = 'mock' | 'openai' | 'anthropic' | 'gemini';
 
 export interface AIMessage {
     role: 'system' | 'user' | 'assistant';
-    content: string;
+    content: string | Array<{ type: 'text' | 'image'; text?: string; image?: string }>;
+    cache_control?: { type: 'ephemeral' };
 }
 
 export interface AICompletionOptions {

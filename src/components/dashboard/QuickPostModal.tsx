@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Sparkles, Loader2, Send, Save, RefreshCw, PenTool, ImagePlus, User, Trash2 } from 'lucide-react';
+
 import Image from 'next/image';
 
 interface QuickPostModalProps {
@@ -72,7 +72,7 @@ export function QuickPostModal({ isOpen, onClose, onSuccess }: QuickPostModalPro
             const response = await fetch(`/api/posts/${postId}/generate-image`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ mode, aspectRatio: platform === 'x' ? '16:9' : '1:1' }),
+                body: JSON.stringify({ mode, aspectRatio: '16:9' }),
             });
 
             const data = await response.json();
@@ -142,11 +142,11 @@ export function QuickPostModal({ isOpen, onClose, onSuccess }: QuickPostModalPro
                     {/* Header */}
                     <div className="flex items-center justify-between p-4 border-b border-[var(--border)] bg-[var(--background)]/50">
                         <h2 className="font-semibold text-[var(--foreground)] flex items-center gap-2">
-                            <PenTool className="w-4 h-4" />
+                            <i className={`fi fi-sr-pen-nib flex items-center justify-center ${"w-4 h-4"}`}  ></i>
                             Quick Post
                         </h2>
                         <button onClick={onClose} className="p-2 hover:bg-[var(--background-secondary)] rounded-full transition-colors">
-                            <X className="w-4 h-4 text-[var(--foreground-muted)]" />
+                            <i className={`fi fi-sr-cross-small flex items-center justify-center ${"w-4 h-4 text-[var(--foreground-muted)]"}`}  ></i>
                         </button>
                     </div>
 
@@ -196,12 +196,12 @@ export function QuickPostModal({ isOpen, onClose, onSuccess }: QuickPostModalPro
                                 >
                                     {isGenerating ? (
                                         <>
-                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            <i className={`fi fi-sr-spinner flex items-center justify-center ${"w-4 h-4 animate-spin"}`}  ></i>
                                             Writing Draft...
                                         </>
                                     ) : (
                                         <>
-                                            <Sparkles className="w-4 h-4" />
+                                            <i className={`fi fi-sr-magic-wand flex items-center justify-center ${"w-4 h-4"}`}  ></i>
                                             Generate Draft
                                         </>
                                     )}
@@ -228,7 +228,7 @@ export function QuickPostModal({ isOpen, onClose, onSuccess }: QuickPostModalPro
                                 <div className="mt-4 border-t border-[var(--border)] pt-4">
                                     <div className="flex items-center justify-between mb-3">
                                         <h4 className="font-semibold text-sm text-[var(--foreground)] flex items-center gap-2">
-                                            <ImagePlus className="w-4 h-4" />
+                                            <i className={`fi fi-sr-picture flex items-center justify-center ${"w-4 h-4"}`} Plus  ></i>
                                             Attach Visual
                                         </h4>
                                         {imageUrl && (
@@ -236,14 +236,14 @@ export function QuickPostModal({ isOpen, onClose, onSuccess }: QuickPostModalPro
                                                 onClick={() => setImageUrl(null)}
                                                 className="text-xs text-red-500 hover:text-red-600 flex items-center gap-1 transition-colors"
                                             >
-                                                <Trash2 className="w-3 h-3" /> Remove
+                                                <i className={`fi fi-sr-trash flex items-center justify-center ${"w-3 h-3"}`}  ></i> Remove
                                             </button>
                                         )}
                                     </div>
 
                                     {imageUrl ? (
                                         <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--background-secondary)] flex items-center justify-center">
-                                            <Image src={imageUrl} alt="Generated post visualization" width={800} height={450} className="w-full h-full object-cover" />
+                                            <i className={`fi fi-sr-picture flex items-center justify-center ${"w-full h-full object-cover"}`} src={imageUrl} alt="Generated post visualization" width={800} height={450}  ></i>
                                         </div>
                                     ) : showImageOptions ? (
                                         <div className="space-y-3">
@@ -254,7 +254,7 @@ export function QuickPostModal({ isOpen, onClose, onSuccess }: QuickPostModalPro
                                                     className="p-3 rounded-xl border border-[var(--border)] bg-[var(--background)] hover:border-[var(--primary)] transition-all flex flex-col items-center gap-1 text-center disabled:opacity-50"
                                                 >
                                                     <div className="w-8 h-8 rounded-full bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center">
-                                                        <Sparkles className="w-4 h-4" />
+                                                        <i className={`fi fi-sr-magic-wand flex items-center justify-center ${"w-4 h-4"}`}  ></i>
                                                     </div>
                                                     <div>
                                                         <p className="font-semibold text-xs">Faceless</p>
@@ -266,7 +266,7 @@ export function QuickPostModal({ isOpen, onClose, onSuccess }: QuickPostModalPro
                                                     className="p-3 rounded-xl border border-[var(--border)] bg-[var(--background)] hover:border-[var(--primary)] transition-all flex flex-col items-center gap-1 text-center disabled:opacity-50 relative overflow-hidden group"
                                                 >
                                                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center z-10">
-                                                        <User className="w-4 h-4" />
+                                                        <i className={`fi fi-sr-user flex items-center justify-center ${"w-4 h-4"}`}  ></i>
                                                     </div>
                                                     <div className="z-10">
                                                         <p className="font-semibold text-xs text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 to-purple-600">
@@ -277,7 +277,7 @@ export function QuickPostModal({ isOpen, onClose, onSuccess }: QuickPostModalPro
                                             </div>
                                             {isGeneratingImage && (
                                                 <div className="flex items-center justify-center gap-2 text-xs text-[var(--primary)] py-2">
-                                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                                    <i className={`fi fi-sr-spinner flex items-center justify-center ${"w-3 h-3 animate-spin"}`}  ></i>
                                                     Generating image...
                                                 </div>
                                             )}
@@ -287,7 +287,7 @@ export function QuickPostModal({ isOpen, onClose, onSuccess }: QuickPostModalPro
                                             onClick={() => setShowImageOptions(true)}
                                             className="w-full py-3 border-2 border-dashed border-[var(--border)] rounded-xl text-[var(--foreground-muted)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-all flex items-center justify-center gap-2 text-sm"
                                         >
-                                            <ImagePlus className="w-4 h-4" />
+                                            <i className={`fi fi-sr-picture flex items-center justify-center ${"w-4 h-4"}`} Plus  ></i>
                                             <span>Generate AI Image for Post</span>
                                         </button>
                                     )}
@@ -305,7 +305,7 @@ export function QuickPostModal({ isOpen, onClose, onSuccess }: QuickPostModalPro
                                         className="flex-1 py-2.5 bg-[#0A66C2] text-white font-bold rounded-lg hover:opacity-90 flex items-center justify-center gap-2 transition-all"
                                         style={{ backgroundColor: platform === 'x' ? 'black' : '#0A66C2' }}
                                     >
-                                        <Save className="w-4 h-4" />
+                                        <i className={`fi fi-sr-disk flex items-center justify-center ${"w-4 h-4"}`}  ></i>
                                         Save & Schedule
                                     </button>
                                 </div>

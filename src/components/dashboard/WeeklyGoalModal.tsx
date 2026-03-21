@@ -2,18 +2,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-    Target,
-    Users,
-    DollarSign,
-    TrendingUp,
-    Award,
-    Zap,
-    Sparkles,
-    X,
-    Loader2,
-    ChevronRight
-} from 'lucide-react';
+
 
 interface WeeklyGoalModalProps {
     isOpen: boolean;
@@ -27,42 +16,42 @@ const goals = [
         id: 'recruiting',
         label: 'Attract Talent',
         description: 'Thought leadership that brings top candidates to you',
-        icon: Users,
+        icon: 'fi-sr-users',
         color: 'from-blue-500 to-cyan-500',
     },
     {
         id: 'fundraising',
         label: 'Investor Attention',
         description: 'Traction updates and vision that VCs notice',
-        icon: DollarSign,
+        icon: 'fi-sr-dollar',
         color: 'from-green-500 to-emerald-500',
     },
     {
         id: 'sales',
         label: 'Generate Leads',
         description: 'Education and soft CTAs that drive inbound',
-        icon: TrendingUp,
+        icon: 'fi-sr-arrow-trend-up',
         color: 'from-orange-500 to-amber-500',
     },
     {
         id: 'credibility',
         label: 'Build Authority',
         description: 'POV posts and expertise that establish trust',
-        icon: Award,
+        icon: 'fi-sr-badge',
         color: 'from-purple-500 to-violet-500',
     },
     {
         id: 'growth',
         label: 'Grow Audience',
         description: 'Engaging takes that expand your reach',
-        icon: Zap,
+        icon: 'fi-sr-bolt',
         color: 'from-pink-500 to-rose-500',
     },
     {
         id: 'balanced',
         label: 'Balanced Mix',
         description: 'A little of everything (default)',
-        icon: Target,
+        icon: 'fi-sr-bullseye',
         color: 'from-gray-500 to-slate-500',
     },
 ];
@@ -126,12 +115,12 @@ ${context}
                             onClick={onClose}
                             className="absolute top-4 right-4 p-2 rounded-full hover:bg-white/20 transition-colors opacity-50 hover:opacity-100"
                         >
-                            <X className="w-5 h-5" />
+                            <i className={`fi fi-sr-cross-small flex items-center justify-center ${"w-5 h-5"}`}  ></i>
                         </button>
 
                         <div className="flex items-center gap-3">
                             <div className="p-3 bg-white/20 rounded-xl">
-                                <Sparkles className="w-6 h-6" />
+                                <i className={`fi fi-sr-magic-wand flex items-center justify-center ${"w-6 h-6"}`}  ></i>
                             </div>
                             <div>
                                 <h2 className="text-xl font-bold">Week {weekNumber} Strategy</h2>
@@ -162,7 +151,7 @@ ${context}
                                 >
                                     <div>
                                         <h3 className="text-lg font-semibold text-[var(--foreground)] flex items-center gap-2">
-                                            <TrendingUp className="w-5 h-5 text-[var(--primary)]" />
+                                            <i className={`fi fi-sr-arrow-trend-up flex items-center justify-center ${"w-5 h-5 text-[var(--primary)]"}`}  ></i>
                                             Last Week's Retro
                                         </h3>
                                         <p className="text-sm text-[var(--muted-foreground)] mt-1">
@@ -183,7 +172,7 @@ ${context}
                                             className="py-3 px-8 bg-[var(--foreground)] text-[var(--background)] font-bold rounded-xl hover:opacity-90 transition-opacity flex items-center gap-2"
                                         >
                                             Next: Plan This Week
-                                            <ChevronRight className="w-4 h-4" />
+                                            <i className={`fi fi-sr-angle-right flex items-center justify-center ${"w-4 h-4"}`}  ></i>
                                         </button>
                                     </div>
                                 </motion.div>
@@ -199,7 +188,7 @@ ${context}
                                     {/* Goal Selector */}
                                     <div>
                                         <h3 className="text-lg font-semibold text-[var(--foreground)] flex items-center gap-2 mb-4">
-                                            <Target className="w-5 h-5 text-[var(--primary)]" />
+                                            <i className={`fi fi-sr-bullseye flex items-center justify-center ${"w-5 h-5 text-[var(--primary)]"}`}  ></i>
                                             Choose Your Focus
                                         </h3>
                                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -222,7 +211,7 @@ ${context}
                                                             />
                                                         )}
                                                         <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${goal.color} flex items-center justify-center text-white mb-2`}>
-                                                            <Icon className="w-4 h-4" />
+                                                            <i className={`fi ${Icon} flex items-center justify-center w-4 h-4`}></i>
                                                         </div>
                                                         <p className="font-semibold text-[var(--foreground)] text-xs">
                                                             {goal.label}
@@ -262,12 +251,12 @@ ${context}
                                         >
                                             {isGenerating ? (
                                                 <>
-                                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                                    <i className={`fi fi-sr-spinner flex items-center justify-center ${"w-5 h-5 animate-spin"}`}  ></i>
                                                     Designing Plan...
                                                 </>
                                             ) : (
                                                 <>
-                                                    <Sparkles className="w-5 h-5" />
+                                                    <i className={`fi fi-sr-magic-wand flex items-center justify-center ${"w-5 h-5"}`}  ></i>
                                                     Generate Content
                                                 </>
                                             )}
