@@ -79,7 +79,7 @@ export default function StepPayment({ data, updateData, onNext }: StepPaymentPro
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     tier: planId,
-                    successUrl: `${window.location.origin}/onboarding?payment=success`,
+                    successUrl: `${window.location.origin}/onboarding?payment=success&session_id={CHECKOUT_SESSION_ID}`,
                     cancelUrl: `${window.location.origin}/onboarding?payment=cancelled`
                 }),
             });

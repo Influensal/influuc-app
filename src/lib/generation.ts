@@ -18,7 +18,7 @@ import dJSON from 'dirty-json';
  * Robust JSON parser that tries native JSON.parse first,
  * then dirty-json, then regex extraction as a last resort.
  */
-function robustJsonParse(raw: string): any {
+export function robustJsonParse(raw: string): any {
     // Step 1: Clean up common AI artifacts
     let cleaned = raw
         .replace(/```json\n?|\n?```/g, '')
@@ -97,6 +97,19 @@ export interface UserProfile {
     positioning_statement?: string;
     pov_statement?: string;
     identity_gap?: string;
+    archetype_primary?: string;
+    archetype_secondary?: string;
+    archetype_flavor?: string;
+    brand_colors?: {
+        primary: string;
+        background: string;
+        accent: string;
+    };
+    style_carousel?: string;
+    voice_samples?: { content: string; type: string }[];
+    name?: string;
+    subscription_tier?: string;
+    weekly_throughline?: string;
 }
 
 export interface ScheduledPost {
@@ -335,7 +348,7 @@ async function archiveOldPosts(supabase: any, profileId: string): Promise<number
 // BATCH GENERATION — TEXT + CAROUSELS
 // ============================================
 
-interface GeneratedCarouselPost {
+export interface GeneratedCarouselPost {
     day: string;
     topic: string;
     slides: string[];
@@ -349,7 +362,7 @@ interface GeneratedCarouselPost {
  *
  * Fired simultaneously via Promise.all for maximum speed.
  */
-async function generateAllContentBatch(
+export async function generateAllContentBatch(
     textSchedule: ScheduledPost[],
     carouselIdeas: CarouselIdea[],
     profile: UserProfile,
@@ -558,13 +571,33 @@ The "posts" array must have exactly ${textSchedule.length} items, one per post, 
             return { index: i, topic: c.topic, slideCount };
         });
 
-        let systemPrompt = style.prompt;
+        const brandColors = profile.brand_colors || {
+            primary: '#10B981',
+            background: '#09090B',
+            accent: '#F59E0B'
+        };
+
+        const brandColorsInstruction = `BRAND COLORS (CRITICAL):
+Primary Color: ${brandColors.primary} (Use for buttons, main icons, key highlights)
+Background Color: ${brandColors.background} (Use for the main slide canvas background)
+Accent Color: ${brandColors.accent} (Use for secondary highlights, checks, small pops of color)
+
+When generating the HTML/Tailwind:
+1. Always set the main container's background to ${brandColors.background} using inline style: style="background-color: ${brandColors.background}"
+2. Use ${brandColors.primary} for the most important visual elements.
+3. Use ${brandColors.accent} for decoration.
+4. Ensure text remains readable (use white or black text depending on ${brandColors.background} brightness).`;
+
+        let systemPrompt = style.prompt.replace('[BRAND_COLORS_INSTRUCTION]', brandColorsInstruction);
 
         // Add multi-carousel instructions
         systemPrompt += `
 
 MULTI-CAROUSEL INSTRUCTIONS:
 You must generate ${carouselIdeas.length} separate carousels in one response.
+
+STRATEGIC CONTEXT:
+${profile.strategy_brief || 'No strategy brief provided.'}
 
 USER CONTEXT:
 ${likedExamples.length > 0 ? `PAST SUCCESSFUL CONTENT:
@@ -716,18 +749,31 @@ CALENDAR LOGIC
 - Vary formats to prevent fatigue
 - Each post must have a clear strategic reason to exist
 
-SCHEDULE RULES (STRICT NON-NEGOTIABLE):
-
-If Platform is X (Twitter):
-- Schedule exactly 7 posts (1 per day).
-- Format Mix: 3 "long_form" (approx 2400 chars), 4 "single" (short, max 280 chars).
-
-If Platform is LinkedIn:
-- Schedule exactly 5 TEXT posts.
-- Format Mix: 3 "long_form", 2 "single" (short).
-- ALSO provide 2 carousel topic ideas (these will be generated separately as visual carousels).
-
-If BOTH platforms are selected, generate SEPARATE schedules for each (Total 12 text posts + 2 carousel ideas).
+${(() => {
+    const tier = profile.subscription_tier || 'starter';
+    const selectedPlatform = platforms[0];
+    
+    if (tier === 'starter') {
+        return `STARTER PLAN LIMITS (ENFORCE STRICTLY):
+- Schedule exactly 7 posts total for ${selectedPlatform?.toUpperCase() || 'LINKEDIN'} ONLY.
+- Format Mix: "single" ONLY. No long_form.
+- NO carousels.`;
+    } else if (tier === 'creator') {
+        const xCount = profile.platforms.x ? 7 : 0;
+        const linkedinCount = profile.platforms.linkedin ? 5 : 0;
+        return `CREATOR PLAN LIMITS:
+- Schedule ${xCount} posts for X and ${linkedinCount} posts for LinkedIn.
+- Format Mix: 3 "long_form", rest "single".
+- Exactly 2 carousels (LinkedIn only).`;
+    } else {
+        const xCount = profile.platforms.x ? 7 : 0;
+        const linkedinCount = profile.platforms.linkedin ? 5 : 0;
+        return `AUTHORITY PLAN:
+- Schedule ${xCount} posts for X and ${linkedinCount} posts for LinkedIn.
+- Format Mix: ${linkedinCount > 0 ? '3' : '0'} "long_form", rest "single".
+- Exactly 2 carousels (LinkedIn only).`;
+    }
+})()}
 
 OPTIMAL POSTING TIMES (AI-SUGGESTED):
 Based on the user's goal of "${profile.content_goal}" and industry "${profile.industry}", suggest optimal posting times:
@@ -752,17 +798,14 @@ Return ONLY a valid JSON object with this structure:
     {
       "day": "Wednesday",
       "topic": "5 frameworks every founder should know about [specific area]"
-    },
-    {
-      "day": "Saturday",
-      "topic": "The complete guide to [specific topic] — step by step"
     }
   ]
 }
 
-CARDINALITY RULES:
-- "posts" array: exactly 5 items for LinkedIn-only, exactly 7 for X-only, exactly 12 for both
-- "carousels" array: exactly 2 items (LinkedIn only). If LinkedIn is not selected, set to empty array [].
+CARDINALITY RULES (TIER: ${profile.subscription_tier || 'starter'}):
+- Starter: exactly 7 items in "posts" (Single platform), "carousels" MUST be empty [].
+- Creator/Authority: exactly 12 items (if both platforms) in "posts", exactly 2 items in "carousels".
+- ONLY return platforms the user selected: ${platforms.join(', ')}.
 
 RULES:
 - Allowed formats for posts: "single", "long_form", "video_script"

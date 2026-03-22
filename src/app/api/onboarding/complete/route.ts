@@ -3,9 +3,10 @@ import { createClient } from '@/utils/supabase/server';
 import { isSupabaseConfigured } from '@/lib/supabase';
 import { getProvider } from '@/lib/ai/providers';
 import { scrapeWebsite, extractBusinessSummary } from '@/lib/scraper';
-import { getCarouselStyle, getDefaultStyle } from '@/lib/ai/carousel-styles';
 import { compileStrategyBrief, detectArchetypeFromDiscovery, buildMasterOnboardingPrompt } from '@/lib/ai/strategy-brief';
-import dJSON from 'dirty-json';
+import { generateAllContentBatch, robustJsonParse, UserProfile, GeneratedCarouselPost } from '@/lib/generation';
+import { stripe } from '@/lib/stripe';
+import { TIER_DB_FEATURES, createAdminSupabaseClient } from '@/lib/subscription';
 
 export const runtime = 'nodejs';
 export const maxDuration = 300; // Allow up to 5 minutes for full batch generation
@@ -110,6 +111,8 @@ interface CarouselIdea {
 
 interface GeneratedPost {
     content: string;
+    hooks?: string[];
+    cta?: string | null;
 }
 
 export async function POST(request: NextRequest) {
@@ -246,7 +249,7 @@ export async function POST(request: NextRequest) {
                 responseFormat: { type: 'json_object' },
                 maxTokens: 16384 // Increased from 8192 to prevent truncation
             });
-            const cleanContent = extractJson(aiResponse.content);
+            const cleanContent = aiResponse.content; // extractJson is now handled by robustJsonParse internally if needed
             console.log('[Onboarding] Master generation response length:', cleanContent.length);
             console.log('[Onboarding] Master generation start:', cleanContent.substring(0, 100));
             console.log('[Onboarding] Master generation end:', cleanContent.substring(cleanContent.length - 100));
@@ -311,20 +314,108 @@ export async function POST(request: NextRequest) {
             body.voiceSamples
         );
 
-        // Attach processed data to body for saveToSupabase
+        // Attach processed data to body for SaveToSupabase
         (body as any)._archetypeResult = archetypeResult;
         (body as any)._voiceAnalysis = voiceAnalysis;
         (body as any)._competitorAnalysis = competitorAnalysis;
         (body as any)._strategyBrief = strategyBrief;
 
-        // === CONTENT GENERATION (REQUESTS 2 & 3 in parallel) ===
-        console.log('[Onboarding] Generating all content (text + carousels)...');
-        const [posts, carousels] = await Promise.all([
-            generatePostsBatched(strategy.posts, body, strategyBrief),
-            generateCarousels(strategy.carousels || [], body),
-        ]);
+        // === CONTENT GENERATION (REPLICATED FROM WEEKLY PROVEN FLOW) ===
+        console.log('[Onboarding] Generating all content (text + carousels) using proven single-call batching...');
+        let posts: any[] = [];
+        let carousels: GeneratedCarouselPost[] = [];
+        
+        try {
+            // Map onboarding body to UserProfile for the shared generator
+            const profileForGen: UserProfile = {
+                id: 'onboarding-tmp-' + Date.now(),
+                account_id: user?.id || 'anonymous',
+                platforms: body.platforms,
+                industry: body.industry,
+                target_audience: body.targetAudience,
+                content_goal: body.contentGoal,
+                topics: body.topics,
+                tone: {
+                    formality: body.tone.formality,
+                    boldness: body.tone.boldness,
+                    style: body.tone.style,
+                    approach: body.tone.approach
+                },
+                role: body.role,
+                company_name: body.companyName,
+                company_website: body.companyWebsite,
+                business_description: body.businessDescription || '',
+                expertise: body.expertise,
+                auto_publish: body.autoPublish || false,
+                timezone: 'UTC',
+                strategy_brief: strategyBrief,
+                content_pillars: body.contentPillars,
+                positioning_statement: body.positioningStatement,
+                pov_statement: body.povStatement,
+                identity_gap: body.identityGap,
+                archetype_primary: archetypeResult.primary,
+                archetype_secondary: archetypeResult.secondary,
+                archetype_flavor: archetypeResult.flavor,
+                brand_colors: body.brandColors || { primary: '#10B981', background: '#09090B', accent: '#F59E0B' },
+                style_carousel: body.style_carousel,
+                voice_samples: body.voiceSamples,
+                name: body.name,
+                weekly_throughline: body.weeklyThroughline,
+            };
 
-        console.log(`[Onboarding] Generated ${posts.length} text posts, ${carousels.length} carousels`);
+            const genResult = await generateAllContentBatch(
+                strategy.posts,
+                strategy.carousels || [],
+                profileForGen
+            );
+            
+            posts = genResult.textPosts;
+            carousels = genResult.carouselPosts;
+            
+        } catch (genErr) {
+            console.error('[Onboarding] Critical error during batch generation:', genErr);
+        }
+
+        console.log(`[Onboarding] Result: ${posts.length} text posts, ${carousels.length} carousels`);
+
+        // === SAFETY SYNC: Verify Stripe Payment if session ID is provided ===
+        if ((body as any).stripeSessionId && user) {
+            try {
+                const sessionId = (body as any).stripeSessionId;
+                console.log([Onboarding] Safety Sync: Verifying session );
+                const session = await stripe.checkout.sessions.retrieve(sessionId);
+                
+                if (session.payment_status === 'paid' && session.subscription) {
+                    const subscriptionId = session.subscription as string;
+                    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+                    const tier = ((subscription as any).metadata?.tier || body.subscriptionTier || 'starter') as string;
+                    
+                    console.log([Onboarding] Safety Sync: Payment verified for tier . Provisioning...);
+                    
+                    // Manually trigger the subscription record creation (same logic as webhook)
+                    const adminClient = createAdminSupabaseClient();
+                    const features = TIER_DB_FEATURES[tier as keyof typeof TIER_DB_FEATURES] || TIER_DB_FEATURES.starter;
+
+                    // 1. Upsert into subscriptions table
+                    await adminClient.from('subscriptions').upsert({
+                        account_id: user.id,
+                        stripe_customer_id: session.customer as string,
+                        stripe_subscription_id: subscriptionId,
+                        plan: tier,
+                        status: 'active',
+                        current_period_start: new Date((subscription as any).current_period_start * 1000).toISOString(),
+                        current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
+                    }, { onConflict: 'account_id' });
+
+                    // 2. Override the body tier to the one verified by Stripe
+                    body.subscriptionTier = tier as any;
+                    console.log([Onboarding] Safety Sync: Database updated for );
+                }
+            } catch (syncError) {
+                console.warn('[Onboarding] Safety Sync failed (non-critical):', syncError);
+                // We continue anyway, letting the webhook system handle it eventually
+            }
+        }
 
         // Step 3: Save to Supabase
         console.log('[Onboarding] Saving profile and posts to Supabase...');
@@ -357,422 +448,12 @@ export async function POST(request: NextRequest) {
     }
 }
 
-
-async function generatePostsBatched(
-    schedule: ScheduledPost[],
-    data: OnboardingData,
-    strategyBrief: string
-): Promise<Array<ScheduledPost & GeneratedPost>> {
-    const provider = await getProvider();
-
-    const generateBatch = async (batchSchedule: ScheduledPost[]): Promise<GeneratedPost[]> => {
-        if (batchSchedule.length === 0) return [];
-
-        const count = batchSchedule.length;
-        const systemPrompt = `You are an elite ghostwriter for top founders. You write conviction, not content. Every post must sound like a real operator speaking to intelligent peers from lived experience. Never theory. Never generic. Never AI.
-
----
-
-PERSONA — NON-NEGOTIABLE
-Archetype: ${data.archetype.toUpperCase()}
-Description: ${getArchetypeDesc(data.archetype)}
-
-Tone, cadence, confidence, and worldview must match this archetype exactly. A Builder sounds nothing like a Teacher. A Contrarian sounds nothing like an Executive. If the voice feels off — rewrite until it doesn't.
-
----
-
-VOICE SAMPLES — MIMIC THE SOUL, NEVER COPY THE WORDS
-${data.voiceSamples.map((s, i) => `Sample ${i + 1}: ${s.content}`).join('\n\n')}
-
-Before writing anything, extract:
-- Sentence length and rhythm — short and punchy or long and deliberate?
-- How they open — statement, fact, or contrast?
-- How they close — provocation, directive, or silence?
-- What they never say — filler, hedging, corporate softness
-- Their confidence signature — where does the certainty come from?
-
-Every post must pass this test: could this have come from the voice samples? If no — rewrite.
-
----
-
-STRATEGY PLAYBOOK — EVERY WORD MUST SERVE THIS
-${strategyBrief}
-
-Before writing a single post, internalize:
-- POV: every post moves the reader one step closer to agreeing with this belief
-- Identity Gap: every post makes the reader feel one step closer to who they want to become
-- Limiting Belief: at least one post this batch makes this belief harder to hold
-- Competitor Whitespace: no post could have been written by any named competitor
-- Pillars: every post serves one pillar — authority, relatability, or proof. Never two. Never none.
-
----
-
----
-
-PLATFORM CONSTRAINTS
-
-X:
-- Short: hard max 280 characters. One idea. One punch. No setup.
-- Long: 1,800–2,400 characters. No threads. One continuous post.
-
-LinkedIn:
-- Short: 800–1,200 characters. Punchy. Line breaks every 1-2 sentences.
-- Long: 2,500–3,200 characters. Narrative weight. Every word earns its place.
-
----
-
-POST STRUCTURES — VARY ACROSS THE BATCH, NEVER REPEAT CONSECUTIVELY
-
-1. NARRATIVE STORY
-Open with the moment — conflict, decision, or realization. Show the process. End with the lesson. Never summarize. Let the story land on its own.
-
-2. ATOMIC ESSAY
-Hook line. 3-5 tight paragraphs, each earning the next. Final sentence reframes everything above it.
-
-3. SPIKY POV
-Name the wrong belief. Challenge it directly. Give the superior alternative with a specific mechanism behind it. Never hedge. Never qualify.
-
-4. TACTICAL BREAKDOWN
-A specific how-to grounded in real process. Steps that are actually usable — not obvious. Closes with the insight behind the tactic, not just the tactic.
-
-5. CONTRAST FRAME
-Two worlds. Wrong way and right way. Before and after. Show both. Let the contrast do the work without explaining it.
-
----
-
-HOOK RULES — EVERY POST, NO EXCEPTIONS
-
-- First line is the hook. Nothing before it.
-- Never start with "I", "We", "Today", "Here's", or "Did you know"
-- Never open with context — open with the conclusion, the provocation, or the result
-- The hook must stop the scroll before the reader knows what the post is about
-- Hook types assigned in the content plan:
-  — Contrarian: names a belief and immediately breaks it
-  — Identity Challenge: mirror between who they are and who they want to be
-  — Curiosity Gap: withholds just enough to pull them into the next line
-  — Specific Result: leads with the outcome, makes them ask how
-
----
-
-QUALITY GATES — RUN ON EVERY POST BEFORE OUTPUTTING
-
-1. Does this sound like ${data.name} or does it sound like AI?
-2. Could any named competitor have written this? If yes — it is not differentiated enough.
-3. Does it serve exactly one pillar?
-4. Does the hook stop the scroll before they know what the post is about?
-5. Does it contribute to the weekly throughline?
-6. Would the target audience feel this was written specifically for them?
-
-Fail more than one gate — discard and regenerate from scratch. Never patch bad writing.
-
----
-
-OUTPUT: STRICT JSON ONLY
-No explanation. No markdown. No text outside the JSON.
-
-{
-  "posts": [
-    {
-      "platform": "x",
-      "format": "long",
-      "pillar": "authority",
-      "hook_type": "contrarian",
-      "structure": "spiky_pov",
-      "content": "Full post content here"
-    }
-  ]
-}
-
-Exactly ${count} posts. No titles. No hashtags unless present in voice samples. No emojis unless present in voice samples.
-
----
-
-CONTENT PLAN — WRITE FOR THESE SPECIFIC TOPICS (MANDATORY)
-${JSON.stringify(batchSchedule.map(p => ({ day: p.day, platform: p.platform, topic: p.topic, length: p.format, pillar: p.pillar, hook_type: p.hook_type })), null, 2)}
-
-For each post:
-- Match the assigned pillar
-- Use the assigned hook type
-- Honor the weekly throughline — every post is a chapter of one idea from a different angle`;
-
-        try {
-            console.log(`[Batch] Generating ${count} posts...`);
-            const result = await provider.complete({
-                messages: [
-                    {
-                        role: 'system',
-                        content: systemPrompt,
-                        cache_control: { type: 'ephemeral' }
-                    },
-                    { role: 'user', content: 'Generate the posts according to the content plan.' }
-                ],
-                temperature: 0.4,
-                maxTokens: 8192,
-                responseFormat: { type: 'json_object' },
-            });
-
-            const cleanContent = extractJson(result.content);
-            let parsed;
-            try {
-                parsed = robustJsonParse(cleanContent);
-            } catch (err) {
-                console.error('[Batch] Failed to parse JSON:', err);
-                console.log('[Batch] Raw content that failed parse:', result.content);
-                return [];
-            }
-
-            // Handle both { "posts": [...] } and direct [...] formats
-            if (Array.isArray(parsed)) return parsed;
-            if (parsed && typeof parsed === 'object' && Array.isArray(parsed.posts)) {
-                return parsed.posts;
-            }
-
-            console.warn('[Batch] Unexpected JSON structure:', parsed);
-            return [];
-        } catch (e) {
-            console.error('[Batch] Generation failed:', e);
-            throw e;
-        }
-    };
-
-    // Split into chunks of 3 to prevent truncation and improve quality
-    const CHUNK_SIZE = 3;
-    const allGeneratedPosts: any[] = [];
-
-    for (let i = 0; i < schedule.length; i += CHUNK_SIZE) {
-        const chunk = schedule.slice(i, i + CHUNK_SIZE);
-        const batchResults = await generateBatch(chunk);
-        allGeneratedPosts.push(...batchResults);
-    }
-
-    return schedule.map((item, i) => {
-        const gen = allGeneratedPosts[i];
-        return {
-            ...item,
-            content: gen?.content || 'Content generation failed (likely truncation or parse error).'
-        };
-    });
-}
-
-function robustJsonParse(jsonStr: string): any {
-    try {
-        return JSON.parse(jsonStr);
-    } catch (e1) {
-        const fixedContent = jsonStr
-            .replace(/(?<="[^"]*?)\n(?=[^"]*?")/g, '\\n')
-            .replace(/(?<="[^"]*?)\t(?=[^"]*?")/g, '\\t');
-        try {
-            return JSON.parse(fixedContent);
-        } catch (e2) {
-            try {
-                return dJSON.parse(jsonStr);
-            } catch (e3) {
-                throw new Error('All JSON parse attempts failed: ' + (e3 as Error).message);
-            }
-        }
-    }
-}
-
-function extractJson(text: string): string {
-    try {
-        // Remove code fences and leading/trailing whitespace
-        let cleaned = text.replace(/```json\n?|\n?```/g, '').trim();
-
-        // Try to find an array first (as it's often used for lists)
-        const arrayStart = cleaned.indexOf('[');
-        const arrayEnd = cleaned.lastIndexOf(']');
-
-        // Then try to find an object
-        const objectStart = cleaned.indexOf('{');
-        const objectEnd = cleaned.lastIndexOf('}');
-
-        // Determine which one to use (prioritize the outer structure)
-        let start = -1;
-        let end = -1;
-
-        if (arrayStart !== -1 && (objectStart === -1 || arrayStart < objectStart)) {
-            start = arrayStart;
-            end = arrayEnd;
-        } else if (objectStart !== -1) {
-            start = objectStart;
-            end = objectEnd;
-        }
-
-        if (start === -1) {
-            console.warn('[extractJson] No JSON structures ([ or {) found in text');
-            return text;
-        }
-
-        if (end > start) {
-            cleaned = cleaned.substring(start, end + 1);
-        } else {
-            cleaned = cleaned.substring(start);
-        }
-
-        // Smart quotes → normal quotes
-        cleaned = cleaned.replace(/[\u201C\u201D]/g, '"').replace(/[\u2018\u2019]/g, "'");
-
-        // Fix: Double double-quote issue seen in logs (""posts")
-        cleaned = cleaned.replace(/""(posts|carousels|primary|background|accent)":/g, '"$1":');
-
-        // Strip control chars except newline/tab
-        cleaned = cleaned.replace(/[\x00-\x1F\x7F]/g, (ch: string) =>
-            ch === '\n' || ch === '\t' ? ch : ''
-        );
-
-        // Fix trailing commas before } or ]
-        cleaned = cleaned.replace(/,\s*([\]}])/g, '$1');
-
-        return cleaned;
-    } catch (e) {
-        console.error('[extractJson] Error during cleaning:', e);
-        return text;
-    }
-}
-
-function getArchetypeDesc(type: string): string {
-    switch (type) {
-        case 'builder': return 'Build in public. Share wins, losses, and raw lessons.';
-        case 'teacher': return 'Break down complex topics into frameworks and guides.';
-        case 'contrarian': return 'Challenge the status quo. Say what others won\'t.';
-        case 'executive': return 'High-level vision, culture, leadership, and industry trends.';
-        default: return 'Professional and authoritative.';
-    }
-}
-
-// ============================================
-// CAROUSEL GENERATION
-// ============================================
-
-interface GeneratedCarousel {
-    day: string;
-    topic: string;
-    slides: string[];
-    styleId: string;
-}
-
-async function generateCarousels(
-    carouselIdeas: CarouselIdea[],
-    data: OnboardingData
-): Promise<GeneratedCarousel[]> {
-    if (carouselIdeas.length === 0) {
-        console.log('[Carousels] No carousel ideas, skipping.');
-        return [];
-    }
-
-    const provider = await getProvider();
-    const carouselStyleId = data.style_carousel || 'minimal-stone';
-    const style = getCarouselStyle(carouselStyleId) || getDefaultStyle();
-
-    if (!style || !style.prompt) {
-        console.warn('[Carousels] No carousel style found, skipping.');
-        return [];
-    }
-
-    // Determine slide counts per carousel
-    const carouselSpecs = carouselIdeas.map((c, i) => {
-        const numberMatch = c.topic.match(
-            /\b(top\s*)?(\d+)\s*(things?|tips?|ways?|habits?|books?|tools?|ideas?|steps?|reasons?|secrets?|hacks?|strategies?|mistakes?|rules?|principles?|lessons?|facts?|myths?)?/i
-        );
-        let slideCount = 6;
-        if (numberMatch && numberMatch[2]) {
-            const n = parseInt(numberMatch[2], 10);
-            if (n >= 3 && n <= 10) slideCount = n + 2; // title + n items + CTA
-        }
-        return { index: i, topic: c.topic, day: c.day, slideCount };
-    });
-
-    const brandColors = data.brandColors || {
-        primary: '#10B981',
-        background: '#09090B',
-        accent: '#F59E0B'
-    };
-
-    const brandColorsInstruction = `BRAND COLORS (CRITICAL):
-Primary Color: ${brandColors.primary} (Use for buttons, main icons, key highlights)
-Background Color: ${brandColors.background} (Use for the main slide canvas background)
-Accent Color: ${brandColors.accent} (Use for secondary highlights, checks, small pops of color)
-
-When generating the HTML/Tailwind:
-1. Always set the main container's background to ${brandColors.background} using inline style: style="background-color: ${brandColors.background}"
-2. Use ${brandColors.primary} for the most important visual elements.
-3. Use ${brandColors.accent} for decoration.
-4. Ensure text remains readable (use white or black text depending on ${brandColors.background} brightness).`;
-
-    let systemPrompt = style.prompt.replace('[BRAND_COLORS_INSTRUCTION]', brandColorsInstruction);
-    systemPrompt += `\n\nMULTI-CAROUSEL INSTRUCTIONS:\nYou must generate ${carouselIdeas.length} separate carousels in one response.\n`;
-    systemPrompt += carouselSpecs.map(c =>
-        `Carousel ${c.index}: "${c.topic}" — ${c.slideCount} slides`
-    ).join('\n');
-    systemPrompt += `\n\nReturn ONLY a valid JSON object:\n{\n  "carousels": [\n    {\n      "index": 0,\n      "slides": ["<div>...</div>", "<div>...</div>"]\n    }\n  ]\n}\n\nEach carousel must have exactly the specified number of slides.`;
-
-    const userMessage = carouselSpecs.map(c =>
-        `Carousel ${c.index}: "${c.topic}" — ${c.slideCount} slides`
-    ).join('\n');
-
-    try {
-        console.log(`[Carousels] Generating ${carouselIdeas.length} carousels in a single request...`);
-        const result = await provider.complete({
-            messages: [
-                {
-                    role: 'system',
-                    content: systemPrompt,
-                    cache_control: { type: 'ephemeral' }
-                },
-                { role: 'user', content: `Create these carousels:\n${userMessage}` }
-            ],
-            temperature: 0.7,
-            maxTokens: 16384,
-            responseFormat: { type: 'json_object' },
-        });
-
-        // Parse response
-        const jsonStr = extractJson(result.content);
-        let data_parsed: any;
-
-        try {
-            data_parsed = robustJsonParse(jsonStr);
-        } catch (err) {
-            console.error('[Carousels] All JSON parse attempts failed.', err);
-            throw err;
-        }
-
-        const generatedCarousels: Array<{ index: number; slides: string[] }> = data_parsed.carousels || [];
-
-        const results: GeneratedCarousel[] = [];
-        for (let i = 0; i < carouselIdeas.length; i++) {
-            const generated = generatedCarousels.find(c => c.index === i) || generatedCarousels[i];
-            if (generated?.slides && generated.slides.length > 0) {
-                results.push({
-                    day: carouselIdeas[i].day,
-                    topic: carouselIdeas[i].topic,
-                    slides: generated.slides,
-                    styleId: carouselStyleId,
-                });
-            } else {
-                console.warn(`[Carousels] Carousel ${i} missing slides, skipping`);
-            }
-        }
-
-        console.log(`[Carousels] Successfully generated ${results.length} carousels`);
-        return results;
-
-    } catch (e) {
-        console.error('[Carousels] Generation failed:', e);
-        return []; // Non-fatal — text posts still saved
-    }
-}
-
-// ============================================
-// SAVE TO SUPABASE
-// ============================================
-
 async function saveToSupabase(
     supabase: any,
     userId: string,
     data: OnboardingData,
     posts: Array<ScheduledPost & GeneratedPost>,
-    carousels: GeneratedCarousel[] = []
+    carousels: GeneratedCarouselPost[] = []
 ): Promise<string> {
     // Check if profile exists
     const { data: existingProfiles } = await supabase

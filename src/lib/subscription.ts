@@ -9,6 +9,7 @@ interface TierLimits {
     ideasPerMonth: number;
     carouselsPerWeek: number;
     hasCarousels: boolean;
+    hasOnDemandCarousels: boolean;
     hasFacelessVisuals: boolean;
     hasFaceClone: boolean;
     hasNewsJacking: boolean;
@@ -19,6 +20,7 @@ const TIER_CONFIG: Record<SubscriptionTier, TierLimits> = {
         ideasPerMonth: 30,
         carouselsPerWeek: 0,
         hasCarousels: false,
+        hasOnDemandCarousels: false,
         hasFacelessVisuals: false,
         hasFaceClone: false,
         hasNewsJacking: false,
@@ -27,14 +29,16 @@ const TIER_CONFIG: Record<SubscriptionTier, TierLimits> = {
         ideasPerMonth: Infinity,
         carouselsPerWeek: 2,
         hasCarousels: true,
+        hasOnDemandCarousels: false,
         hasFacelessVisuals: true,
         hasFaceClone: false,
         hasNewsJacking: false,
     },
     authority: {
         ideasPerMonth: Infinity,
-        carouselsPerWeek: 2,
+        carouselsPerWeek: 999999,
         hasCarousels: true,
+        hasOnDemandCarousels: true,
         hasFacelessVisuals: true,
         hasFaceClone: true,
         hasNewsJacking: true,
@@ -80,6 +84,24 @@ export function canCreateCarousel(tier: SubscriptionTier): TierCheckResult {
             allowed: false,
             reason: 'Carousels are available on Creator plan and above.',
             requiredTier: 'creator',
+            upgradeUrl: '/dashboard/settings?tab=billing',
+        };
+    }
+
+    return { allowed: true };
+}
+
+/**
+ * Check if user can create carousels on demand
+ */
+export function canCreateOnDemandCarousel(tier: SubscriptionTier): TierCheckResult {
+    const limits = TIER_CONFIG[tier];
+
+    if (!limits.hasOnDemandCarousels) {
+        return {
+            allowed: false,
+            reason: 'On-demand carousels are available on Authority plan only.',
+            requiredTier: 'authority',
             upgradeUrl: '/dashboard/settings?tab=billing',
         };
     }

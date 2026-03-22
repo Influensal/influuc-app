@@ -29,10 +29,24 @@ export async function GET(request: Request) {
 
         if (error) {
             console.error('Failed to fetch ideas:', error);
-            return NextResponse.json({ error: 'Failed to fetch ideas', ideas: [] }, { status: 200 }); // Return empty array on failing table
+            // Return empty list but keep going for usage
         }
 
-        return NextResponse.json({ ideas: ideas || [] });
+        // Also get monthly usage count
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
+
+        const { count: usage } = await supabase
+            .from('spontaneous_ideas')
+            .select('*', { count: 'exact', head: true })
+            .eq('profile_id', profile.id)
+            .gte('created_at', startOfMonth.toISOString());
+
+        return NextResponse.json({ 
+            ideas: ideas || [],
+            usage: usage || 0
+        });
     } catch (error) {
         console.error('Ideas fetch error:', error);
         return NextResponse.json({ error: 'Internal server error', ideas: [] }, { status: 200 });

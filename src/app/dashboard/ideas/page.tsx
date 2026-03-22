@@ -3,7 +3,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import { useAuth } from '@/contexts';
+import { useAuth, usePosts } from '@/contexts';
+import { parseTier, getTierLimits } from '@/lib/subscription';
+import Link from 'next/link';
 
 interface GeneratedContent {
     platform: 'x' | 'linkedin';
@@ -33,7 +35,13 @@ export default function SpontaneousIdeasPage() {
     const [currentChatId, setCurrentChatId] = useState<string | null>(null);
     const [copied, setCopied] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [limitReached, setLimitReached] = useState(false);
+    const [monthlyUsage, setMonthlyUsage] = useState(0);
     const [showHistory, setShowHistory] = useState(false);
+    
+    const { profile } = usePosts();
+    const tier = parseTier(profile?.subscriptionTier);
+    const limits = getTierLimits(tier);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -59,6 +67,7 @@ export default function SpontaneousIdeasPage() {
                     const data = await res.json();
                     if (data.ideas) {
                         const parsedChats: SavedChat[] = data.ideas.map((idea: any) => {
+                            // ... (rest of the mapping code unchanged)
                             const rawGenerated = typeof idea.generated_content === 'string'
                                 ? JSON.parse(idea.generated_content)
                                 : idea.generated_content;
@@ -85,6 +94,9 @@ export default function SpontaneousIdeasPage() {
                             };
                         });
                         setSavedChats(parsedChats);
+                    }
+                    if (data.usage !== undefined) {
+                        setMonthlyUsage(data.usage);
                     }
                 }
             } catch (err) {
@@ -125,10 +137,15 @@ export default function SpontaneousIdeasPage() {
 
             if (!response.ok) {
                 const errorData = await response.json();
+                if (errorData.code === 'LIMIT_EXCEEDED') {
+                    setLimitReached(true);
+                    throw new Error(errorData.error || 'Ideation limit reached');
+                }
                 throw new Error(errorData.error || 'Failed to generate content');
             }
 
             const data = await response.json();
+            setMonthlyUsage(prev => prev + 1); // Increment usage on success
             const newAssistantMessage: ChatMessage = { role: 'assistant', platformOutputs: data.content };
             const newUserMessage: ChatMessage = { role: 'user', content: currentInput };
 
@@ -225,24 +242,43 @@ export default function SpontaneousIdeasPage() {
                     </p>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={() => setShowHistory(!showHistory)}
-                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--card)] border border-[var(--border)] text-sm font-semibold text-[var(--foreground-secondary)] hover:bg-[var(--background-secondary)] transition-all shadow-sm"
-                    >
-                        <i className="fi fi-sr-time-past flex items-center justify-center w-4 h-4"></i>
-                        History ({savedChats.length})
-                    </button>
-                    <button
-                        onClick={() => {
-                            setCurrentChatId(null);
-                            setIdeaInput('');
-                        }}
-                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--foreground)] text-[var(--background)] text-sm font-semibold hover:scale-[1.02] transition-all active:scale-[0.98] shadow-lg"
-                    >
-                        <i className={`fi fi-sr-plus-small flex items-center justify-center ${"w-4 h-4"}`}  ></i>
-                        New Thread
-                    </button>
+                <div className="flex items-center gap-4">
+                    {tier === 'starter' && (
+                        <div className="hidden md:flex flex-col items-end">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--foreground-muted)] mb-1">Monthly Usage</span>
+                            <div className="flex items-center gap-2">
+                                <span className={`text-sm font-bold ${monthlyUsage >= limits.ideasPerMonth ? 'text-red-500' : 'text-[var(--primary)]'}`}>
+                                    {monthlyUsage} / {limits.ideasPerMonth}
+                                </span>
+                                <div className="w-24 h-1.5 bg-[var(--background-secondary)] rounded-full overflow-hidden border border-[var(--border)]">
+                                    <div 
+                                        className={`h-full transition-all duration-500 rounded-full ${monthlyUsage >= limits.ideasPerMonth ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]' : 'bg-[var(--primary)] shadow-[0_0_8px_rgba(124,58,237,0.4)]'}`}
+                                        style={{ width: `${Math.min((monthlyUsage / limits.ideasPerMonth) * 100, 100)}%` }}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => setShowHistory(!showHistory)}
+                            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--card)] border border-[var(--border)] text-sm font-semibold text-[var(--foreground-secondary)] hover:bg-[var(--background-secondary)] transition-all shadow-sm"
+                        >
+                            <i className="fi fi-sr-time-past flex items-center justify-center w-4 h-4"></i>
+                            History ({savedChats.length})
+                        </button>
+                        <button
+                            onClick={() => {
+                                setCurrentChatId(null);
+                                setIdeaInput('');
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--foreground)] text-[var(--background)] text-sm font-semibold hover:scale-[1.02] transition-all active:scale-[0.98] shadow-lg"
+                        >
+                            <i className={`fi fi-sr-plus-small flex items-center justify-center ${"w-4 h-4"}`}  ></i>
+                            New Thread
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -427,9 +463,42 @@ export default function SpontaneousIdeasPage() {
             </div>
 
             {error && (
-                <div className="absolute bottom-32 left-1/2 -translate-x-1/2 bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
-                    <i className={`fi fi-sr-bolt flex items-center justify-center ${"w-3 h-3"}`}  ></i>
-                    {error}
+                <div className="absolute bottom-32 left-1/2 -translate-x-1/2 w-full max-w-sm px-4">
+                    <div className={`${limitReached ? 'bg-[var(--card)] border-[var(--primary)] shadow-2xl' : 'bg-red-500/10 border-red-500/20 text-red-500'} border p-6 rounded-2xl shadow-lg relative flex flex-col gap-4 overflow-hidden`}>
+                        {limitReached && (
+                            <div className="absolute top-0 right-0 w-24 h-24 bg-[var(--primary)]/5 rounded-full -mr-12 -mt-12 blur-2xl" />
+                        )}
+                        <div className="flex items-start gap-4">
+                            <div className={`p-2 rounded-lg ${limitReached ? 'bg-[var(--primary)]/10 text-[var(--primary)]' : 'text-red-500'}`}>
+                                <i className={`fi ${limitReached ? 'fi-sr-crown' : 'fi-sr-info'} flex items-center justify-center w-5 h-5`}></i>
+                            </div>
+                            <div className="space-y-1">
+                                <h4 className={`text-sm font-bold ${limitReached ? 'text-[var(--foreground)]' : 'text-red-500'}`}>
+                                    {limitReached ? 'Monthly Limit Reached' : 'Generation Error'}
+                                </h4>
+                                <p className={`text-xs ${limitReached ? 'text-[var(--foreground-muted)]' : 'text-red-400'} font-medium`}>
+                                    {error}
+                                </p>
+                            </div>
+                        </div>
+                        {limitReached && (
+                            <Link 
+                                href="/dashboard/settings?tab=billing"
+                                className="w-full py-2.5 bg-[var(--primary)] text-white text-xs font-bold rounded-xl text-center hover:bg-[var(--primary-hover)] transition-all shadow-lg shadow-[var(--primary)]/20"
+                            >
+                                Upgrade for Unlimited Ideas
+                            </Link>
+                        )}
+                        <button 
+                            onClick={() => {
+                                setError(null);
+                                setLimitReached(false);
+                            }}
+                            className="absolute top-2 right-2 p-1 text-gray-500 hover:text-white transition-colors"
+                        >
+                            <i className="fi fi-sr-cross-small flex items-center justify-center w-4 h-4"></i>
+                        </button>
+                    </div>
                 </div>
             )}
 

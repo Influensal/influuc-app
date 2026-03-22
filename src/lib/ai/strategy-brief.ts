@@ -478,9 +478,16 @@ export function buildMasterOnboardingPrompt(
     archetype: { primary: string; secondary: string; flavor: string },
     platforms: string[]
 ): string {
-    const isX = platforms.includes('x');
-    const isLI = platforms.includes('linkedin');
-    const totalTextPosts = (isX ? 7 : 0) + (isLI ? 5 : 0);
+    const tier = data.subscriptionTier || 'starter';
+    const isStarter = tier === 'starter';
+    
+    // For Starter, only use one platform even if multiple were selected in theory (guardrail)
+    const activePlatforms = isStarter ? [platforms[0]] : platforms;
+    const isX = activePlatforms.includes('x');
+    const isLI = activePlatforms.includes('linkedin');
+    
+    const totalTextPosts = isStarter ? 7 : ((isX ? 7 : 0) + (isLI ? 5 : 0));
+    const totalCarousels = isStarter ? 0 : (isLI ? 2 : 0);
 
     return `You are a world-class Brand Strategist and Content Architect. You do not generate posts. You build a complete brand strategy and then design a weekly content calendar that executes that strategy with surgical precision. Every output must feel like it was built specifically for this person — not generated.
 
@@ -564,18 +571,25 @@ Design a cohesive week of content. This is not a list of disconnected posts — 
 BEFORE GENERATING ANY POST:
 Define the weekly throughline — the single idea or theme that ties the entire week together. Every post this week should contribute to that one idea from a different angle.
 
-PLATFORM RULES — NON-NEGOTIABLE QUANTITIES:
+PLATFORM RULES — NON-NEGOTIABLE QUANTITIES (TIER: ${tier.toUpperCase()}):
+${isStarter ? `
+- PLATFORM: Exactly ONE platform (${activePlatforms[0].toUpperCase()}).
+- TEXT POSTS: Exactly 7 items total (1 per day for 7 days).
+- FORMAT: "short" ONLY.
+- NO carousels.` : `
 X (if selected): Exactly 7 items total (1 per day for 7 days).
 - 3 Long-form posts
-- 4 Short posts (under 280 chars)
+- 4 Short posts
 
 LinkedIn (if selected): Exactly 7 items total (1 per day for 7 days).
 - 5 Text posts (3 long-form, 2 short-form)
-- 2 Carousel topics
+- 2 Carousel topics`}
+
+---
 
 TOTAL ITEMS TO PLAN IN THE CALENDAR (DO NOT GENERATE TEXT CONTENT YET): 
 - Posts: Exactly ${totalTextPosts} planned topics across all selected platforms.
-- Carousels: Exactly ${isLI ? 2 : 0} planned topics.
+- Carousels: Exactly ${totalCarousels} planned topics.
 
 FOR EVERY ITEM IN THE CALENDAR (STRICT JSON ONLY, NO POST BODIES):
 - Day (Monday through Sunday) and platform

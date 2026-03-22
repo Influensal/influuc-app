@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getProvider } from '@/lib/ai/providers';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
+import { parseTier, getTierLimits, canGenerateIdea } from '@/lib/subscription';
 
 export const runtime = 'nodejs';
 
@@ -42,8 +45,65 @@ const PLATFORM_FORMATS: Record<string, { format: string; maxLength: number; styl
 };
 
 export async function POST(request: NextRequest) {
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+            cookies: {
+                get(name: string) { return cookieStore.get(name)?.value },
+                set(name: string, value: string, options: any) { cookieStore.set({ name, value, ...options }) },
+                remove(name: string, options: any) { cookieStore.set({ name, value: '', ...options }) },
+            },
+        }
+    );
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     try {
         const body: GenerateIdeaRequest = await request.json();
+
+        // Get user profile to check tier
+        const { data: profile } = await supabase
+            .from('founder_profiles')
+            .select('id, subscription_tier')
+            .eq('account_id', user.id)
+            .single();
+
+        if (!profile) {
+            return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
+        }
+
+        const tier = parseTier(profile.subscription_tier);
+        const limits = getTierLimits(tier);
+
+        // Check ideation limit for Starter tier
+        if (tier === 'starter') {
+            const startOfMonth = new Date();
+            startOfMonth.setDate(1);
+            startOfMonth.setHours(0, 0, 0, 0);
+
+            const { count, error: countError } = await supabase
+                .from('spontaneous_ideas')
+                .select('*', { count: 'exact', head: true })
+                .eq('profile_id', profile.id)
+                .gte('created_at', startOfMonth.toISOString());
+
+            if (!canGenerateIdea(tier, count || 0).allowed) {
+                return NextResponse.json(
+                    { 
+                        error: 'Monthly ideation limit reached', 
+                        code: 'LIMIT_EXCEEDED',
+                        limit: limits.ideasPerMonth,
+                        usage: count
+                    },
+                    { status: 403 }
+                );
+            }
+        }
 
         if (!body.idea || !body.idea.trim()) {
             return NextResponse.json(

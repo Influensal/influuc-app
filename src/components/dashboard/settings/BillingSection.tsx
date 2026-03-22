@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { loadStripe } from '@stripe/stripe-js';
+import { usePosts } from '@/contexts/PostContext';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '');
 
@@ -18,6 +19,7 @@ interface BillingSectionProps {
 
 export function BillingSection({ className }: BillingSectionProps) {
     const [loading, setLoading] = useState(true);
+    const { refreshPosts } = usePosts();
     const [subscription, setSubscription] = useState<any>(null);
     const [processingTier, setProcessingTier] = useState<Tier | null>(null);
     const [processingAction, setProcessingAction] = useState<string | null>(null);
@@ -69,7 +71,8 @@ export function BillingSection({ className }: BillingSectionProps) {
                     type: 'success',
                     text: data.message || `Plan changed to ${tier}!`
                 });
-                await fetchSubscription(); // Refresh data
+                await fetchSubscription(); // Refresh local billing data
+                await refreshPosts(); // Refresh global profile/tier data
             } else if (data.url) {
                 // New checkout redirect (first-time subscriber)
                 window.location.href = data.url;

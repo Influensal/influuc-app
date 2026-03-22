@@ -5,6 +5,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
+import { FeatureLock } from "@/components/dashboard/FeatureLock";
+
 export default function HTMLGeneratorLab() {
     const [prompt, setPrompt] = useState("");
     const [slides, setSlides] = useState<string[]>([]);
@@ -52,70 +54,72 @@ export default function HTMLGeneratorLab() {
     const prevSlide = () => setCurrentIndex(prev => Math.max(prev - 1, 0));
 
     return (
-        <div className="flex bg-gray-100 min-h-screen">
-            {/* INPUT */}
-            <div className="w-1/3 p-8 border-r bg-white flex flex-col gap-6 h-screen overflow-hidden">
-                <div className="flex-none">
-                    <h1 className="text-2xl font-bold">🧪 HTML Gen Lab</h1>
-                    <p className="text-sm text-gray-500 mb-4">
-                        Testing "Raw HTML" generation vs "JSON Templates".
-                        The LLM has full control over layout here.
-                    </p>
+        <FeatureLock feature="on-demand-carousels">
+            <div className="flex bg-gray-100 min-h-screen">
+                {/* INPUT */}
+                <div className="w-1/3 p-8 border-r bg-white flex flex-col gap-6 h-screen overflow-hidden">
+                    <div className="flex-none">
+                        <h1 className="text-2xl font-bold">🧪 HTML Gen Lab</h1>
+                        <p className="text-sm text-gray-500 mb-4">
+                            Testing "Raw HTML" generation vs "JSON Templates".
+                            The LLM has full control over layout here.
+                        </p>
 
-                    <Textarea
-                        placeholder="Describe your carousel... (e.g., '10 slides about dumb ways to die')"
-                        className="h-32 mb-4"
-                        value={prompt}
-                        onChange={(e) => setPrompt(e.target.value)}
-                    />
+                        <Textarea
+                            placeholder="Describe your carousel... (e.g., '10 slides about dumb ways to die')"
+                            className="h-32 mb-4"
+                            value={prompt}
+                            onChange={(e) => setPrompt(e.target.value)}
+                        />
 
-                    <Button onClick={handleGenerate} disabled={loading} className="w-full">
-                        {loading ? "Generating Carousel..." : "Generate HTML"}
-                    </Button>
+                        <Button onClick={handleGenerate} disabled={loading} className="w-full">
+                            {loading ? "Generating Carousel..." : "Generate HTML"}
+                        </Button>
+                    </div>
+
+                    {/* LOGS / CODE */}
+                    <div className="flex-1 overflow-auto bg-gray-50 p-4 rounded text-xs font-mono border">
+                        {slides.length > 0 ? (
+                            <>
+                                <div className="font-bold text-gray-400 mb-2">SOURCE CODE (Slide {currentIndex + 1})</div>
+                                {slides[currentIndex]}
+                            </>
+                        ) : (
+                            <div className="text-gray-400 italic">Waiting for generation...</div>
+                        )}
+                    </div>
                 </div>
 
-                {/* LOGS / CODE */}
-                <div className="flex-1 overflow-auto bg-gray-50 p-4 rounded text-xs font-mono border">
+                {/* PREVIEW */}
+                <div className="w-2/3 flex flex-col items-center justify-center p-12 bg-gray-200 h-screen relative">
+
+                    {/* NAVIGATION */}
+                    {slides.length > 0 && (
+                        <div className="absolute top-8 flex items-center gap-4 bg-white p-2 rounded-full shadow-lg z-10">
+                            <button className="px-3 py-1 text-sm border rounded-lg hover:bg-gray-50 disabled:opacity-50" onClick={prevSlide} disabled={currentIndex === 0}>
+                                ←
+                            </button>
+                            <span className="font-mono text-sm font-bold min-w-[3rem] text-center">
+                                {currentIndex + 1} / {slides.length}
+                            </span>
+                            <button className="px-3 py-1 text-sm border rounded-lg hover:bg-gray-50 disabled:opacity-50" onClick={nextSlide} disabled={currentIndex === slides.length - 1}>
+                                →
+                            </button>
+                        </div>
+                    )}
+
                     {slides.length > 0 ? (
-                        <>
-                            <div className="font-bold text-gray-400 mb-2">SOURCE CODE (Slide {currentIndex + 1})</div>
-                            {slides[currentIndex]}
-                        </>
+                        <div
+                            className="w-[1080px] h-[1350px] bg-white shadow-2xl overflow-hidden scale-[0.6] origin-center transition-all duration-300"
+                            dangerouslySetInnerHTML={{ __html: slides[currentIndex] }}
+                        />
                     ) : (
-                        <div className="text-gray-400 italic">Waiting for generation...</div>
+                        <div className="text-gray-400 border-2 border-dashed border-gray-300 rounded-xl w-[400px] h-[500px] flex items-center justify-center">
+                            Preview Area
+                        </div>
                     )}
                 </div>
             </div>
-
-            {/* PREVIEW */}
-            <div className="w-2/3 flex flex-col items-center justify-center p-12 bg-gray-200 h-screen relative">
-
-                {/* NAVIGATION */}
-                {slides.length > 0 && (
-                    <div className="absolute top-8 flex items-center gap-4 bg-white p-2 rounded-full shadow-lg z-10">
-                        <button className="px-3 py-1 text-sm border rounded-lg hover:bg-gray-50 disabled:opacity-50" onClick={prevSlide} disabled={currentIndex === 0}>
-                            ←
-                        </button>
-                        <span className="font-mono text-sm font-bold min-w-[3rem] text-center">
-                            {currentIndex + 1} / {slides.length}
-                        </span>
-                        <button className="px-3 py-1 text-sm border rounded-lg hover:bg-gray-50 disabled:opacity-50" onClick={nextSlide} disabled={currentIndex === slides.length - 1}>
-                            →
-                        </button>
-                    </div>
-                )}
-
-                {slides.length > 0 ? (
-                    <div
-                        className="w-[1080px] h-[1350px] bg-white shadow-2xl overflow-hidden scale-[0.6] origin-center transition-all duration-300"
-                        dangerouslySetInnerHTML={{ __html: slides[currentIndex] }}
-                    />
-                ) : (
-                    <div className="text-gray-400 border-2 border-dashed border-gray-300 rounded-xl w-[400px] h-[500px] flex items-center justify-center">
-                        Preview Area
-                    </div>
-                )}
-            </div>
-        </div>
+        </FeatureLock>
     );
 }

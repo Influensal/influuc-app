@@ -6,11 +6,20 @@ import { motion } from 'framer-motion';
 import { useMemo } from 'react';
 
 import { useTheme, useAuth, usePosts } from '@/contexts';
+import { parseTier, getTierLimits } from '@/lib/subscription';
 
 // Group Account, Billing, and Settings into one navigation item to reduce clutter?
 // Or keep separate as requested ("Settings, Billings, Accounts and shit pages")
-const bottomNavItems = [
-    { href: '/dashboard/settings', label: 'Settings', icon: 'fi-sr-settings' },
+interface NavItem {
+    href: string;
+    label: string;
+    icon: string;
+    alwaysShow: boolean;
+    locked?: boolean;
+}
+
+const bottomNavItems: NavItem[] = [
+    { href: '/dashboard/settings', label: 'Settings', icon: 'fi-sr-settings', alwaysShow: true },
 ];
 
 export function Sidebar() {
@@ -20,7 +29,7 @@ export function Sidebar() {
     const { profile: userProfile } = usePosts();
 
     // Build navigation items based on user's selected platforms
-    const mainNavItems = [
+    const mainNavItems: NavItem[] = [
         { href: '/dashboard', label: 'Overview', icon: 'fi-sr-apps', alwaysShow: true },
     ];
 
@@ -33,10 +42,25 @@ export function Sidebar() {
     }
 
     // Always show Ideas, Carousels and Library
+    const tier = parseTier(userProfile?.subscriptionTier);
+    const limits = getTierLimits(tier);
+
     mainNavItems.push({ href: '/dashboard/ideas', label: 'Spontaneous Ideas', icon: 'fi-sr-bulb', alwaysShow: true });
-    mainNavItems.push({ href: '/dashboard/carousels', label: 'Carousels', icon: 'fi-sr-layers', alwaysShow: true });
+    mainNavItems.push({ 
+        href: '/dashboard/carousels', 
+        label: 'Carousels', 
+        icon: 'fi-sr-layers', 
+        alwaysShow: true,
+        locked: !limits.hasOnDemandCarousels 
+    });
+    mainNavItems.push({ 
+        href: '/dashboard/newsjacking', 
+        label: 'Newsjacking', 
+        icon: 'fi-sr-newspaper', 
+        alwaysShow: true,
+        locked: !limits.hasNewsJacking 
+    });
     mainNavItems.push({ href: '/dashboard/library', label: 'Content Library', icon: 'fi-sr-folder', alwaysShow: true });
-    mainNavItems.push({ href: '/dashboard/newsjacking', label: 'Newsjacking', icon: 'fi-sr-newspaper', alwaysShow: true });
 
 
     return (
@@ -69,6 +93,9 @@ export function Sidebar() {
                             >
                                 <i className={`fi ${item.icon} sidebar-link-icon flex items-center justify-center`}></i>
                                 <span>{item.label}</span>
+                                {item.locked && (
+                                    <i className="fi fi-sr-lock text-[10px] ml-auto opacity-40"></i>
+                                )}
                             </Link>
                         );
                     })}

@@ -1,7 +1,7 @@
-
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { createClient } from '@/utils/supabase/server';
+import { createAdminSupabaseClient } from '@/lib/subscription';
 
 // Map internal tier IDs to your actual Stripe Price IDs
 const PRICE_IDS: Record<string, string | undefined> = {
@@ -78,8 +78,10 @@ export async function POST(req: NextRequest) {
 
                 console.log(`[Checkout] Swapped subscription ${existingSub.stripe_subscription_id} from ${existingSub.plan} → ${tier} (${isUpgrade ? 'upgrade' : 'downgrade'})`);
 
+                const adminClient = createAdminSupabaseClient();
+                
                 // Update local DB immediately
-                await supabase
+                await adminClient
                     .from('subscriptions')
                     .update({
                         plan: tier,
@@ -89,7 +91,7 @@ export async function POST(req: NextRequest) {
                     .eq('account_id', user.id);
 
                 // Also update founder_profiles tier
-                await supabase
+                await adminClient
                     .from('founder_profiles')
                     .update({ subscription_tier: tier })
                     .eq('account_id', user.id);

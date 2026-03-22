@@ -9,6 +9,18 @@ export async function GET(req: NextRequest) {
         const topic = searchParams.get('topic');
 
         const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+        const { data: profile } = await supabase
+            .from('founder_profiles')
+            .select('subscription_tier')
+            .eq('account_id', user.id)
+            .single();
+
+        if (profile?.subscription_tier !== 'authority') {
+            return NextResponse.json({ error: 'Newsjacking is only available on the Authority plan.' }, { status: 403 });
+        }
 
         console.log(`[NEWSJACKING API] Searching internal vault for: "${topic}"`);
 

@@ -7,6 +7,7 @@ import { Twitter, Linkedin } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import Image from 'next/image';
 import { usePosts } from '@/contexts';
+import { parseTier, getTierLimits } from '@/lib/subscription';
 
 interface Post {
     id: string;
@@ -530,20 +531,42 @@ export default function EditPublishModal({
                                     <p className="text-xs text-gray-500 mb-2 text-center">Select generation mode:</p>
                                     <div className="grid grid-cols-2 gap-3">
                                         <button
-                                            onClick={() => handleGenerateImage('faceless')}
+                                            onClick={() => {
+                                                const tier = parseTier(profile?.subscriptionTier);
+                                                const limits = getTierLimits(tier);
+                                                if (!limits.hasFacelessVisuals) {
+                                                    setError("Faceless visuals are available on Creator plan and above.");
+                                                    return;
+                                                }
+                                                handleGenerateImage('faceless');
+                                            }}
                                             disabled={isGeneratingImage}
-                                            className="p-2 rounded-xl border border-gray-800 bg-[#0A0A0A] hover:border-indigo-500 transition-all flex items-center justify-center gap-2 disabled:opacity-50 group"
+                                            className="p-2 rounded-xl border border-gray-800 bg-[#0A0A0A] hover:border-indigo-500 transition-all flex items-center justify-center gap-2 disabled:opacity-50 group relative"
                                         >
                                             <i className={`fi fi-sr-magic-wand flex items-center justify-center ${"w-4 h-4 text-indigo-500 group-hover:scale-110 transition-transform"}`}  ></i>
                                             <span className="font-medium text-sm text-gray-300 group-hover:text-white">Faceless</span>
+                                            {!getTierLimits(parseTier(profile?.subscriptionTier)).hasFacelessVisuals && (
+                                                <i className="fi fi-sr-lock absolute -top-1 -right-1 text-[10px] text-gray-500 bg-black/80 p-0.5 rounded-full"></i>
+                                            )}
                                         </button>
                                         <button
-                                            onClick={() => handleGenerateImage('digital_twin')}
+                                            onClick={() => {
+                                                const tier = parseTier(profile?.subscriptionTier);
+                                                const limits = getTierLimits(tier);
+                                                if (!limits.hasFaceClone) {
+                                                    setError("Digital Twin (Face Clone) is available on Authority plan only.");
+                                                    return;
+                                                }
+                                                handleGenerateImage('digital_twin');
+                                            }}
                                             disabled={isGeneratingImage}
-                                            className="p-2 rounded-xl border border-gray-800 bg-[#0A0A0A] hover:border-purple-500 transition-all flex items-center justify-center gap-2 disabled:opacity-50 group"
+                                            className="p-2 rounded-xl border border-gray-800 bg-[#0A0A0A] hover:border-purple-500 transition-all flex items-center justify-center gap-2 disabled:opacity-50 group relative"
                                         >
                                             <i className={`fi fi-sr-user flex items-center justify-center ${"w-4 h-4 text-purple-500 group-hover:scale-110 transition-transform"}`}  ></i>
                                             <span className="font-medium text-sm text-gray-300 group-hover:text-white">Digital Twin</span>
+                                            {!getTierLimits(parseTier(profile?.subscriptionTier)).hasFaceClone && (
+                                                <i className="fi fi-sr-lock absolute -top-1 -right-1 text-[10px] text-gray-500 bg-black/80 p-0.5 rounded-full"></i>
+                                            )}
                                         </button>
                                     </div>
                                     {isGeneratingImage && (

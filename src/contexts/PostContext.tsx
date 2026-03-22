@@ -46,6 +46,7 @@ interface UserProfile {
     };
     awaitingGoalInput?: boolean;
     weekNumber?: number;
+    subscriptionTier?: string;
 }
 
 interface PostContextType {
@@ -139,6 +140,7 @@ export function PostProvider({ children }: { children: ReactNode }) {
                         contextData: dbProfile.context_data || { aboutYou: '', personalContext: [], productContext: [] },
                         awaitingGoalInput: dbProfile.awaiting_goal_input || false,
                         weekNumber: dbProfile.week_number || 1,
+                        subscriptionTier: dbProfile.subscription_tier || 'starter',
                     });
                 }
             }

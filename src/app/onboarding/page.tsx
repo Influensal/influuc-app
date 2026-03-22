@@ -474,13 +474,20 @@ export default function OnboardingPage() {
         setError(null);
 
         try {
+            // Get stripe session id if it exists
+            const params = new URLSearchParams(window.location.search);
+            const sessionId = params.get('session_id');
+
             // Save the onboarding profile data and redirect to dashboard
             const profileResponse = await fetch('/api/onboarding/complete', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(data),
+                body: JSON.stringify({
+                    ...data,
+                    stripeSessionId: sessionId
+                }),
             });
 
             if (!profileResponse.ok) {
