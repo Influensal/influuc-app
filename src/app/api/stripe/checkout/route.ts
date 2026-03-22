@@ -62,18 +62,16 @@ export async function POST(req: NextRequest) {
                         id: currentItem.id,
                         price: priceId,
                     }],
-                    // Upgrades: charge immediately (prorate)
+                    // Upgrades: charge immediately (always_invoice forces immediate payment)
                     // Downgrades: apply at next billing cycle
-                    proration_behavior: isUpgrade ? 'create_prorations' : 'none',
+                    proration_behavior: isUpgrade ? 'always_invoice' : 'none',
                     payment_behavior: isUpgrade ? 'error_if_incomplete' : 'allow_incomplete',
+                    // If upgrading, end any existing trial immediately to start the paid period
+                    ...(isUpgrade ? { trial_end: 'now' } : { cancel_at_period_end: false }),
                     metadata: {
                         supabase_user_id: user.id,
                         tier: tier,
                     },
-                    // For downgrades, don't apply until next billing cycle
-                    ...(isUpgrade ? {} : {
-                        cancel_at_period_end: false, // Ensure not set to cancel
-                    }),
                 });
 
                 console.log(`[Checkout] Swapped subscription ${existingSub.stripe_subscription_id} from ${existingSub.plan} → ${tier} (${isUpgrade ? 'upgrade' : 'downgrade'})`);
