@@ -15,6 +15,13 @@ interface TierLimits {
     hasNewsJacking: boolean;
 }
 
+// Tier hierarchy for determining upgrade vs downgrade
+export const TIER_ORDER: Record<string, number> = {
+    starter: 0,
+    creator: 1,
+    authority: 2,
+};
+
 const TIER_CONFIG: Record<SubscriptionTier, TierLimits> = {
     starter: {
         ideasPerMonth: 30,
@@ -26,22 +33,22 @@ const TIER_CONFIG: Record<SubscriptionTier, TierLimits> = {
         hasNewsJacking: false,
     },
     creator: {
-        ideasPerMonth: Infinity,
-        carouselsPerWeek: 0,
-        hasCarousels: false,
+        ideasPerMonth: Infinity, // Unlimited Ideas
+        carouselsPerWeek: 2,      // 2 Carousels / Week
+        hasCarousels: true,
         hasOnDemandCarousels: false,
-        hasFacelessVisuals: true,
+        hasFacelessVisuals: true, // Faceless AI Visuals
         hasFaceClone: false,
         hasNewsJacking: false,
     },
     authority: {
         ideasPerMonth: Infinity,
-        carouselsPerWeek: 999999,
+        carouselsPerWeek: 2, 
         hasCarousels: true,
         hasOnDemandCarousels: true,
         hasFacelessVisuals: true,
-        hasFaceClone: true,
-        hasNewsJacking: true,
+        hasFaceClone: true,       // AI Face Clone
+        hasNewsJacking: true,     // Newsjacking Engine
     },
 };
 

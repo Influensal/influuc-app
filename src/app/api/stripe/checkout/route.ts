@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
 import { createClient } from '@/utils/supabase/server';
-import { createAdminSupabaseClient } from '@/lib/subscription';
+import { TIER_DB_FEATURES, createAdminSupabaseClient } from '@/lib/subscription';
 
 // Map internal tier IDs to your actual Stripe Price IDs
 const PRICE_IDS: Record<string, string | undefined> = {
@@ -85,14 +85,21 @@ export async function POST(req: NextRequest) {
                         plan: tier,
                         status: updated.status,
                         cancel_at_period_end: false,
+                        current_period_end: new Date((updated as any).current_period_end * 1000).toISOString(),
                     })
                     .eq('account_id', user.id);
 
-                // Also update founder_profiles tier
-                await adminClient
-                    .from('founder_profiles')
-                    .update({ subscription_tier: tier })
-                    .eq('account_id', user.id);
+                // For UPGRADES: update founder_profiles tier immediately for instant access
+                // For DOWNGRADES: skip this, let the user keep access until the period ends (handled by webhook at end of period)
+                if (isUpgrade) {
+                    await adminClient
+                        .from('founder_profiles')
+                        .update({ 
+                            subscription_tier: tier,
+                            ...TIER_DB_FEATURES[tier as keyof typeof TIER_DB_FEATURES]
+                        })
+                        .eq('account_id', user.id);
+                }
 
                 return NextResponse.json({
                     success: true,

@@ -1,7 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { stripe } from '@/lib/stripe';
-import { TIER_DB_FEATURES, createAdminSupabaseClient } from '@/lib/subscription';
+import { TIER_DB_FEATURES, TIER_ORDER, createAdminSupabaseClient } from '@/lib/subscription';
 import Stripe from 'stripe';
 
 export const runtime = 'nodejs';
@@ -74,35 +74,55 @@ export async function POST(req: NextRequest) {
 
             case 'customer.subscription.updated': {
                 const subscription = event.data.object as Stripe.Subscription;
-                const tier = getTierFromSubscription(subscription);
-                const features = TIER_DB_FEATURES[tier as keyof typeof TIER_DB_FEATURES] || TIER_DB_FEATURES.starter;
+                const newTier = getTierFromSubscription(subscription);
+                const features = TIER_DB_FEATURES[newTier as keyof typeof TIER_DB_FEATURES] || TIER_DB_FEATURES.starter;
 
-                // Find user by stripe_customer_id in subscriptions table
+                // 1. Find user and current tier
                 const { data: sub } = await adminClient
                     .from('subscriptions')
-                    .select('account_id')
+                    .select('account_id, plan')
                     .eq('stripe_customer_id', subscription.customer as string)
                     .single();
 
-                if (sub) {
-                    const userId = sub.account_id;
-                    const cancelAtPeriodEnd = subscription.cancel_at_period_end || false;
-                    console.log(`[Webhook] Subscription Updated. User: ${userId}, Status: ${subscription.status}, Tier: ${tier}, CancelPending: ${cancelAtPeriodEnd}`);
+                const { data: profile } = sub ? await adminClient
+                    .from('founder_profiles')
+                    .select('subscription_tier')
+                    .eq('account_id', sub.account_id)
+                    .single() : { data: null };
 
+                if (sub && profile) {
+                    const userId = sub.account_id;
+                    const currentTier = profile.subscription_tier;
+                    const cancelAtPeriodEnd = subscription.cancel_at_period_end || false;
+                    
+                    const isUpgrade = (TIER_ORDER[newTier] || 0) > (TIER_ORDER[currentTier] || 0);
+                    const isDowngrade = (TIER_ORDER[newTier] || 0) < (TIER_ORDER[currentTier] || 0);
+                    
+                    // A "period flip" is when the current billing cycle has just reset
+                    const isPeriodReset = (Math.abs(Date.now() / 1000 - (subscription as any).current_period_start)) < 600; // 10 mins threshold
+
+                    console.log(`[Webhook] Sub Updated. User: ${userId}, New: ${newTier}, Current: ${currentTier}, Upgrade: ${isUpgrade}, Downgrade: ${isDowngrade}, PeriodReset: ${isPeriodReset}`);
+
+                    // 2. Always update the subscriptions table (metadata, status, end date)
                     await adminClient.from('subscriptions').update({
-                        plan: tier,
+                        plan: newTier,
                         status: subscription.status,
                         current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
                         cancel_at_period_end: cancelAtPeriodEnd,
                     }).eq('account_id', userId);
 
-                    // Only update profile tier if subscription is NOT pending cancellation
-                    // When pending cancel, user keeps their current tier until period ends
-                    if (!cancelAtPeriodEnd) {
+                    // 3. Logic for updating founder_profiles (Feature Access)
+                    // - If Upgrade: update IMMEDIATELY for instant access
+                    // - If Downgrade: ONLY update IF the period has just reset (billing cycle flip)
+                    // - If Status is unhealthy (canceled/past_due): update IMMEDIATELY to Starter
+                    if (isUpgrade || (isDowngrade && isPeriodReset) || !['active', 'trialing'].includes(subscription.status)) {
+                        console.log(`[Webhook] Applying Tier Change to Profile: ${newTier}`);
                         await adminClient.from('founder_profiles').update({
-                            subscription_tier: tier,
+                            subscription_tier: newTier,
                             ...features,
                         }).eq('account_id', userId);
+                    } else if (isDowngrade) {
+                        console.log(`[Webhook] Deferring Downgrade: keep ${currentTier} until ${new Date((subscription as any).current_period_end * 1000).toLocaleDateString()}`);
                     }
                 }
                 break;
