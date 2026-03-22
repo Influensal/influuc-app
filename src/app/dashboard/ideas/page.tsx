@@ -123,15 +123,14 @@ export default function SpontaneousIdeasPage() {
         }
 
         try {
-            const historyToSent = activeMessages;
-
+            // "One and done" - we don't send history anymore to keep it fresh
             const response = await fetch('/api/ai/generate-idea', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     idea: currentInput,
                     platforms: ['x', 'linkedin'],
-                    history: historyToSent
+                    history: [] // One and done
                 }),
             });
 
@@ -149,39 +148,26 @@ export default function SpontaneousIdeasPage() {
             const newAssistantMessage: ChatMessage = { role: 'assistant', platformOutputs: data.content };
             const newUserMessage: ChatMessage = { role: 'user', content: currentInput };
 
-            const updatedMessages = [...activeMessages, newUserMessage, newAssistantMessage];
+            // For "one and done", the result is always just these two messages
+            const updatedMessages = [newUserMessage, newAssistantMessage];
 
-            if (currentChatId) {
-                const res = await fetch(`/api/ideas/${currentChatId}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ generatedContent: updatedMessages }),
-                });
+            const res = await fetch('/api/ideas', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ input: currentInput, generatedContent: updatedMessages }),
+            });
 
-                if (res.ok) {
-                    setSavedChats(prev => prev.map(chat =>
-                        chat.id === currentChatId ? { ...chat, messages: updatedMessages } : chat
-                    ));
-                }
-            } else {
-                const res = await fetch('/api/ideas', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ input: currentInput, generatedContent: updatedMessages }),
-                });
-
-                if (res.ok) {
-                    const postData = await res.json();
-                    if (postData.idea) {
-                        const newChat: SavedChat = {
-                            id: postData.idea.id,
-                            input: postData.idea.input,
-                            messages: updatedMessages,
-                            createdAt: new Date(postData.idea.created_at || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
-                        };
-                        setSavedChats(prev => [newChat, ...prev]);
-                        setCurrentChatId(newChat.id);
-                    }
+            if (res.ok) {
+                const postData = await res.json();
+                if (postData.idea) {
+                    const newChat: SavedChat = {
+                        id: postData.idea.id,
+                        input: postData.idea.input,
+                        messages: updatedMessages,
+                        createdAt: new Date(postData.idea.created_at || Date.now()).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+                    };
+                    setSavedChats(prev => [newChat, ...prev]);
+                    setCurrentChatId(newChat.id);
                 }
             }
         } catch (err) {
@@ -276,7 +262,7 @@ export default function SpontaneousIdeasPage() {
                             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--foreground)] text-[var(--background)] text-sm font-semibold hover:scale-[1.02] transition-all active:scale-[0.98] shadow-lg"
                         >
                             <i className={`fi fi-sr-plus-small flex items-center justify-center ${"w-4 h-4"}`}  ></i>
-                            New Thread
+                            New Idea
                         </button>
                     </div>
                 </div>
@@ -292,7 +278,7 @@ export default function SpontaneousIdeasPage() {
                         className="absolute right-0 top-16 w-80 max-h-[70vh] glass-premium z-50 p-6 flex flex-col overflow-hidden"
                     >
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-sm font-semibold uppercase tracking-widest text-[var(--foreground-muted)]">Recent Threads</h3>
+                            <h3 className="text-sm font-semibold uppercase tracking-widest text-[var(--foreground-muted)]">Recent Ideas</h3>
                             <button onClick={() => setShowHistory(false)} className="text-[var(--foreground-muted)] hover:text-[var(--foreground)] transition-colors">
                                 <i className={`fi fi-sr-plus-small flex items-center justify-center ${"w-4 h-4 rotate-45"}`}  ></i>
                             </button>
@@ -308,7 +294,7 @@ export default function SpontaneousIdeasPage() {
                                         className={`w-full text-left p-3 rounded-xl border transition-all flex flex-col gap-1 ${currentChatId === chat.id ? 'bg-[var(--primary)] border-[var(--primary)] text-white' : 'bg-[var(--background-secondary)]/50 border-[var(--border)] hover:border-[var(--primary)]/30 text-[var(--foreground)]'}`}
                                     >
                                         <div className="flex items-center gap-2 mb-1">
-                                            <i className={`fi fi-sr-comment flex items-center justify-center w-3 h-3 ${currentChatId === chat.id ? 'text-white' : 'text-[var(--primary)]'}`}></i>
+                                            <i className={`fi fi-sr-bulb flex items-center justify-center w-3 h-3 ${currentChatId === chat.id ? 'text-white' : 'text-[var(--primary)]'}`}></i>
                                             <span className="text-[10px] font-semibold opacity-70">{chat.createdAt}</span>
                                         </div>
                                         <span className="text-xs font-semibold line-clamp-1 opacity-90">{chat.input}</span>
@@ -373,57 +359,58 @@ export default function SpontaneousIdeasPage() {
                             </div>
                         </div>
                     ) : (
-                        activeMessages.map((msg, idx) => (
-                            <motion.div
-                                key={idx}
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                            >
-                                <div className={`max-w-[85%] ${msg.role === 'user' ? 'bg-[var(--foreground)] text-[var(--background)]' : 'bg-[var(--card)] border border-[var(--border)]'} rounded-2xl px-6 py-5 shadow-sm`}>
-                                    {msg.content && (
-                                        <p className="text-[15px] leading-relaxed whitespace-pre-wrap font-medium">
-                                            {msg.content}
-                                        </p>
-                                    )}
+                        <div className="max-w-4xl mx-auto space-y-12">
+                            {/* The User Prompt - styled as a clear intent */}
+                            <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-6 shadow-sm">
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--primary)] mb-2 block">YOUR IDEA</span>
+                                <p className="text-lg font-semibold text-[var(--foreground)] leading-relaxed">
+                                    {activeMessages[0]?.content || optimisticPrompt}
+                                </p>
+                            </div>
 
-                                    {msg.platformOutputs && msg.platformOutputs.length > 0 && (
-                                        <div className="flex flex-col gap-6 mt-6">
-                                            {msg.platformOutputs.map((item, pIdx) => (
-                                                <div key={pIdx} className="bg-[var(--background-secondary)]/30 rounded-xl p-5 border border-[var(--border)] group relative">
-                                                    <div className="flex items-center justify-between mb-4">
-                                                        <div className="flex items-center gap-2 px-3 py-1 bg-[var(--card)] border border-[var(--border)] rounded-full shadow-sm">
-                                                            {renderPlatformIcon(item.platform, "w-3 h-3 text-[var(--primary)]")}
-                                                            <span className="text-[10px] font-semibold uppercase tracking-tighter text-[var(--foreground-muted)]">{item.format}</span>
-                                                        </div>
-                                                        <button
-                                                            onClick={() => handleCopy(item.content, `${currentChatId}-${idx}-${pIdx}`)}
-                                                            className="p-1.5 rounded-lg hover:bg-[var(--card)] transition-colors text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
-                                                        >
-                                                            {copied === `${currentChatId}-${idx}-${pIdx}` ? <i className={`fi fi-sr-check flex items-center justify-center ${"w-4 h-4 text-green-500"}`}  ></i> : <i className={`fi fi-sr-copy flex items-center justify-center ${"w-4 h-4"}`}  ></i>}
-                                                        </button>
-                                                    </div>
-                                                    <p className="text-[14px] leading-relaxed text-[var(--foreground-secondary)] font-medium">
-                                                        {item.content}
-                                                    </p>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
+                            {/* The AI Result */}
+                            <div className="space-y-6">
+                                <div className="flex items-center gap-3 px-2">
+                                    <div className="w-8 h-8 rounded-lg bg-[var(--primary)]/10 flex items-center justify-center text-[var(--primary)]">
+                                        <i className="fi fi-sr-sparkles text-sm"></i>
+                                    </div>
+                                    <h3 className="font-bold text-[var(--foreground)] tracking-tight">Generated Content</h3>
                                 </div>
-                            </motion.div>
-                        ))
+
+                                {activeMessages[1]?.platformOutputs && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {activeMessages[1].platformOutputs.map((item, pIdx) => (
+                                            <div key={pIdx} className="bg-[var(--card)] rounded-2xl p-6 border border-[var(--border)] group relative flex flex-col h-full shadow-sm hover:border-[var(--primary)]/30 transition-all">
+                                                <div className="flex items-center justify-between mb-6">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-2 rounded-xl bg-[var(--background-secondary)] text-[var(--primary)]">
+                                                            {renderPlatformIcon(item.platform, "w-4 h-4")}
+                                                        </div>
+                                                        <div className="flex flex-col">
+                                                            <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--foreground-muted)]">{item.platform}</span>
+                                                            <span className="text-xs font-bold text-[var(--foreground-secondary)]">{item.format}</span>
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => handleCopy(item.content, `${currentChatId}-${pIdx}`)}
+                                                        className="p-2 rounded-xl hover:bg-[var(--background-secondary)] transition-colors text-[var(--foreground-muted)] hover:text-[var(--primary)]"
+                                                    >
+                                                        {copied === `${currentChatId}-${pIdx}` ? <i className="fi fi-sr-check w-4 h-4 text-green-500"></i> : <i className="fi fi-sr-copy w-4 h-4"></i>}
+                                                    </button>
+                                                </div>
+                                                <p className="text-[15px] leading-relaxed text-[var(--foreground-secondary)] font-medium flex-1">
+                                                    {item.content}
+                                                </p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     )}
 
-                    {(optimisticPrompt || isGenerating) && (
-                        <div className="space-y-8">
-                            {optimisticPrompt && (
-                                <div className="flex justify-end">
-                                    <div className="max-w-[85%] bg-[var(--foreground)] text-[var(--background)] rounded-2xl px-6 py-5 shadow-sm opacity-60">
-                                        <p className="text-[15px] leading-relaxed font-medium">{optimisticPrompt}</p>
-                                    </div>
-                                </div>
-                            )}
+                    {(isGenerating) && (
+                        <div className="space-y-8 max-w-4xl mx-auto">
                             {isGenerating && (
                                 <div className="flex justify-start">
                                     <div className="bg-[var(--card)] border border-[var(--border)] rounded-full px-6 py-3 flex items-center gap-3 shadow-md">
