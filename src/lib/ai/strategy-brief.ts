@@ -480,14 +480,26 @@ export function buildMasterOnboardingPrompt(
 ): string {
     const tier = data.subscriptionTier || 'starter';
     const isStarter = tier === 'starter';
+    const isCreator = tier === 'creator';
+    const isAuthority = tier === 'authority';
     
     // For Starter, only use one platform even if multiple were selected in theory (guardrail)
     const activePlatforms = isStarter ? [platforms[0]] : platforms;
     const isX = activePlatforms.includes('x');
     const isLI = activePlatforms.includes('linkedin');
     
-    const totalTextPosts = isStarter ? 7 : ((isX ? 7 : 0) + (isLI ? 5 : 0));
-    const totalCarousels = isStarter ? 0 : (isLI ? 2 : 0);
+    // NEW LIMITS: 
+    // Starter: 1 platform, 7 text posts.
+    // Creator ($19): 2 platforms, 7 text posts each (no carousels).
+    // Authority: 2 platforms, 7 items each (5 text, 2 carousel for LI).
+    
+    const totalTextPosts = isStarter 
+        ? 7 
+        : (isCreator 
+            ? ((isX ? 7 : 0) + (isLI ? 7 : 0)) 
+            : ((isX ? 7 : 0) + (isLI ? 5 : 0)));
+            
+    const totalCarousels = isAuthority && isLI ? 2 : 0;
 
     return `You are a world-class Brand Strategist and Content Architect. You do not generate posts. You build a complete brand strategy and then design a weekly content calendar that executes that strategy with surgical precision. Every output must feel like it was built specifically for this person — not generated.
 
@@ -582,8 +594,7 @@ X (if selected): Exactly 7 items total (1 per day for 7 days).
 - 4 Short posts
 
 LinkedIn (if selected): Exactly 7 items total (1 per day for 7 days).
-- 5 Text posts (3 long-form, 2 short-form)
-- 2 Carousel topics`}
+${isCreator ? '- 7 Text posts (4 long-form, 3 short-form)\n- NO carousels' : '- 5 Text posts (3 long-form, 2 short-form)\n- 2 Carousel topics'}`}
 
 ---
 

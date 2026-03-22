@@ -27,8 +27,8 @@ const TIER_CONFIG: Record<SubscriptionTier, TierLimits> = {
     },
     creator: {
         ideasPerMonth: Infinity,
-        carouselsPerWeek: 2,
-        hasCarousels: true,
+        carouselsPerWeek: 0,
+        hasCarousels: false,
         hasOnDemandCarousels: false,
         hasFacelessVisuals: true,
         hasFaceClone: false,
