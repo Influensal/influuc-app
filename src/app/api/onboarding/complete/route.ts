@@ -199,18 +199,42 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Scrape Website if provided (Company Website)
-        if (body.companyWebsite && body.companyWebsite.includes('.')) {
+        // === STEP 0: SAFETY SYNC - Verify Stripe Payment if session ID is provided ===
+        // This MUST happen before generation so the AI knows the correct tier.
+        if ((body as any).stripeSessionId && user) {
             try {
-                const url = body.companyWebsite.startsWith('http') ? body.companyWebsite : `https://${body.companyWebsite}`;
-                console.log('[Onboarding] Scraping company website:', url);
-                const scraped = await scrapeWebsite(url);
-                const companyContext = extractBusinessSummary(scraped);
+                const sessionId = (body as any).stripeSessionId;
+                console.log(`[Onboarding] Safety Sync (PRE-GEN): Verifying session ${sessionId}`);
+                const session = await stripe.checkout.sessions.retrieve(sessionId);
+                
+                if (session.payment_status === 'paid' && session.subscription) {
+                    const subscriptionId = session.subscription as string;
+                    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+                    const tier = ((subscription as any).metadata?.tier || body.subscriptionTier || 'starter') as string;
+                    
+                    console.log(`[Onboarding] Safety Sync: Payment verified for tier ${tier}. Provisioning...`);
+                    
+                    // Manually trigger the subscription record creation (same logic as webhook)
+                    const adminClient = createAdminSupabaseClient();
+                    
+                    // 1. Upsert into subscriptions table
+                    await adminClient.from('subscriptions').upsert({
+                        account_id: user.id,
+                        stripe_customer_id: session.customer as string,
+                        stripe_subscription_id: subscriptionId,
+                        plan: tier,
+                        status: 'active',
+                        current_period_start: new Date((subscription as any).current_period_start * 1000).toISOString(),
+                        current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
+                    }, { onConflict: 'account_id' });
 
-                // Append scraped context to description context for AI
-                body.businessDescription += `\n\n-- COMPANY WEBSITE --\n${companyContext}`;
-            } catch (e) {
-                console.warn('[Onboarding] Failed to scrape company website:', e);
+                    // 2. Override the body tier to the one verified by Stripe
+                    body.subscriptionTier = tier as any;
+                    console.log(`[Onboarding] Safety Sync: Database updated and body tier set to ${tier}`);
+                }
+            } catch (syncError) {
+                console.warn('[Onboarding] Safety Sync failed (non-critical):', syncError);
+                // We continue with current body.subscriptionTier if sync fails
             }
         }
 
@@ -378,44 +402,6 @@ export async function POST(request: NextRequest) {
 
         console.log(`[Onboarding] Result: ${posts.length} text posts, ${carousels.length} carousels`);
 
-        // === SAFETY SYNC: Verify Stripe Payment if session ID is provided ===
-        if ((body as any).stripeSessionId && user) {
-            try {
-                const sessionId = (body as any).stripeSessionId;
-                console.log(`[Onboarding] Safety Sync: Verifying session ${sessionId}`);
-                const session = await stripe.checkout.sessions.retrieve(sessionId);
-                
-                if (session.payment_status === 'paid' && session.subscription) {
-                    const subscriptionId = session.subscription as string;
-                    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-                    const tier = ((subscription as any).metadata?.tier || body.subscriptionTier || 'starter') as string;
-                    
-                    console.log(`[Onboarding] Safety Sync: Payment verified for tier ${tier}. Provisioning...`);
-                    
-                    // Manually trigger the subscription record creation (same logic as webhook)
-                    const adminClient = createAdminSupabaseClient();
-                    const features = TIER_DB_FEATURES[tier as keyof typeof TIER_DB_FEATURES] || TIER_DB_FEATURES.starter;
-
-                    // 1. Upsert into subscriptions table
-                    await adminClient.from('subscriptions').upsert({
-                        account_id: user.id,
-                        stripe_customer_id: session.customer as string,
-                        stripe_subscription_id: subscriptionId,
-                        plan: tier,
-                        status: 'active',
-                        current_period_start: new Date((subscription as any).current_period_start * 1000).toISOString(),
-                        current_period_end: new Date((subscription as any).current_period_end * 1000).toISOString(),
-                    }, { onConflict: 'account_id' });
-
-                    // 2. Override the body tier to the one verified by Stripe
-                    body.subscriptionTier = tier as any;
-                    console.log(`[Onboarding] Safety Sync: Database updated for ${user.id}`);
-                }
-            } catch (syncError) {
-                console.warn('[Onboarding] Safety Sync failed (non-critical):', syncError);
-                // We continue anyway, letting the webhook system handle it eventually
-            }
-        }
 
         // Step 3: Save to Supabase
         console.log('[Onboarding] Saving profile and posts to Supabase...');
