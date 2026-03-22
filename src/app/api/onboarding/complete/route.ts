@@ -382,7 +382,7 @@ export async function POST(request: NextRequest) {
         if ((body as any).stripeSessionId && user) {
             try {
                 const sessionId = (body as any).stripeSessionId;
-                console.log([Onboarding] Safety Sync: Verifying session );
+                console.log(`[Onboarding] Safety Sync: Verifying session ${sessionId}`);
                 const session = await stripe.checkout.sessions.retrieve(sessionId);
                 
                 if (session.payment_status === 'paid' && session.subscription) {
@@ -390,7 +390,7 @@ export async function POST(request: NextRequest) {
                     const subscription = await stripe.subscriptions.retrieve(subscriptionId);
                     const tier = ((subscription as any).metadata?.tier || body.subscriptionTier || 'starter') as string;
                     
-                    console.log([Onboarding] Safety Sync: Payment verified for tier . Provisioning...);
+                    console.log(`[Onboarding] Safety Sync: Payment verified for tier ${tier}. Provisioning...`);
                     
                     // Manually trigger the subscription record creation (same logic as webhook)
                     const adminClient = createAdminSupabaseClient();
@@ -409,7 +409,7 @@ export async function POST(request: NextRequest) {
 
                     // 2. Override the body tier to the one verified by Stripe
                     body.subscriptionTier = tier as any;
-                    console.log([Onboarding] Safety Sync: Database updated for );
+                    console.log(`[Onboarding] Safety Sync: Database updated for ${user.id}`);
                 }
             } catch (syncError) {
                 console.warn('[Onboarding] Safety Sync failed (non-critical):', syncError);
