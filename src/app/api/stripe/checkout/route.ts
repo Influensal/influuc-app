@@ -62,12 +62,12 @@ export async function POST(req: NextRequest) {
                         id: currentItem.id,
                         price: priceId,
                     }],
-                    // Upgrades: charge immediately (always_invoice forces immediate payment)
-                    // Downgrades: apply at next billing cycle
-                    proration_behavior: isUpgrade ? 'always_invoice' : 'none',
+                    // Upgrades: charge the FULL amount immediately (by resetting the cycle anchor)
+                    // Downgrades: apply at next billing cycle (no immediate charge)
+                    proration_behavior: 'none',
                     payment_behavior: isUpgrade ? 'error_if_incomplete' : 'allow_incomplete',
-                    // If upgrading, end any existing trial immediately to start the paid period
-                    ...(isUpgrade ? { trial_end: 'now' } : { cancel_at_period_end: false }),
+                    // Start the new paid period NOW for upgrades, resetting the billing date to today.
+                    ...(isUpgrade ? { billing_cycle_anchor: 'now', trial_end: 'now' } : { cancel_at_period_end: false }),
                     metadata: {
                         supabase_user_id: user.id,
                         tier: tier,
